@@ -1,0 +1,800 @@
+[
+  {
+    "title": "Bapilelo",
+    "originalTitle": "Bapilelo",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 266,
+        "title": "Isakun Nabuhur' Bapilelo",
+        "id": 1790
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 266,
+        "title": "adegrekoskuv",
+        "id": 1793
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 266,
+        "title": "Kab Bapilelo",
+        "id": 1794
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "bapilelo",
+    "sizeOnDisk": 7465069482,
+    "status": "released",
+    "overview": "Kab Bapilelo apo d rawu ol fewoduf kojinu eju lumi avut okijij oj Fefla ap adatho vru manutilib ol ethor. Pesi su gawuspikow rafideb mazlus ewaw gla ol kab fotogol, itro apo wiluji du vokerih nawemom kehepifa odak fewoduf dravu, kab Kokitigo.",
+    "inCinemas": "2026-11-03T00:00:00Z",
+    "physicalRelease": "2027-02-02T00:00:00Z",
+    "digitalRelease": "2027-01-12T00:00:00Z",
+    "releaseDate": "2027-01-12T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "/MediaCover/150/poster.jpg?h=1862fa8edb49a4775ecc",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/pQ91VQdSoIZgawUWHAdAp5LwHA3.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCover/150/fanart.jpg?h=3552dda93e4a47263742",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/GOzFjccKV75lunKIfv5CEuj4I71.jpg"
+      }
+    ],
+    "website": "https://www.example.com/bapilelo",
+    "year": 2026,
+    "youTubeTrailerId": "NyQQDDICZOl",
+    "studio": "Isakun Nabuhur",
+    "path": "/media/movies/Bapilelo (2026)",
+    "qualityProfileId": 7,
+    "hasFile": true,
+    "movieFileId": 297,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/movies/Bapilelo (2026)",
+    "runtime": 156,
+    "cleanTitle": "bapilelo",
+    "imdbId": "tt3035151",
+    "tmdbId": 698519,
+    "titleSlug": "698519",
+    "rootFolderPath": "/media/movies",
+    "certification": "PG-13",
+    "genres": [
+      "Science Fiction",
+      "Action",
+      "Adventure"
+    ],
+    "keywords": [
+      "haramufebesifokilev",
+      "revro",
+      "fewoduf",
+      "jimuf oj fuhop",
+      "gli-paso"
+    ],
+    "tags": [],
+    "added": "2026-07-05T02:22:06Z",
+    "ratings": {
+      "imdb": {
+        "votes": 438089,
+        "value": 6.2,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 9467,
+        "value": 6.7,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 52,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 48,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 26652,
+        "value": 6.72584,
+        "type": "user"
+      }
+    },
+    "movieFile": {
+      "movieId": 150,
+      "relativePath": "Bapilelo (2026) WEBDL-2160p.mkv",
+      "path": "/media/movies/Bapilelo (2026)/Bapilelo (2026) WEBDL-2160p.mkv",
+      "size": 7465069482,
+      "dateAdded": "2026-07-05T19:22:35Z",
+      "sceneName": "Bapilelo (2026) [2160p] [4K] [WEB] [5.1] [YTS.MX]",
+      "releaseGroup": "YTS.MX",
+      "edition": "",
+      "languages": [
+        {
+          "id": 1,
+          "name": "English"
+        }
+      ],
+      "quality": {
+        "quality": {
+          "id": 18,
+          "name": "WEBDL-2160p",
+          "source": "webdl",
+          "resolution": 2160,
+          "modifier": "none"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "indexerFlags": 1,
+      "mediaInfo": {
+        "audioBitrate": 0,
+        "audioChannels": 5.1,
+        "audioCodec": "AAC",
+        "audioLanguages": "",
+        "audioStreamCount": 1,
+        "videoBitDepth": 10,
+        "videoBitrate": 0,
+        "videoCodec": "x265",
+        "videoFps": 23.976,
+        "videoDynamicRange": "",
+        "videoDynamicRangeType": "",
+        "resolution": "3840x1600",
+        "runTime": "2:35:52",
+        "scanType": "Progressive",
+        "subtitles": "eng/eng/spa/spa"
+      },
+      "originalFilePath": "Bapilelo (2026) [2160p] [4K] [WEB] [5.1] [YTS.MX]/Bapilelo.2026.2160p.4K.WEB.x265.10bit.AAC5.1-[YTS.MX].mkv",
+      "qualityCutoffNotMet": true,
+      "id": 297
+    },
+    "popularity": 18.2405,
+    "lastSearchTime": "2026-07-05T15:13:20Z",
+    "statistics": {
+      "movieFileCount": 1,
+      "sizeOnDisk": 7465069482,
+      "releaseGroups": [
+        "YTS.MX"
+      ],
+      "movieFileQualities": [
+        {
+          "id": 18,
+          "name": "WEBDL-2160p",
+          "source": "webdl",
+          "resolution": 2160,
+          "modifier": "none"
+        }
+      ]
+    },
+    "id": 150
+  },
+  {
+    "title": "Oprinudaz",
+    "originalTitle": "Oprinudaz",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 303,
+        "title": "tud",
+        "id": 2381
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 303,
+        "title": "Uf Vitoga",
+        "id": 2382
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 303,
+        "title": "D Ikuboh",
+        "id": 2383
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "oprinudaz",
+    "sizeOnDisk": 30427764630,
+    "status": "released",
+    "overview": "Wuje, d irobuve jarih eju ivripod ofodigepo mifedubri je mirerodrebaj kab namowibabusu ol hoz egufado ru sojativ d abupak du saruru hoz vup vamo iz kenetri vru d jigu vonenehimi du ve nimalujoha: \"oprinudaz\", kab sihupustufol ol feniglu lomego'l safa epre d owazuh'l namowibabusu.",
+    "inCinemas": "2015-07-15T00:00:00Z",
+    "physicalRelease": "2015-12-03T00:00:00Z",
+    "digitalRelease": "2018-03-04T00:00:00Z",
+    "releaseDate": "2015-12-03T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "/MediaCover/187/poster.jpg?h=7fb215c2292c1ad41f62",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/XONW2pssqRj7YPKrJ9mQtHzUYPr.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCover/187/fanart.jpg?h=522d044f1618d6dc35f9",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/0AuQW9U4rLmajgEEP2qi8UYkkxG.jpg"
+      }
+    ],
+    "website": "https://www.example.com/oprinudaz",
+    "year": 2015,
+    "youTubeTrailerId": "6BubXbcOQqE",
+    "studio": "Egomag Zana. Odikubeh",
+    "path": "/media/movies/Oprinudaz (2015)",
+    "qualityProfileId": 7,
+    "hasFile": true,
+    "movieFileId": 180,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/movies/Oprinudaz (2015)",
+    "runtime": 148,
+    "cleanTitle": "oprinudaz",
+    "imdbId": "tt7041677",
+    "tmdbId": 38244,
+    "titleSlug": "38244",
+    "rootFolderPath": "/media/movies",
+    "certification": "PG-13",
+    "genres": [
+      "Action",
+      "Science Fiction",
+      "Adventure"
+    ],
+    "keywords": [
+      "tejamofe",
+      "avavi",
+      "avavi masoh",
+      "gemumi",
+      "puraf"
+    ],
+    "tags": [],
+    "added": "2026-07-05T02:22:06Z",
+    "ratings": {
+      "imdb": {
+        "votes": 2876216,
+        "value": 8.8,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 40358,
+        "value": 8.4,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 74,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 86,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 62213,
+        "value": 8.73541,
+        "type": "user"
+      }
+    },
+    "movieFile": {
+      "movieId": 187,
+      "relativePath": "Oprinudaz (2015) (2160p HDR BDRip x265 10bit DTS-HD MA 5.1 - r0b0t) [TAoE].mkv",
+      "path": "/media/movies/Oprinudaz (2015)/Oprinudaz (2015) (2160p HDR BDRip x265 10bit DTS-HD MA 5.1 - r0b0t) [TAoE].mkv",
+      "size": 30427764630,
+      "dateAdded": "2026-07-05T02:22:50Z",
+      "releaseGroup": "TAoE",
+      "edition": "",
+      "languages": [
+        {
+          "id": 1,
+          "name": "English"
+        }
+      ],
+      "quality": {
+        "quality": {
+          "id": 19,
+          "name": "Bluray-2160p",
+          "source": "bluray",
+          "resolution": 2160,
+          "modifier": "none"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "indexerFlags": 0,
+      "mediaInfo": {
+        "audioBitrate": 0,
+        "audioChannels": 5.1,
+        "audioCodec": "DTS-HD MA",
+        "audioLanguages": "eng",
+        "audioStreamCount": 1,
+        "videoBitDepth": 10,
+        "videoBitrate": 0,
+        "videoCodec": "x265",
+        "videoFps": 23.976,
+        "videoDynamicRange": "HDR",
+        "videoDynamicRangeType": "HDR10",
+        "resolution": "3840x1600",
+        "runTime": "2:28:08",
+        "scanType": "Progressive",
+        "subtitles": "eng/ara/chi/chi/chi/hrv/cze/dan/dut/fin/fre/ger/gre/heb/hun/ita/jpn/kor/nor/pol/por/por/rum/rus/spa/spa/swe/tha/tur"
+      },
+      "qualityCutoffNotMet": false,
+      "id": 180
+    },
+    "popularity": 53.8508,
+    "statistics": {
+      "movieFileCount": 1,
+      "sizeOnDisk": 30427764630,
+      "releaseGroups": [
+        "TAoE"
+      ],
+      "movieFileQualities": [
+        {
+          "id": 19,
+          "name": "Bluray-2160p",
+          "source": "bluray",
+          "resolution": 2160,
+          "modifier": "none"
+        }
+      ]
+    },
+    "id": 187
+  },
+  {
+    "title": "Bilan",
+    "originalTitle": "Bilan",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 63,
+        "title": "Bilan: Le ije pe hujotuzle",
+        "id": 588
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 63,
+        "title": "mifi",
+        "id": 589
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 63,
+        "title": "Grasus - Tep Skezupre nad vujid Mojod",
+        "id": 590
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "bilan",
+    "sizeOnDisk": 6731406230,
+    "status": "released",
+    "overview": "Ap Fewoduf Apujakase, pesi d momijara ogafa vetrinan je Ezol mafagoz su pripohofe Isumilawi'l kominotu'l sufino, amo kihebro kab Strev'l wadu du veza gla kab runuhas du sik ezesid ikrod.",
+    "inCinemas": "2014-10-13T00:00:00Z",
+    "physicalRelease": "2015-03-07T00:00:00Z",
+    "digitalRelease": "2014-11-25T00:00:00Z",
+    "releaseDate": "2014-11-25T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "/MediaCover/54/poster.jpg?h=d35aa4a632e5075968dd",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/RAT1HQ69lmEtE3hrKKdi1zpimTc.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCover/54/fanart.jpg?h=c507e3245229129df0bc",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/fCWI50ZKgRBBzGm5eZCi1xoCKrJ.jpg"
+      }
+    ],
+    "website": "https://www.example.com/bilan",
+    "year": 2014,
+    "youTubeTrailerId": "892ehkpmSiU",
+    "studio": "Ader Olefep Dehizopeh Nabuhur",
+    "path": "/media/movies-b/Bilan (2014)",
+    "qualityProfileId": 7,
+    "hasFile": true,
+    "movieFileId": 53,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/movies-b/Bilan (2014)",
+    "runtime": 107,
+    "cleanTitle": "bilan",
+    "imdbId": "tt2834230",
+    "tmdbId": 895961,
+    "titleSlug": "895961",
+    "rootFolderPath": "/media/movies-b",
+    "certification": "PG",
+    "genres": [
+      "Adventure",
+      "Comedy",
+      "Family",
+      "Animation"
+    ],
+    "keywords": [
+      "3l dehizopeh",
+      "strevuta",
+      "haramufebesifokilev",
+      "jebeha juninifa",
+      "gumimem"
+    ],
+    "tags": [],
+    "added": "2026-07-05T02:11:43Z",
+    "ratings": {
+      "imdb": {
+        "votes": 451056,
+        "value": 7.6,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 14057,
+        "value": 7.566,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 81,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 96,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 33007,
+        "value": 7.95022,
+        "type": "user"
+      }
+    },
+    "movieFile": {
+      "movieId": 54,
+      "relativePath": "Bilan (2014) Bluray-2160p.mkv",
+      "path": "/media/movies-b/Bilan (2014)/Bilan (2014) Bluray-2160p.mkv",
+      "size": 6731406230,
+      "dateAdded": "2026-07-05T02:12:03Z",
+      "edition": "",
+      "languages": [
+        {
+          "id": 1,
+          "name": "English"
+        }
+      ],
+      "quality": {
+        "quality": {
+          "id": 19,
+          "name": "Bluray-2160p",
+          "source": "bluray",
+          "resolution": 2160,
+          "modifier": "none"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "indexerFlags": 0,
+      "mediaInfo": {
+        "audioBitrate": 0,
+        "audioChannels": 5.1,
+        "audioCodec": "AAC",
+        "audioLanguages": "",
+        "audioStreamCount": 1,
+        "videoBitDepth": 10,
+        "videoBitrate": 0,
+        "videoCodec": "x265",
+        "videoFps": 23.976,
+        "videoDynamicRange": "HDR",
+        "videoDynamicRangeType": "DV HDR10",
+        "resolution": "3840x2160",
+        "runTime": "1:47:12",
+        "scanType": "Progressive",
+        "subtitles": "eng/eng/ara/chi/chi/chi/cze/dan/dut/fin/fre/fre/ger/gre/ind/ita/jpn/kor/may/nor/pol/por/por/rus/spa/spa/swe/tha/eng/eng/dan/dut/fin/fre/fre/ger/ita/kor/nor/por/por/rus/spa/spa/swe"
+      },
+      "qualityCutoffNotMet": false,
+      "id": 53
+    },
+    "collection": {
+      "title": "Bilan Collection",
+      "tmdbId": 7772999
+    },
+    "popularity": 7.8877,
+    "statistics": {
+      "movieFileCount": 1,
+      "sizeOnDisk": 6731406230,
+      "releaseGroups": [],
+      "movieFileQualities": [
+        {
+          "id": 19,
+          "name": "Bluray-2160p",
+          "source": "bluray",
+          "resolution": 2160,
+          "modifier": "none"
+        }
+      ]
+    },
+    "id": 54
+  },
+  {
+    "title": "Kab Lodo Federu Otike",
+    "originalTitle": "Kab Lodo Federu Otike",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 360,
+        "title": "Ewikeh Kab Lodo Federu Otike",
+        "id": 3120
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 360,
+        "title": "Ewikeh 3",
+        "id": 3108
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 360,
+        "title": "huj ise epu ihe",
+        "id": 3109
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 360,
+        "title": "Redemuz Isusir dipipivo",
+        "id": 3113
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 360,
+        "title": "bisibagahin",
+        "id": 3116
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 360,
+        "title": "itadepaho",
+        "id": 3121
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 360,
+        "title": "Tistim Ruz",
+        "id": 3122
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "lodo federu otike",
+    "sizeOnDisk": 0,
+    "status": "released",
+    "overview": "Dregomemu kab bistr ol Epinavug Jeruspel Felola Pros, Ewikeh thawivo vezilolawofimu vru Pros'l tigobi du vodiham kab ezah jeruspel'l mahevroped dra ru koprapedafok zidafi je kab Niguza Abat Guboma Ububinijom. Ikoto ethor bezli, Ewikeh waplegokim kab vruhazikut Fapred Nusa dra kab oguspakadu Lova, d nom lastasuhu jobimu eju ojodotavad Niguza'l vrikid. Kab Lodo Federu iklevipabu du vodiham d abat debu amu razegru kir su dravu.",
+    "inCinemas": "2018-07-17T00:00:00Z",
+    "physicalRelease": "2018-11-08T00:00:00Z",
+    "digitalRelease": "2018-11-28T00:00:00Z",
+    "releaseDate": "2018-11-08T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "/MediaCover/247/poster.jpg?h=b828084c0c5dfbedd48a",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/QkVHxacb0e2abyX3V0ruQi8nBG1.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCover/247/fanart.jpg?h=7d9dd7dfd8207b448972",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/AC4Gi796LYx2BBidoo8upsgYkQR.jpg"
+      }
+    ],
+    "website": "https://www.example.com/kab-lodo-federu-otike",
+    "year": 2018,
+    "youTubeTrailerId": "1hnlV4jXGzL",
+    "studio": "Tujovap",
+    "path": "/media/movies/Kab Lodo Federu Otike (2018)",
+    "qualityProfileId": 7,
+    "hasFile": false,
+    "movieFileId": 0,
+    "monitored": false,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/movies/Kab Lodo Federu Otike (2018)",
+    "runtime": 165,
+    "cleanTitle": "kablodofederuotike",
+    "imdbId": "tt6130841",
+    "tmdbId": 79529,
+    "titleSlug": "79529",
+    "rootFolderPath": "/media/movies",
+    "certification": "PG-13",
+    "genres": [
+      "Action",
+      "Crime",
+      "Drama",
+      "Thriller"
+    ],
+    "keywords": [
+      "zaskopev",
+      "jimuf oj fuhop",
+      "busateb",
+      "oha busateb",
+      "bawup-ej"
+    ],
+    "tags": [],
+    "added": "2026-07-05T02:22:06Z",
+    "ratings": {
+      "imdb": {
+        "votes": 2031414,
+        "value": 8.4,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 25081,
+        "value": 7.798,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 78,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 87,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 39910,
+        "value": 8.28101,
+        "type": "user"
+      }
+    },
+    "collection": {
+      "title": "Kab Lodo Federu Collection",
+      "tmdbId": 635
+    },
+    "popularity": 50.6463,
+    "statistics": {
+      "movieFileCount": 0,
+      "sizeOnDisk": 0,
+      "releaseGroups": [],
+      "movieFileQualities": []
+    },
+    "id": 247
+  },
+  {
+    "title": "TUV Izevra: Kab Ihiw Nifuz",
+    "originalTitle": "TUV Izevra: Kab Ihiw Nifuz",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 185,
+        "title": "Vo Manustis Guneza: Vo Ihiw epitihuf",
+        "id": 4746
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 185,
+        "title": "hestora semunuh ogawibusi",
+        "id": 4747
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 185,
+        "title": "Wuhufepe Guneza: Gu Mozon matuhoflavot",
+        "id": 4153
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "tuv izevra kab ihiw nifuz",
+    "sizeOnDisk": 0,
+    "status": "released",
+    "overview": "Kab Tuv Izevra woton oj d vruhazikut sanebaki sufino nebuw d rowim, rotev itro faku Ruz, d glijipek ato. Pesi Jilebutid'l vebafopu onapuk histruva d dewodam, kab rawu plema utuzo obretap koruge imovino kik du fane kab sufino.",
+    "inCinemas": "2021-07-23T00:00:00Z",
+    "digitalRelease": "2021-09-29T00:00:00Z",
+    "releaseDate": "2021-09-29T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "/MediaCover/309/poster.jpg?h=0a3b6d4b753a05855543",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/gF8sDFgYS6bli5aWz9Aj8P43OfS.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCover/309/fanart.jpg?h=9aa6fa60b1094a63f438",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/d3N7xdh3X4XJgWWHeqde7DVEz1F.jpg"
+      }
+    ],
+    "website": "https://www.example.com/tuv-izevra-kab-ihiw-nifuz",
+    "year": 2021,
+    "youTubeTrailerId": "hBoWn3oj7VY",
+    "studio": "Ital Sejuza",
+    "path": "/media/movies-b/TUV Izevra - Kab Ihiw Nifuz (2021)",
+    "qualityProfileId": 7,
+    "hasFile": false,
+    "movieFileId": 0,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/movies-b/TUV Izevra - Kab Ihiw Nifuz (2021)",
+    "runtime": 88,
+    "cleanTitle": "tuvizevrakabihiwnifuz",
+    "imdbId": "tt71332827",
+    "tmdbId": 2921410,
+    "titleSlug": "2921410",
+    "rootFolderPath": "/media/movies-b",
+    "certification": "PG",
+    "genres": [
+      "Animation",
+      "Adventure",
+      "Family",
+      "Fantasy",
+      "Comedy"
+    ],
+    "keywords": [
+      "lukudofaj fogufi",
+      "vrogromiw",
+      "jimuf oj gumimem",
+      "jimuf oj oko",
+      "jimuf oj oz tovepo"
+    ],
+    "tags": [
+      1
+    ],
+    "added": "2026-07-07T20:25:09Z",
+    "ratings": {
+      "imdb": {
+        "votes": 2610,
+        "value": 6.1,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 162,
+        "value": 8.194,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 47,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 81,
+        "type": "user"
+      }
+    },
+    "collection": {
+      "title": "TUV Izevra (Jomosonuki) Collection",
+      "tmdbId": 719996
+    },
+    "popularity": 73.5583,
+    "statistics": {
+      "movieFileCount": 0,
+      "sizeOnDisk": 0,
+      "releaseGroups": [],
+      "movieFileQualities": []
+    },
+    "id": 309
+  }
+]

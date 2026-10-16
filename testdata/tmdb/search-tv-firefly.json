@@ -1,0 +1,117 @@
+{
+    "page": 1,
+    "results": [
+        {
+            "adult": false,
+            "backdrop_path": "/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+            "genre_ids": [
+                18,
+                10759,
+                10765
+            ],
+            "id": 1437,
+            "origin_country": [
+                "US"
+            ],
+            "original_language": "en",
+            "original_name": "Firefly",
+            "overview": "In the year 2517, the universe is a vast frontier where lawlessness reigns and adventure awaits! Join Captain Malcolm Reynolds and his ragtag crew aboard the spaceship Serenity as they navigate the fringes of society, battling the oppressive Alliance and facing off against ruthless bounty hunters.",
+            "popularity": 30.9864,
+            "poster_path": "/vZcKsy4sGAvWMVqLluwYuoi11Kj.jpg",
+            "first_air_date": "2002-09-20",
+            "softcore": false,
+            "name": "Firefly",
+            "vote_average": 8.3,
+            "vote_count": 2524
+        },
+        {
+            "adult": false,
+            "backdrop_path": "/zvdnqNYYjW1NvULZbToh50pdts4.jpg",
+            "genre_ids": [
+                18
+            ],
+            "id": 87049,
+            "origin_country": [
+                "US"
+            ],
+            "original_language": "en",
+            "original_name": "Firefly Lane",
+            "overview": "For decades, childhood best friends Kate and Tully have weathered life's storms together -- until a betrayal threatens to break them apart for good.",
+            "popularity": 22.1805,
+            "poster_path": "/2AavbPEEXzyy7Smyusozyz48T1n.jpg",
+            "first_air_date": "2021-02-03",
+            "softcore": false,
+            "name": "Firefly Lane",
+            "vote_average": 7.8,
+            "vote_count": 321
+        },
+        {
+            "adult": false,
+            "backdrop_path": "/3zmB6PLnjf7rNNC2lnvinQtlJMx.jpg",
+            "genre_ids": [
+                16,
+                18
+            ],
+            "id": 320909,
+            "origin_country": [
+                "JP"
+            ],
+            "original_language": "ja",
+            "original_name": "\u30db\u30bf\u30eb\u306e\u5ac1\u5165\u308a",
+            "overview": "Satoko Kirigaya has everything a noblewoman could want\u2014except time. With her life running out, she\u2019s determined to marry well and make her father proud. But when a ruthless assassin kidnaps her, she makes a desperate offer: \u201cMarry me, and we\u2019ll have it all.\u201d Shinpei Goto accepts, only to become dangerously obsessed. Now Satoko must choose between duty and a love that could consume them both.",
+            "popularity": 5.3561,
+            "poster_path": "/954dt0dTqoUhIW0EvMFZ0KvVQmk.jpg",
+            "first_air_date": "2026-10-09",
+            "softcore": false,
+            "name": "Firefly Wedding",
+            "vote_average": 0.0,
+            "vote_count": 0
+        },
+        {
+            "adult": false,
+            "backdrop_path": "/qQRS0SnU6rpjIwNGV2U5eYELXm2.jpg",
+            "genre_ids": [
+                35,
+                18
+            ],
+            "id": 72893,
+            "origin_country": [
+                "TR"
+            ],
+            "original_language": "tr",
+            "original_name": "Ate\u015fb\u00f6ce\u011fi",
+            "overview": "A divorce lawyer who feels that there is nothing left to surprise him in life meets a beautiful young girl who work as a taxi driver to help her family. When the pair cross paths their lives will change forever.",
+            "popularity": 6.039,
+            "poster_path": "/jsbpJXeROUCTXNo2fpidLhEqIrq.jpg",
+            "first_air_date": "2017-06-29",
+            "softcore": false,
+            "name": "Ate\u015fb\u00f6ce\u011fi",
+            "vote_average": 6.4,
+            "vote_count": 10
+        },
+        {
+            "adult": false,
+            "backdrop_path": null,
+            "genre_ids": [
+                10751,
+                18
+            ],
+            "id": 91370,
+            "origin_country": [
+                "PK"
+            ],
+            "original_language": "ur",
+            "original_name": "\u062c\u06af\u0646\u0648\u200e",
+            "overview": "Series narrates the story of a young and fun-loving girl Jugnoo, who had lost her father at an early age. She along with her mother Shah Jahan, lives with her maternal aunt Jahangir. Despite facing a lot of troubles and hardships in her life, Jugnoo always proves to be confident and jolly girl.",
+            "popularity": 1.3703,
+            "poster_path": "/o6b38rEW9qyVR88PRUZztGbMWsv.jpg",
+            "first_air_date": "2015-04-17",
+            "softcore": false,
+            "name": "Jugnoo",
+            "vote_average": 10.0,
+            "vote_count": 1
+        }
+    ],
+    "total_pages": 1,
+    "total_results": 5
+}

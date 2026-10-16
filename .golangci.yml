@@ -1,0 +1,36 @@
+# golangci-lint v2 configuration. `just lint` must be clean before every commit.
+version: "2"
+
+linters:
+  # "standard" = errcheck, govet, ineffassign, staticcheck, unused.
+  default: standard
+  enable:
+    - bodyclose      # unclosed HTTP response bodies leak connections
+    - errorlint      # wrapped errors must be compared with errors.Is/As
+    - gosec          # common security mistakes (this app handles auth and files)
+    - misspell
+    - noctx          # outbound HTTP requests should carry a context
+    - revive
+    - sqlclosecheck  # unclosed rows/statements
+    - unconvert
+  settings:
+    revive:
+      rules:
+        - name: exported
+          arguments: ["disableStutteringCheck"]
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      # Tests may use plain http.Get and skip some checks.
+      - path: _test\.go
+        linters: [noctx, gosec, bodyclose]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/saltglass/reelkeeper

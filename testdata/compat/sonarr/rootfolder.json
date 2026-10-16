@@ -1,0 +1,48 @@
+[
+  {
+    "path": "/media/tv-b",
+    "accessible": true,
+    "freeSpace": 16759007477760,
+    "unmappedFolders": [
+      {
+        "name": "Dokef (2018)",
+        "path": "/media/tv-b/Dokef (2018)",
+        "relativePath": "Dokef (2018)"
+      },
+      {
+        "name": "Moprusi Sifa Goho du kab Sifa (2022) {tvdb-214473}",
+        "path": "/media/tv-b/Moprusi Sifa Goho du kab Sifa (2022) {tvdb-214473}",
+        "relativePath": "Moprusi Sifa Goho du kab Sifa (2022) {tvdb-214473}"
+      },
+      {
+        "name": "Kab Ogotev Ubele Uthu",
+        "path": "/media/tv-b/Kab Ogotev Ubele Uthu",
+        "relativePath": "Kab Ogotev Ubele Uthu"
+      },
+      {
+        "name": "EbopUn",
+        "path": "/media/tv-b/EbopUn",
+        "relativePath": "EbopUn"
+      }
+    ],
+    "id": 1
+  },
+  {
+    "path": "/media/tv",
+    "accessible": true,
+    "freeSpace": 16759007477760,
+    "unmappedFolders": [
+      {
+        "name": "Atrabo Sisuf (2020) {tvdb-390723}",
+        "path": "/media/tv/Atrabo Sisuf (2020) {tvdb-390723}",
+        "relativePath": "Atrabo Sisuf (2020) {tvdb-390723}"
+      },
+      {
+        "name": "Ob. Wezli Jukujug (2024) {tvdb-913208}",
+        "path": "/media/tv/Ob. Wezli Jukujug (2024) {tvdb-913208}",
+        "relativePath": "Ob. Wezli Jukujug (2024) {tvdb-913208}"
+      }
+    ],
+    "id": 2
+  }
+]

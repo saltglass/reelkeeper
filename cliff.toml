@@ -1,0 +1,35 @@
+# Release notes from conventional commits (git-cliff; run by
+# .github/workflows/release.yml). Features and Fixes are listed; breaking
+# changes (a "!" after the type, like "feat!:") are flagged. chore, docs, test,
+# style, ci and build commits are left out of the notes.
+
+[changelog]
+header = ""
+body = """
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
+- {% if commit.breaking %}**BREAKING** {% endif %}\
+{% if commit.scope %}**{{ commit.scope }}:** {% endif %}\
+{{ commit.message | upper_first }}\
+{% endfor %}
+{% endfor %}
+"""
+trim = true
+footer = ""
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+protect_breaking_commits = true
+filter_commits = false
+tag_pattern = "v[0-9].*"
+sort_commits = "oldest"
+commit_parsers = [
+  { message = "^feat", group = "<!-- 0 -->Features" },
+  { message = "^fix", group = "<!-- 1 -->Fixes" },
+  # A breaking change in a type that is otherwise left out is still shown.
+  { message = "^[a-z]+(\\(.*\\))?!:", group = "<!-- 2 -->Other breaking changes" },
+  { message = "^(chore|docs|test|style|ci|build|refactor|perf|revert)", skip = true },
+]

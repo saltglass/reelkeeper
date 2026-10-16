@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--reelkeeper:base-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="brand/reelkeeper.svg" />
+    <title>Reelkeeper</title>
+    <script>
+      // Apply the saved appearance before the first paint, so nothing flashes.
+      // Keep in step with src/hooks/theme.ts: the theme ids, "system" (Reelkeeper
+      // Dark unless the browser asks for light), "custom" (its base theme plus
+      // the colours saved with it), motion and the glow.
+      try {
+        const ids = { dark: 1, light: 1, midnight: 1, ember: 1, moss: 1, paper: 1, contrast: 1 };
+        const lightIds = { light: 1, paper: 1 };
+        const root = document.documentElement;
+        let a = JSON.parse(localStorage.getItem("reelkeeper.appearance") || "null");
+        if (!a) a = { theme: localStorage.getItem("reelkeeper-theme") };
+        let t = a.theme;
+        if (t === "custom") {
+          t = a.customBase === "light" ? "light" : "dark";
+          for (const k in a.customVars || {}) root.style.setProperty(`--${k}`, a.customVars[k]);
+        }
+        if (!ids[t]) t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        root.dataset.theme = t;
+        root.classList.toggle("dark", !lightIds[t]);
+        root.dataset.motion = a.motion === "subtle" || a.motion === "off" ? a.motion : "lively";
+        root.dataset.glow = a.glow === false ? "off" : "on";
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

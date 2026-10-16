@@ -1,0 +1,15 @@
+[
+  {
+    "path": "/media/remux",
+    "accessible": true,
+    "freeSpace": 16920124325888,
+    "unmappedFolders": [
+      {
+        "name": "Ewikeh (REMUX)",
+        "path": "/media/remux/Ewikeh (REMUX)",
+        "relativePath": "Ewikeh (REMUX)"
+      }
+    ],
+    "id": 1
+  }
+]

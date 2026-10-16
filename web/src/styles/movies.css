@@ -1,0 +1,8 @@
+/* Styles for the redesigned movies pages (animations and effects Tailwind classes cannot express). Durations scale with --m (motion setting). */
+
+/* The empty-state orb floats gently. */
+@keyframes float {
+  50% {
+    transform: translateY(-8px);
+  }
+}

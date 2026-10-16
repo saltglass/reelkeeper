@@ -1,0 +1,51 @@
+[
+  {
+    "seriesId": 49,
+    "tvdbId": 7341522,
+    "episodeFileId": 0,
+    "seasonNumber": 0,
+    "episodeNumber": 2,
+    "title": "Su Tathav Dono",
+    "airDate": "2022-03-25",
+    "airDateUtc": "2022-03-25T04:00:00Z",
+    "runtime": 3,
+    "hasFile": false,
+    "monitored": false,
+    "unverifiedSceneNumbering": false,
+    "id": 2979
+  },
+  {
+    "seriesId": 49,
+    "tvdbId": 2337000,
+    "episodeFileId": 0,
+    "seasonNumber": 0,
+    "episodeNumber": 3,
+    "title": "Hasi Ru d Evov Omave?",
+    "airDate": "2022-03-26",
+    "airDateUtc": "2022-03-26T04:00:00Z",
+    "runtime": 3,
+    "finaleType": "season",
+    "hasFile": false,
+    "monitored": false,
+    "unverifiedSceneNumbering": false,
+    "id": 2980
+  },
+  {
+    "seriesId": 49,
+    "tvdbId": 5093305,
+    "episodeFileId": 1356,
+    "seasonNumber": 1,
+    "episodeNumber": 6,
+    "title": "Napojew",
+    "airDate": "2022-04-29",
+    "airDateUtc": "2022-04-29T04:00:00Z",
+    "lastSearchTime": "2026-10-05T23:52:53Z",
+    "runtime": 53,
+    "finaleType": "season",
+    "overview": "Skerogab dra kab Evov Boziho sozowek ipufeboru ulableduzi du kefaha kab bigafopliv dra Beteku. Aj kasaj d goskuflu anozaleta amegi Zor.",
+    "hasFile": true,
+    "monitored": true,
+    "unverifiedSceneNumbering": false,
+    "id": 2986
+  }
+]

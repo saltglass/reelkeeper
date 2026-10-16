@@ -1,0 +1,25 @@
+# Local data (SQLite DB, generated secret key) from `just dev`
+/data/
+
+# Build output
+/bin/
+/web/node_modules/
+
+# Editors and macOS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# The built UI is embedded from here; only the placeholder is committed.
+/internal/ui/dist/*
+!/internal/ui/dist/.gitkeep
+/tmp/
+
+# Local credentials (never commit)
+*.env
+!dev/*.env.example
+/web/tsconfig.tsbuildinfo
+
+# Private notes for Claude (imports the maintainer's own deployment notes)
+CLAUDE.local.md

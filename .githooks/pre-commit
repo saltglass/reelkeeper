@@ -1,0 +1,16 @@
+#!/bin/sh
+# Refuse commits that fail lint or tests (the rule in CLAUDE.md).
+# Enabled per clone with: git config core.hooksPath .githooks
+# Uses SQLite only and skips the race detector, to stay quick;
+# `just test-pg` and CI cover the rest.
+log=$(mktemp)
+fail() {
+    cat "$log"; rm -f "$log"
+    echo
+    echo "pre-commit: $1 failed; fix it before committing."
+    exit 1
+}
+just lint >"$log" 2>&1 || fail "just lint"
+go test ./... >"$log" 2>&1 || fail "go test"
+(cd web && npx vitest run) >"$log" 2>&1 || fail "frontend tests"
+rm -f "$log"

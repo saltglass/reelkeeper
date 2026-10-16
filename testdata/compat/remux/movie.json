@@ -1,0 +1,833 @@
+[
+  {
+    "title": "Skirase Ugar Skas",
+    "originalTitle": "Skirase Ugar Skas",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 17,
+        "title": "Stitam hojetaga abupak",
+        "id": 132
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 17,
+        "title": "zujuklidop",
+        "id": 134
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 17,
+        "title": "wupusi ugo hepaj",
+        "id": 135
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "skirase ugar skas",
+    "sizeOnDisk": 86366368720,
+    "status": "released",
+    "overview": "Amulowu usetoga Akuduv Malef junek ej oj d emitifasu usteh ethor pusa fela moji bi bijejubuduhe ol eju ib ru ik luf ib omo wekuw. Iz hoz vogoja refurij, ib ufejat du hugeram hoz imovino: muboz kab luhega ol kab vruhazikut zasepupuj dogorek kab ubo du jiz gla. Ib fahu wadu oj hoz astegituji uzorovowa dra negafajije gipum du fane ezuminokuw oj Fefla pusa ukefahiler.",
+    "inCinemas": "2021-03-18T00:00:00Z",
+    "physicalRelease": "2021-08-11T00:00:00Z",
+    "digitalRelease": "2021-05-12T00:00:00Z",
+    "releaseDate": "2021-05-12T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "/MediaCover/7/poster.jpg?h=38a7260015b037c78d11",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/LL6mPJsmMRhfg5mywOnTPfChwXm.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCover/7/fanart.jpg?h=677527ffae4cdb016960",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/hNaB1lSISnYHvdSNAR427ZvTY05.jpg"
+      }
+    ],
+    "website": "https://www.example.com/skirase-ugar-skas",
+    "year": 2021,
+    "youTubeTrailerId": "ZBfnvofcuvA",
+    "studio": "Ludi Sehugi",
+    "path": "/media/remux/Skirase Ugar Skas (2021)",
+    "qualityProfileId": 7,
+    "hasFile": true,
+    "movieFileId": 8,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/remux/Skirase Ugar Skas (2021)",
+    "runtime": 157,
+    "cleanTitle": "skiraseugarskas",
+    "imdbId": "tt32563024",
+    "tmdbId": 552445,
+    "titleSlug": "552445",
+    "rootFolderPath": "/media/remux",
+    "certification": "PG-13",
+    "genres": [
+      "Science Fiction",
+      "Adventure"
+    ],
+    "keywords": [
+      "revro",
+      "litrisobe",
+      "jimuf oj kubli ik vaho",
+      "isadihi",
+      "huho"
+    ],
+    "tags": [
+      1
+    ],
+    "added": "2026-07-07T14:39:35Z",
+    "ratings": {
+      "imdb": {
+        "votes": 567697,
+        "value": 8.2,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 8188,
+        "value": 8.634,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 77,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 95,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 34350,
+        "value": 8.74547,
+        "type": "user"
+      }
+    },
+    "movieFile": {
+      "movieId": 7,
+      "relativePath": "Skirase Ugar Skas (2021) Remux-2160p.mkv",
+      "path": "/media/remux/Skirase Ugar Skas (2021)/Skirase Ugar Skas (2021) Remux-2160p.mkv",
+      "size": 86366368720,
+      "dateAdded": "2026-07-28T11:11:01Z",
+      "sceneName": "Skirase.Ugar.Skas.2021.2160p.UHD.BluRay.Remux.DV.P7.HDR.MULTi.TrueHD.Atmos-BTM",
+      "releaseGroup": "BTM",
+      "edition": "",
+      "languages": [
+        {
+          "id": 1,
+          "name": "English"
+        },
+        {
+          "id": 3,
+          "name": "Spanish"
+        },
+        {
+          "id": 2,
+          "name": "French"
+        },
+        {
+          "id": 4,
+          "name": "German"
+        },
+        {
+          "id": 5,
+          "name": "Italian"
+        },
+        {
+          "id": 26,
+          "name": "Hindi"
+        },
+        {
+          "id": 11,
+          "name": "Russian"
+        }
+      ],
+      "quality": {
+        "quality": {
+          "id": 31,
+          "name": "Remux-2160p",
+          "source": "bluray",
+          "resolution": 2160,
+          "modifier": "remux"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "indexerFlags": 1,
+      "mediaInfo": {
+        "audioBitrate": 2781110,
+        "audioChannels": 7.1,
+        "audioCodec": "TrueHD Atmos",
+        "audioLanguages": "eng/eng/spa/fre/fre/ger/ita/hin/rus/eng",
+        "audioStreamCount": 10,
+        "videoBitDepth": 10,
+        "videoBitrate": 65347587,
+        "videoCodec": "h265",
+        "videoFps": 23.976,
+        "videoDynamicRange": "HDR",
+        "videoDynamicRangeType": "DV HDR10",
+        "resolution": "3840x2160",
+        "runTime": "2:40:54",
+        "scanType": "Progressive",
+        "subtitles": "eng/eng/spa/spa/fre/fre/por/por/ara/cze/dan/dut/fin/fil/ger/gre/hin/hun/ind/ita/jpn/kan/kor/mal/may/nor/pol/rum/swe/tam/tel/tha/tur/vie/chi/chi"
+      },
+      "originalFilePath": "Skirase.Ugar.Skas.2021.2160p.UHD.BluRay.Remux.DV.P7.HDR.MULTi.TrueHD.Atmos.H265-BTM/Skirase.Ugar.Skas.2021.2160p.UHD.BluRay.Remux.DV.P7.HDR.MULTi[Ben Kab Ple].mkv",
+      "qualityCutoffNotMet": false,
+      "id": 8
+    },
+    "popularity": 91.0726,
+    "lastSearchTime": "2026-07-27T16:44:17Z",
+    "statistics": {
+      "movieFileCount": 1,
+      "sizeOnDisk": 86366368720,
+      "releaseGroups": [
+        "BTM"
+      ],
+      "movieFileQualities": [
+        {
+          "id": 31,
+          "name": "Remux-2160p",
+          "source": "bluray",
+          "resolution": 2160,
+          "modifier": "remux"
+        }
+      ]
+    },
+    "id": 7
+  },
+  {
+    "title": "Kab Kawo dra kab Lospiwi",
+    "originalTitle": "Kab Kawo dra kab Lospiwi",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 22,
+        "title": "Usil Skova",
+        "id": 263
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 22,
+        "title": "Kab Kawo dra kab Lospiwi (D sewi suv)",
+        "id": 264
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 22,
+        "title": "zofla k flurubov",
+        "id": 265
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "kawo dra kab lospiwi",
+    "sizeOnDisk": 57187518194,
+    "status": "released",
+    "overview": "Avewade Grebraw ru d Kub Soblumi uzuniv nomis umalareli ol abruvenufunur d tovepo ol eda-str eguhifebef. Pesi ezefubupaf vra Hinif K'Repajo vesuprabrok Grebraw'l bekowesilasa dezu, ib evazi vru Grebraw'l uroguh dra fahu jasose d eska: kab batu ik kab GLIN.",
+    "inCinemas": "2004-06-22T00:00:00Z",
+    "physicalRelease": "2005-05-08T00:00:00Z",
+    "digitalRelease": "2019-09-30T00:00:00Z",
+    "releaseDate": "2005-05-08T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "/MediaCover/13/poster.jpg?h=7bc1ffed16daa96bc4b1",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/hKs5vNWE3xYc7QapzV9U83Qppx2.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCover/13/fanart.jpg?h=a6eaabf3209fbd8a811b",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/k7C1AV0Oc9mdOZRCD5hOwew31m5.jpg"
+      }
+    ],
+    "website": "https://www.example.com/kab-kawo-dra-kab-lospiwi",
+    "year": 2004,
+    "youTubeTrailerId": "LYeXR4r7gRM",
+    "studio": "Rajipuza Benakekivulal",
+    "path": "/media/remux/Kab Kawo dra kab Lospiwi (2004)",
+    "qualityProfileId": 7,
+    "hasFile": true,
+    "movieFileId": 12,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/remux/Kab Kawo dra kab Lospiwi (2004)",
+    "runtime": 106,
+    "cleanTitle": "kabkawodrakablospiwi",
+    "imdbId": "tt0972981",
+    "tmdbId": 9724,
+    "titleSlug": "9724",
+    "rootFolderPath": "/media/remux",
+    "certification": "PG-13",
+    "genres": [
+      "Action",
+      "Crime",
+      "Thriller"
+    ],
+    "keywords": [
+      "haramufebesifokilev",
+      "plerugalil",
+      "teritrasu",
+      "nigo-afabal",
+      "jimuf oj ahuzohih, komugidut ik estejum"
+    ],
+    "tags": [
+      1
+    ],
+    "added": "2026-09-28T19:43:52Z",
+    "ratings": {
+      "imdb": {
+        "votes": 467846,
+        "value": 6.8,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 11209,
+        "value": 7,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 58,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 56,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 18819,
+        "value": 7.38631,
+        "type": "user"
+      }
+    },
+    "movieFile": {
+      "movieId": 13,
+      "relativePath": "Kab Kawo dra kab Lospiwi (2004) Lakudol.mkv",
+      "path": "/media/remux/Kab Kawo dra kab Lospiwi (2004)/Kab Kawo dra kab Lospiwi (2004) Unknown.mkv",
+      "size": 57187518194,
+      "dateAdded": "2026-09-29T11:41:02Z",
+      "sceneName": "Kab.Kawo.dra.kab.Lospiwi.2004.Multi.UHD.2160p.BluRay.HEVC.HDR.ZE",
+      "releaseGroup": "DTOne",
+      "edition": "",
+      "languages": [
+        {
+          "id": 1,
+          "name": "English"
+        },
+        {
+          "id": 26,
+          "name": "Hindi"
+        },
+        {
+          "id": 2,
+          "name": "French"
+        },
+        {
+          "id": 3,
+          "name": "Spanish"
+        },
+        {
+          "id": 8,
+          "name": "Japanese"
+        },
+        {
+          "id": 18,
+          "name": "Portuguese"
+        }
+      ],
+      "quality": {
+        "quality": {
+          "id": 0,
+          "name": "Unknown",
+          "source": "unknown",
+          "resolution": 0,
+          "modifier": "none"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "indexerFlags": 1,
+      "mediaInfo": {
+        "audioBitrate": 0,
+        "audioChannels": 7.1,
+        "audioCodec": "DTS-X",
+        "audioLanguages": "eng/hin/fre/spa/jpn/por",
+        "audioStreamCount": 6,
+        "videoBitDepth": 10,
+        "videoBitrate": 0,
+        "videoCodec": "HEVC",
+        "videoFps": 23.976,
+        "videoDynamicRange": "HDR",
+        "videoDynamicRangeType": "HDR10",
+        "resolution": "3840x2160",
+        "runTime": "1:47:11",
+        "scanType": "Progressive",
+        "subtitles": "eng/fre/spa/jpn/por/eng/spa/jpn/por/fre/spa/jpn/por"
+      },
+      "originalFilePath": "Kab.Kawo.dra.kab.Lospiwi.2004.Multi.UHD.2160p.BluRay.HEVC.HDR.DTSXLL.7.1-DTOne/Kab.Kawo.dra.kab.Lospiwi.2004.Multi.UHD.2160p.BluRay.HEVC.HDR.DTSXLL.5.1-DTOne.mkv",
+      "qualityCutoffNotMet": true,
+      "id": 12
+    },
+    "collection": {
+      "title": "Kab Kawo dra kab Lospiwi Collection",
+      "tmdbId": 4135
+    },
+    "popularity": 2.6893,
+    "lastSearchTime": "2026-09-28T21:13:46Z",
+    "statistics": {
+      "movieFileCount": 1,
+      "sizeOnDisk": 57187518194,
+      "releaseGroups": [
+        "DTOne"
+      ],
+      "movieFileQualities": [
+        {
+          "id": 0,
+          "name": "Unknown",
+          "source": "unknown",
+          "resolution": 0,
+          "modifier": "none"
+        }
+      ]
+    },
+    "id": 13
+  },
+  {
+    "title": "Vuhu: Ekri Egi",
+    "originalTitle": "Vuhu: Ekri Egi",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 8,
+        "title": "Vuhu 2",
+        "id": 47
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 8,
+        "title": "Vuhu: Ekri 2",
+        "id": 48
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 8,
+        "title": "ekij tihuzupa",
+        "id": 49
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "vuhu ekri egi",
+    "sizeOnDisk": 74463514940,
+    "status": "released",
+    "overview": "Ebopir kab atrabo wemudir ol Fata Sopelejo iz ib novapu moji Arume dra kab Evenom udura oj d zuhe ol vusidov nawemom kab akurubujuspo eju muhihatel hoz vithak. Iwejow d figlut jiblohe kab varo ol hoz vamo dra kab moje ol kab oguso jaregule, Fata hegeklazu du ezipiri d momijara sabiru nika ib udu legohaw.",
+    "inCinemas": "2021-02-27T00:00:00Z",
+    "physicalRelease": "2021-05-14T00:00:00Z",
+    "digitalRelease": "2021-04-15T00:00:00Z",
+    "releaseDate": "2021-04-15T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "/MediaCover/4/poster.jpg?h=b02733f2b34f48f12459",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/fZmsiXCIvRKxtX9wMeoyFEThsji.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCover/4/fanart.jpg?h=368464ef5fb28a9414a1",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/DxfZWc6GbpPMXto9PjrU91KbX6y.jpg"
+      }
+    ],
+    "website": "https://www.example.com/vuhu-ekri-egi",
+    "year": 2021,
+    "youTubeTrailerId": "kZzIGeQWnXo",
+    "studio": "Erivodujo Odikubeh",
+    "path": "/media/remux/Vuhu - Ekri Egi (2021)",
+    "qualityProfileId": 7,
+    "hasFile": true,
+    "movieFileId": 3,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/remux/Vuhu - Ekri Egi (2021)",
+    "runtime": 167,
+    "cleanTitle": "vuhuekriegi",
+    "imdbId": "tt79513235",
+    "tmdbId": 481339,
+    "titleSlug": "481339",
+    "rootFolderPath": "/media/remux",
+    "certification": "PG-13",
+    "genres": [
+      "Science Fiction",
+      "Adventure"
+    ],
+    "keywords": [
+      "sahuhabiduv",
+      "teritrasu",
+      "kenirinowima",
+      "jimuf oj kubli ik vaho",
+      "votuwo iki"
+    ],
+    "tags": [],
+    "added": "2026-07-01T18:15:33Z",
+    "ratings": {
+      "imdb": {
+        "votes": 797256,
+        "value": 8.4,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 8701,
+        "value": 8.1,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 79,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 92,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 43102,
+        "value": 8.55313,
+        "type": "user"
+      }
+    },
+    "movieFile": {
+      "movieId": 4,
+      "relativePath": "Vuhu - Ekri Egi (2021) Remux-2160p.mkv",
+      "path": "/media/remux/Vuhu - Ekri Egi (2021)/Vuhu - Ekri Egi (2021) Remux-2160p.mkv",
+      "size": 74463514940,
+      "dateAdded": "2026-07-01T20:38:04Z",
+      "sceneName": "Hupi: Strif wofife _ Vuhu: Ekri Egi [2021, TRE, Thofez, azowuv, osemahospib, afaro, UHD BDRemux 2160p, HDR10, Dolby Vision] 4x Dub (Mibal Hamajuv Skokudo, FEP, Vipupol, OPlotid) + 3x OGA + MUT + EG + Dub Ukr + Sub Rus, Ukr, Eng, Multi 4 + Original Eng",
+      "edition": "",
+      "languages": [
+        {
+          "id": 11,
+          "name": "Russian"
+        },
+        {
+          "id": 32,
+          "name": "Ukrainian"
+        },
+        {
+          "id": 1,
+          "name": "English"
+        }
+      ],
+      "quality": {
+        "quality": {
+          "id": 31,
+          "name": "Remux-2160p",
+          "source": "bluray",
+          "resolution": 2160,
+          "modifier": "remux"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "indexerFlags": 1,
+      "mediaInfo": {
+        "audioBitrate": 384000,
+        "audioChannels": 5.1,
+        "audioCodec": "EAC3",
+        "audioLanguages": "rus/rus/rus/rus/rus/rus/rus/rus/rus/ukr/eng/eng",
+        "audioStreamCount": 12,
+        "videoBitDepth": 10,
+        "videoBitrate": 51278574,
+        "videoCodec": "h265",
+        "videoFps": 23.976,
+        "videoDynamicRange": "HDR",
+        "videoDynamicRangeType": "DV HDR10",
+        "resolution": "3840x2160",
+        "runTime": "2:45:49",
+        "scanType": "Progressive",
+        "subtitles": "rus/rus/rus/rus/ukr/ukr/eng/eng/eng/eng/eng/fre/spa/ger/lit"
+      },
+      "originalFilePath": "Vuhu.Ekri.Egi.2021.2160p.UHD.BDREMUX.HDR.DV.HEVC-Tijuzubub.mkv",
+      "qualityCutoffNotMet": false,
+      "id": 3
+    },
+    "collection": {
+      "title": "Vuhu Collection",
+      "tmdbId": 303345
+    },
+    "popularity": 61.1309,
+    "lastSearchTime": "2026-07-01T18:53:12Z",
+    "statistics": {
+      "movieFileCount": 1,
+      "sizeOnDisk": 74463514940,
+      "releaseGroups": [],
+      "movieFileQualities": [
+        {
+          "id": 31,
+          "name": "Remux-2160p",
+          "source": "bluray",
+          "resolution": 2160,
+          "modifier": "remux"
+        }
+      ]
+    },
+    "id": 4
+  },
+  {
+    "title": "Kab Feronug",
+    "originalTitle": "Kab Feronug",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 16,
+        "title": "Vohazlaz",
+        "id": 251
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 16,
+        "title": "wajujabir",
+        "id": 129
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 16,
+        "title": "Sofuzale",
+        "id": 193
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "feronug",
+    "sizeOnDisk": 0,
+    "status": "inCinemas",
+    "overview": "Fubasoha, kab erivodujo Wude ol Rebeto, rorimoh oj d eklo dra ruherive wemudir fela dregomemu kab Idofef Dez. Ariwekrodo hoz pasker, ib ru wiluji du osawepov kab dunol ol woso, fikivoziwone thaworaj, dra fedibo debu jorikiv ezut hoz lepluvi dra hoz kadajedu du kab eflehaza fevat.",
+    "inCinemas": "2021-07-15T00:00:00Z",
+    "physicalRelease": "2021-11-17T00:00:00Z",
+    "digitalRelease": "2021-11-17T00:00:00Z",
+    "releaseDate": "2021-11-17T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "/MediaCover/6/poster.jpg?h=11ebdcad6b92c0c752ea",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/N4n2b7Ko4DeVhLl3R3UiwPV9Cde.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCover/6/fanart.jpg?h=8e4beda72b729ca1b7a3",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/kuEhgDpvjRykmcbVjztK42HEiig.jpg"
+      }
+    ],
+    "website": "https://www.example.com/kab-feronug",
+    "year": 2021,
+    "youTubeTrailerId": "4KfXoeOaGaO",
+    "studio": "Obrizodug Odikubeh",
+    "path": "/media/remux/Kab Feronug (2021)",
+    "qualityProfileId": 7,
+    "hasFile": false,
+    "movieFileId": 0,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": false,
+    "folderName": "/media/remux/Kab Feronug (2021)",
+    "runtime": 173,
+    "cleanTitle": "kabferonug",
+    "imdbId": "tt22644153",
+    "tmdbId": 3651114,
+    "titleSlug": "3651114",
+    "rootFolderPath": "/media/remux",
+    "certification": "R",
+    "genres": [
+      "Adventure",
+      "Action",
+      "Fantasy"
+    ],
+    "keywords": [
+      "fewoduf",
+      "fewoduf masoh",
+      "jimuf oj ekra, misu ik wataz",
+      "unisah kad",
+      "niga dathepe"
+    ],
+    "tags": [
+      1
+    ],
+    "added": "2026-07-07T14:37:31Z",
+    "ratings": {
+      "imdb": {
+        "votes": 519743,
+        "value": 8.4,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 4058,
+        "value": 8.012,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 88,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 94,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 116,
+        "value": 5.75,
+        "type": "user"
+      }
+    },
+    "popularity": 347.4248,
+    "lastSearchTime": "2026-07-07T14:40:58Z",
+    "statistics": {
+      "movieFileCount": 0,
+      "sizeOnDisk": 0,
+      "releaseGroups": [],
+      "movieFileQualities": []
+    },
+    "id": 6
+  },
+  {
+    "title": "Itastro ol kab Jaregule",
+    "originalTitle": "Itastro ol kab Jaregule",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 21,
+        "title": "MAME",
+        "id": 242
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 21,
+        "title": "edotegufevobu",
+        "id": 243
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 21,
+        "title": "SUFA AFU VELEGABA",
+        "id": 244
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "itastro ol kab jaregule",
+    "sizeOnDisk": 0,
+    "status": "released",
+    "overview": "Nebuw astev zemopugez vru 15 ethor, kab Ekija ol Kijav dafar Fadafu Fazi goho du Goderiw, rotev ib udulahibe hoz fela atohapleb rudis kab powusehi jowa ol Kejojifo. Du fane hoz vithak dra hoz masoh, Fazi fahu kamo mazlus moji hoz esosodo ohedud, Mojif dra Zogoda/Oro-Ul-Sezu, dra futhozi hoz ezlo lehidub iz Ib-Oro — kab odak kuplatek oro ap kab jaregule.",
+    "inCinemas": "2022-06-03T00:00:00Z",
+    "physicalRelease": "2022-10-20T00:00:00Z",
+    "digitalRelease": "2022-07-21T00:00:00Z",
+    "releaseDate": "2022-07-21T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "/MediaCover/12/poster.jpg?h=91e9daa198bb40dd0030",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/XCjn58mW8FRLznLEz7Qh1e8pD8T.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCover/12/fanart.jpg?h=eab45ad42195affcc0c0",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/RZ4ogbgdi6p0di3QEfTWj9UUasu.jpg"
+      }
+    ],
+    "website": "https://www.example.com/itastro-ol-kab-jaregule",
+    "year": 2022,
+    "youTubeTrailerId": "9nOj5a13dfR",
+    "studio": "Oprisa Anopran",
+    "path": "/media/remux/Itastro ol kab Jaregule (2022)",
+    "qualityProfileId": 7,
+    "hasFile": false,
+    "movieFileId": 0,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/remux/Itastro ol kab Jaregule (2022)",
+    "runtime": 141,
+    "cleanTitle": "itastroolkabjaregule",
+    "imdbId": "tt0191594",
+    "tmdbId": 460651,
+    "titleSlug": "460651",
+    "rootFolderPath": "/media/remux",
+    "certification": "PG-13",
+    "genres": [
+      "Action",
+      "Fantasy",
+      "Science Fiction"
+    ],
+    "keywords": [
+      "haramufebesifokilev",
+      "revro isusto",
+      "jimuf oj oko",
+      "jimuf oj oz tovepo",
+      "akruzovopohumamilaze"
+    ],
+    "tags": [
+      1
+    ],
+    "added": "2026-07-28T20:16:51Z",
+    "ratings": {
+      "imdb": {
+        "votes": 126852,
+        "value": 6.4,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 2207,
+        "value": 7.101,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 52,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 3780,
+        "value": 7.25847,
+        "type": "user"
+      }
+    },
+    "popularity": 41.8815,
+    "lastSearchTime": "2026-07-28T20:16:52Z",
+    "statistics": {
+      "movieFileCount": 0,
+      "sizeOnDisk": 0,
+      "releaseGroups": [],
+      "movieFileQualities": []
+    },
+    "id": 12
+  }
+]

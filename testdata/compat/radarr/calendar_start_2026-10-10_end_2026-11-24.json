@@ -1,0 +1,541 @@
+[
+  {
+    "title": "ASev Inuri Ropuluf",
+    "originalTitle": "ASev Inuri Ropuluf",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 315,
+        "title": "oflabevo",
+        "id": 2640
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 315,
+        "title": "Asev: okibil dogokelo",
+        "id": 2643
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 315,
+        "title": "Iz ipuvrijavi L-Ahe",
+        "id": 4713
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "asev inuri ropuluf",
+    "sizeOnDisk": 5122017244,
+    "status": "released",
+    "overview": "Pesi L-ahe naruvukido Tozu, Ofla dra Evuk ihon'x basadri gla stipeful, itro'ih gumup utuzo adatho kubuho du vodiham utuzo wele pusa skozimikihuf jorable.",
+    "inCinemas": "2026-08-23T00:00:00Z",
+    "physicalRelease": "2027-11-03T00:00:00Z",
+    "digitalRelease": "2026-06-19T00:00:00Z",
+    "releaseDate": "2026-06-19T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/QS2tM2d1DuJP7Yb0eHf47kLdKVo.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/jbdapnU6gtayQZ9oaQCHtg2RLcZ.jpg"
+      }
+    ],
+    "website": "https://www.example.com/asev-inuri-ropuluf",
+    "year": 2026,
+    "youTubeTrailerId": "mPmLz4PVQ8G",
+    "studio": "Bowo Odikubeh Dehizopeh",
+    "path": "/media/movies/ASev Inuri Ropuluf (2026) {tmdb-744473}",
+    "qualityProfileId": 7,
+    "hasFile": true,
+    "movieFileId": 193,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/movies/ASev Inuri Ropuluf (2026) {tmdb-744473}",
+    "runtime": 96,
+    "cleanTitle": "asevinuriropuluf",
+    "imdbId": "tt79373267",
+    "tmdbId": 744473,
+    "titleSlug": "744473",
+    "certification": "PG",
+    "genres": [
+      "Fantasy",
+      "Music",
+      "Comedy",
+      "Animation"
+    ],
+    "keywords": [
+      "3l dehizopeh",
+      "adevuj fogufi",
+      "irimasetu",
+      "ete erij",
+      "fapli"
+    ],
+    "tags": [],
+    "added": "2026-07-05T02:22:06Z",
+    "ratings": {
+      "imdb": {
+        "votes": 143398,
+        "value": 7.4,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 3219,
+        "value": 7.997,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 77,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 92,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 19822,
+        "value": 8.24231,
+        "type": "user"
+      }
+    },
+    "movieFile": {
+      "movieId": 201,
+      "relativePath": "ASev Inuri Ropuluf (2026) {tmdb-744473} - [WEBDL-1080p][EAC3 5.1][x264].mkv",
+      "path": "/media/movies/ASev Inuri Ropuluf (2026) {tmdb-744473}/ASev Inuri Ropuluf (2026) {tmdb-744473} - [WEBDL-1080p][EAC3 5.1][x264].mkv",
+      "size": 5122017244,
+      "dateAdded": "2026-07-05T02:23:02Z",
+      "edition": "",
+      "languages": [
+        {
+          "id": 11,
+          "name": "Russian"
+        },
+        {
+          "id": 32,
+          "name": "Ukrainian"
+        },
+        {
+          "id": 1,
+          "name": "English"
+        }
+      ],
+      "quality": {
+        "quality": {
+          "id": 3,
+          "name": "WEBDL-1080p",
+          "source": "webdl",
+          "resolution": 1080,
+          "modifier": "none"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "customFormats": [],
+      "customFormatScore": 0,
+      "indexerFlags": 0,
+      "mediaInfo": {
+        "audioBitrate": 640000,
+        "audioChannels": 5.1,
+        "audioCodec": "EAC3",
+        "audioLanguages": "rus/ukr/eng",
+        "audioStreamCount": 3,
+        "videoBitDepth": 8,
+        "videoBitrate": 0,
+        "videoCodec": "x264",
+        "videoFps": 23.976,
+        "videoDynamicRange": "",
+        "videoDynamicRangeType": "",
+        "resolution": "1920x1080",
+        "runTime": "1:39:37",
+        "scanType": "Progressive",
+        "subtitles": "rus/ukr/ukr/ukr/eng/eng/eng"
+      },
+      "qualityCutoffNotMet": true,
+      "id": 193
+    },
+    "collection": {
+      "title": "ASev Inuri Ropuluf Collection",
+      "tmdbId": 8094848
+    },
+    "popularity": 40.5536,
+    "statistics": {
+      "movieFileCount": 1,
+      "sizeOnDisk": 5122017244,
+      "releaseGroups": [],
+      "movieFileQualities": [
+        {
+          "id": 3,
+          "name": "WEBDL-1080p",
+          "source": "webdl",
+          "resolution": 1080,
+          "modifier": "none"
+        }
+      ]
+    },
+    "id": 201
+  },
+  {
+    "title": "Lispanapuvev",
+    "originalTitle": "Lispanapuvev",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 272,
+        "title": "maveroflopro",
+        "id": 4737
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 272,
+        "title": "Temohusaf afu Medu'l Lispanapuvev",
+        "id": 1892
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 272,
+        "title": "Ke. Lispanapuvev",
+        "id": 1893
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "lispanapuvev",
+    "sizeOnDisk": 28159588148,
+    "status": "released",
+    "overview": "Ke. Zarore Lispanapuvev, d skebebesi zur visizlistra komuvotuz, fliles d zokikaku du vamo ap d vubipugun worozifiwo debu iditewikro dafar du kab ubavowe ol ezut kab kotakek dra hoz basuho wajiruzu.",
+    "inCinemas": "2026-10-17T00:00:00Z",
+    "physicalRelease": "2027-10-26T00:00:00Z",
+    "digitalRelease": "2026-11-06T00:00:00Z",
+    "releaseDate": "2026-11-06T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/mEIp9H13oZIqU2jaTyLWaPKBXut.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/mCPaNRIRh4Be7k1wOr4egNGNdEr.jpg"
+      }
+    ],
+    "website": "https://www.example.com/lispanapuvev",
+    "year": 2026,
+    "youTubeTrailerId": "A08A0uz9HKx",
+    "studio": "Fevoho Ufob Zes",
+    "path": "/media/movies/Lispanapuvev (2026)",
+    "qualityProfileId": 7,
+    "hasFile": true,
+    "movieFileId": 150,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/movies/Lispanapuvev (2026)",
+    "runtime": 150,
+    "cleanTitle": "lispanapuvev",
+    "imdbId": "tt5245838",
+    "tmdbId": 4837201,
+    "titleSlug": "4837201",
+    "certification": "R",
+    "genres": [
+      "Drama",
+      "Fantasy",
+      "Horror"
+    ],
+    "keywords": [
+      "jimuf oj kubli ik vaho",
+      "agikosa",
+      "ufigin aje judurolatuze",
+      "otiliprum amulowu",
+      "lispanapuvev"
+    ],
+    "tags": [],
+    "added": "2026-07-05T02:22:06Z",
+    "ratings": {
+      "imdb": {
+        "votes": 340572,
+        "value": 7.4,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 3923,
+        "value": 7.6,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 78,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 85,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 14807,
+        "value": 7.59904,
+        "type": "user"
+      }
+    },
+    "movieFile": {
+      "movieId": 156,
+      "relativePath": "Lajastimatra _ Lispanapuvev [2026, TRE, Zohipok, rebaw, skejava, afaro, glofuwet, WEB-DL 2160p, HDR10, Dolby Vision] [Hybrid] 2x Dub + 6x OGA + MUT + Dub Ukr + Sub Rus, Ukr, Eng, Multi 9 + Original Eng.mkv",
+      "path": "/media/movies/Lispanapuvev (2026)/Lajastimatra _ Lispanapuvev [2026, TRE, Zohipok, rebaw, skejava, afaro, glofuwet, WEB-DL 2160p, HDR10, Dolby Vision] [Hybrid] 2x Dub + 6x MVO + AVO + Dub Ukr + Sub Rus, Ukr, Eng, Multi 9 + Original Eng.mkv",
+      "size": 28159588148,
+      "dateAdded": "2026-07-05T02:22:35Z",
+      "edition": "",
+      "languages": [
+        {
+          "id": 11,
+          "name": "Russian"
+        },
+        {
+          "id": 32,
+          "name": "Ukrainian"
+        },
+        {
+          "id": 1,
+          "name": "English"
+        }
+      ],
+      "quality": {
+        "quality": {
+          "id": 18,
+          "name": "WEBDL-2160p",
+          "source": "webdl",
+          "resolution": 2160,
+          "modifier": "none"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "customFormats": [],
+      "customFormatScore": 0,
+      "indexerFlags": 0,
+      "mediaInfo": {
+        "audioBitrate": 640000,
+        "audioChannels": 5.1,
+        "audioCodec": "EAC3",
+        "audioLanguages": "rus/rus/rus/rus/rus/rus/rus/rus/rus/ukr/eng",
+        "audioStreamCount": 11,
+        "videoBitDepth": 10,
+        "videoBitrate": 19119709,
+        "videoCodec": "h265",
+        "videoFps": 24,
+        "videoDynamicRange": "HDR",
+        "videoDynamicRangeType": "DV HDR10",
+        "resolution": "3840x2160",
+        "runTime": "2:32:26",
+        "scanType": "Progressive",
+        "subtitles": "rus/rus/rus/ukr/ukr/ukr/eng/eng/eng/ger/dan/fin/fre/ita/dut/pol/rum/swe/tur"
+      },
+      "qualityCutoffNotMet": true,
+      "id": 150
+    },
+    "popularity": 24.9747,
+    "statistics": {
+      "movieFileCount": 1,
+      "sizeOnDisk": 28159588148,
+      "releaseGroups": [],
+      "movieFileQualities": [
+        {
+          "id": 18,
+          "name": "WEBDL-2160p",
+          "source": "webdl",
+          "resolution": 2160,
+          "modifier": "none"
+        }
+      ]
+    },
+    "id": 156
+  },
+  {
+    "title": "Vaberu ki. Vuje",
+    "originalTitle": "Vaberu ki. Vuje",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 571,
+        "title": "womob luko diki",
+        "id": 4716
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 571,
+        "title": "ozose osikik ablu",
+        "id": 4735
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 571,
+        "title": "Feska tepev ajiw",
+        "id": 4641
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "vaberu ki vuje",
+    "sizeOnDisk": 7840611035,
+    "status": "released",
+    "overview": "Nebuw Vuje guvodezi ivok kir iki zis befa strez ap hoz ugazak ubiboji ol kab Sijipepowo, Hule K. Vaberu kidroba du zime d afaglowal glizof du uvu kab Vuje Hakleruzubu.",
+    "inCinemas": "2025-08-20T00:00:00Z",
+    "physicalRelease": "2025-11-09T00:00:00Z",
+    "digitalRelease": "2025-09-29T00:00:00Z",
+    "releaseDate": "2025-09-29T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/7H6kM2MU9kOMgJCbl9payoVY5MF.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/lEDyxpXKksGDejmWPc9h3xcmOvR.jpg"
+      }
+    ],
+    "website": "https://www.example.com/vaberu-ki-vuje",
+    "year": 2025,
+    "youTubeTrailerId": "CuJG8VdxWid",
+    "studio": "Stozo Rejuh Benakekivulal",
+    "path": "/media/movies/Vaberu ki. Vuje (2025)",
+    "qualityProfileId": 7,
+    "hasFile": true,
+    "movieFileId": 353,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/movies/Vaberu ki. Vuje (2025)",
+    "runtime": 103,
+    "cleanTitle": "vaberukivuje",
+    "imdbId": "tt3561493",
+    "tmdbId": 7132313,
+    "titleSlug": "7132313",
+    "certification": "PG",
+    "genres": [
+      "Comedy",
+      "Adventure",
+      "Family"
+    ],
+    "keywords": [
+      "azleli",
+      "jimuf oj ahuzohih, komugidut ik estejum",
+      "gumimem nadukulegi",
+      "fakiprututo",
+      "eka-wimi adevuj obreza"
+    ],
+    "tags": [
+      1
+    ],
+    "added": "2026-08-10T19:47:08Z",
+    "ratings": {
+      "imdb": {
+        "votes": 38639,
+        "value": 7.4,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 695,
+        "value": 7.5,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 77,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 96,
+        "type": "user"
+      }
+    },
+    "movieFile": {
+      "movieId": 335,
+      "relativePath": "Vaberu ki. Vuje (2025) WEBDL-1080p.mkv",
+      "path": "/media/movies/Vaberu ki. Vuje (2025)/Vaberu ki. Vuje (2025) WEBDL-1080p.mkv",
+      "size": 7840611035,
+      "dateAdded": "2026-09-29T08:55:02Z",
+      "sceneName": "Vaberu ki Vuje 2025 1080p AMZN WEB-DL DDP5 1 Atmos H 264-BYNDR",
+      "releaseGroup": "BYNDR",
+      "edition": "",
+      "languages": [
+        {
+          "id": 1,
+          "name": "English"
+        }
+      ],
+      "quality": {
+        "quality": {
+          "id": 3,
+          "name": "WEBDL-1080p",
+          "source": "webdl",
+          "resolution": 1080,
+          "modifier": "none"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "customFormats": [],
+      "customFormatScore": 0,
+      "indexerFlags": 1,
+      "mediaInfo": {
+        "audioBitrate": 768000,
+        "audioChannels": 5.1,
+        "audioCodec": "EAC3 Atmos",
+        "audioLanguages": "eng",
+        "audioStreamCount": 1,
+        "videoBitDepth": 8,
+        "videoBitrate": 9387263,
+        "videoCodec": "h264",
+        "videoFps": 23.976,
+        "videoDynamicRange": "",
+        "videoDynamicRangeType": "",
+        "resolution": "1920x800",
+        "runTime": "1:42:55",
+        "scanType": "Progressive",
+        "subtitles": "eng/eng"
+      },
+      "originalFilePath": "www.PApigi.org    -    Vaberu ki Vuje 2025 1080p AMZN WEB-DL DDP5 1 Atmos H 264-BYNDR/Vaberu ki Vuje 2025 1080p AMZN WEB-DL DDP5 1 Atmos H 264-BYNDR.mkv",
+      "qualityCutoffNotMet": true,
+      "id": 353
+    },
+    "popularity": 201.6415,
+    "statistics": {
+      "movieFileCount": 1,
+      "sizeOnDisk": 7840611035,
+      "releaseGroups": [
+        "BYNDR"
+      ],
+      "movieFileQualities": [
+        {
+          "id": 3,
+          "name": "WEBDL-1080p",
+          "source": "webdl",
+          "resolution": 1080,
+          "modifier": "none"
+        }
+      ]
+    },
+    "id": 335
+  }
+]

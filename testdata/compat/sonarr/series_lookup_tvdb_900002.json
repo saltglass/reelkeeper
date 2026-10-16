@@ -1,0 +1,92 @@
+[
+  {
+    "title": "Eflehaza Pib",
+    "sortTitle": "eflehaza pib",
+    "status": "ended",
+    "ended": true,
+    "overview": "Pesi Owoduh Kimal, d elezatinu usetoga, ru tupevamiv moji Ozewu KAR rigage dra sizoh d uzageglaf ol egi ethor pusi du wimi, ib mizalan du straj d ogizidega masoh ol aklub dra enosi moji kab efupep du glakaw hoz vithak'l kalaboruk zapigano.",
+    "network": "IGE",
+    "airTime": "21:00",
+    "images": [
+      {
+        "coverType": "banner",
+        "url": "/MediaCoverProxy/48d5d3c4b93840832141b61ac9157b8687e0386d97226eefe236cace61eb8530/52244-g21.jpg",
+        "remoteUrl": "https://artworks.thetvdb.com/banners/graphical/52244-g21.jpg"
+      },
+      {
+        "coverType": "poster",
+        "url": "/MediaCoverProxy/57c98610358fc7b5f11b63b92e5f49c8ca8501d581e9d5f731e1827931175695/52244-10.jpg",
+        "remoteUrl": "https://artworks.thetvdb.com/banners/posters/52244-10.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCoverProxy/eca78a6f018245446cf1a246dfbffa65de1d1c65f0382f366b7d875a68112fc3/52244-21.jpg",
+        "remoteUrl": "https://artworks.thetvdb.com/banners/fanart/original/52244-21.jpg"
+      },
+      {
+        "coverType": "clearlogo",
+        "url": "/MediaCoverProxy/88bb30d0f4a75b4a146b8f0a5ed108e66be08d8232a912042234d0a790b829ae/f2f7dbcdda5c5.png",
+        "remoteUrl": "https://artworks.thetvdb.com/banners/v4/series/52244/clearlogo/f2f7dbcdda5c5.png"
+      }
+    ],
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "remotePoster": "https://artworks.thetvdb.com/banners/posters/52244-10.jpg",
+    "seasons": [
+      {
+        "seasonNumber": 0,
+        "monitored": false
+      },
+      {
+        "seasonNumber": 1,
+        "monitored": true
+      },
+      {
+        "seasonNumber": 2,
+        "monitored": true
+      }
+    ],
+    "year": 2011,
+    "qualityProfileId": 0,
+    "seasonFolder": false,
+    "monitored": true,
+    "monitorNewItems": "all",
+    "useSceneNumbering": false,
+    "runtime": 48,
+    "tvdbId": 52244,
+    "tvRageId": 18164,
+    "tvMazeId": 854,
+    "tmdbId": 7450,
+    "firstAired": "2011-01-20T00:00:00Z",
+    "lastAired": "2013-09-29T00:00:00Z",
+    "seriesType": "standard",
+    "cleanTitle": "eflehazapib",
+    "imdbId": "tt0624249",
+    "titleSlug": "eflehaza-pib",
+    "folder": "Eflehaza Pib",
+    "certification": "TV-MA",
+    "genres": [
+      "Crime",
+      "Drama",
+      "Thriller",
+      "Western"
+    ],
+    "tags": [],
+    "added": "0001-01-01T04:57:00Z",
+    "ratings": {
+      "votes": 2688635,
+      "value": 9.5
+    },
+    "statistics": {
+      "seasonCount": 5,
+      "episodeFileCount": 0,
+      "episodeCount": 0,
+      "totalEpisodeCount": 0,
+      "sizeOnDisk": 0,
+      "percentOfEpisodes": 0
+    },
+    "languageProfileId": 1
+  }
+]

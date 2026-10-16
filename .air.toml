@@ -1,0 +1,19 @@
+# Live reload for the Go server during `just dev`: rebuilds and restarts on
+# changes to .go files. The Vite dev server (port 7676) forwards API calls
+# to this server on port 7677.
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/reelkeeper ./cmd/reelkeeper"
+  entrypoint = ["./tmp/reelkeeper", "serve"]
+  include_ext = ["go", "sql"]
+  exclude_dir = ["web", "tmp", "data", "bin", "internal/ui/dist", "dev"]
+  exclude_regex = ["_test\\.go$"]
+  delay = 300
+
+[log]
+  main_only = true
+
+[misc]
+  clean_on_exit = true

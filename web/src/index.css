@@ -1,0 +1,589 @@
+@import "tailwindcss";
+
+/*
+ * Theme tokens. All colours in the UI come from these variables, so a
+ * public release can be rebranded by changing these blocks (and the files in
+ * public/brand/ and components/Logo.tsx). The default, Reelkeeper Dark:
+ * near-black #07060b, violet #8b5cf6 to cyan #22d3ee (chosen from the
+ * redesign prototype).
+ *
+ * One theme is active at a time, chosen with data-theme on <html> (see
+ * src/hooks/theme.ts). Every theme defines the same names. Every text pair
+ * meets 4.5:1 contrast, and High contrast meets 7:1. Dark-ground themes also
+ * get the .dark class. The theme ids are listed here, in theme.ts and in the
+ * script in web/index.html; keep the three in step (theme.test.tsx checks
+ * theme.ts).
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Reelkeeper Dark (the default) */
+:root,
+[data-theme="dark"] {
+  --background: #07060b;
+  --foreground: #ece9f5;
+  --card: #110f1c;
+  --muted: #1a1727;
+  --muted-foreground: #a8a3ba;
+  --border: #262236;
+  --input: #6f6890;
+  --ring: #a78bfa;
+  --primary: #8b5cf6;
+  --primary-foreground: #0b0713;
+  --accent: #221c38;
+  --accent-foreground: #ddd6fe;
+  --destructive: #f87171;
+  --destructive-foreground: #1a0707;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --link: #a78bfa;
+  --brand-from: #8b5cf6;
+  --brand-to: #22d3ee;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.6);
+  /* Strength of the colour glow behind the top of each page. */
+  --glow-alpha: 0.22;
+  color-scheme: dark;
+}
+
+/* Reelkeeper Light */
+[data-theme="light"] {
+  --background: #f7f7fa;
+  --foreground: #17141f;
+  --card: #ffffff;
+  --muted: #efeef4;
+  --muted-foreground: #5f5b6e;
+  --border: #e2e0ea;
+  --input: #8a859c;
+  --ring: #6d28d9;
+  --primary: #7c3aed;
+  --primary-foreground: #ffffff;
+  --accent: #ede9fe;
+  --accent-foreground: #4c1d95;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #15803d;
+  --warning: #b45309;
+  --link: #6d28d9;
+  --brand-from: #8b5cf6;
+  --brand-to: #22d3ee;
+  --shadow-card: 0 1px 2px rgba(23, 20, 31, 0.06);
+  --shadow-pop: 0 12px 32px rgba(23, 20, 31, 0.14);
+  --glow-alpha: 0.16;
+  color-scheme: light;
+}
+
+/* Midnight */
+[data-theme="midnight"] {
+  --background: #050b14;
+  --foreground: #e6eef9;
+  --card: #0c1626;
+  --muted: #14223a;
+  --muted-foreground: #9fb1cc;
+  --border: #1e3050;
+  --input: #5f7aa3;
+  --ring: #60a5fa;
+  --primary: #3b82f6;
+  --primary-foreground: #04101f;
+  --accent: #12284a;
+  --accent-foreground: #bfdbfe;
+  --destructive: #f87171;
+  --destructive-foreground: #1a0707;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --link: #7db3fa;
+  --brand-from: #3b82f6;
+  --brand-to: #2dd4bf;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --glow-alpha: 0.22;
+  color-scheme: dark;
+}
+
+/* Ember */
+[data-theme="ember"] {
+  --background: #0c0706;
+  --foreground: #f6ebe4;
+  --card: #17100d;
+  --muted: #241915;
+  --muted-foreground: #b9a89e;
+  --border: #33241d;
+  --input: #8a6f60;
+  --ring: #fb923c;
+  --primary: #f97316;
+  --primary-foreground: #1a0a02;
+  --accent: #33190d;
+  --accent-foreground: #fed7aa;
+  --destructive: #f87171;
+  --destructive-foreground: #1a0707;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --link: #fb923c;
+  --brand-from: #f97316;
+  --brand-to: #f43f5e;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --glow-alpha: 0.2;
+  color-scheme: dark;
+}
+
+/* Moss */
+[data-theme="moss"] {
+  --background: #060b08;
+  --foreground: #e8f2ea;
+  --card: #0d1710;
+  --muted: #16231a;
+  --muted-foreground: #9db3a2;
+  --border: #1f3326;
+  --input: #5f8068;
+  --ring: #4ade80;
+  --primary: #22c55e;
+  --primary-foreground: #04140a;
+  --accent: #133020;
+  --accent-foreground: #bbf7d0;
+  --destructive: #f87171;
+  --destructive-foreground: #1a0707;
+  --success: #86efac;
+  --warning: #fbbf24;
+  --link: #4ade80;
+  --brand-from: #22c55e;
+  --brand-to: #a3e635;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --glow-alpha: 0.2;
+  color-scheme: dark;
+}
+
+/* Paper */
+[data-theme="paper"] {
+  --background: #faf6f0;
+  --foreground: #2b2118;
+  --card: #fffdf9;
+  --muted: #f0e9de;
+  --muted-foreground: #6a5c4e;
+  --border: #e4dacb;
+  --input: #8c7b69;
+  --ring: #9a3412;
+  --primary: #c2410c;
+  --primary-foreground: #ffffff;
+  --accent: #fde8d6;
+  --accent-foreground: #7c2d12;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
+  --success: #166534;
+  --warning: #92400e;
+  --link: #9a3412;
+  --brand-from: #ea580c;
+  --brand-to: #ca8a04;
+  --shadow-card: 0 1px 2px rgba(43, 33, 24, 0.08);
+  --shadow-pop: 0 12px 32px rgba(43, 33, 24, 0.16);
+  --glow-alpha: 0.12;
+  color-scheme: light;
+}
+
+/* High contrast */
+[data-theme="contrast"] {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0a0a0a;
+  --muted: #1a1a1a;
+  --muted-foreground: #d4d4d8;
+  --border: #a1a1aa;
+  --input: #d4d4d8;
+  --ring: #ffff66;
+  --primary: #c4b5fd;
+  --primary-foreground: #000000;
+  --accent: #2e1065;
+  --accent-foreground: #ffffff;
+  --destructive: #ff8a8a;
+  --destructive-foreground: #000000;
+  --success: #6ee7a0;
+  --warning: #fcd34d;
+  --link: #c4b5fd;
+  --brand-from: #c4b5fd;
+  --brand-to: #67e8f9;
+  --shadow-card: none;
+  --shadow-pop: none;
+  --glow-alpha: 0;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  /* Text links and info badges: --primary is too faint for small text in some themes. */
+  --color-link: var(--link);
+  --color-brand-from: var(--brand-from);
+  --color-brand-to: var(--brand-to);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  /* Shadows come from the active theme (none in High contrast). */
+  --shadow-xs: var(--shadow-card);
+  --shadow-md: var(--shadow-pop);
+  --shadow-lg: var(--shadow-pop);
+  --font-sans:
+    "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  /* The Reelkeeper wordmark (marquee capitals). Not for other text. */
+  --font-wordmark: "Bebas Neue", Impact, sans-serif;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2 {
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* The brand gradient, for small accents only. */
+.text-brand-gradient {
+  background: linear-gradient(90deg, var(--brand-from), var(--brand-to));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/*
+ * Motion (Settings → General → Appearance): data-motion on <html>.
+ * --m scales every animation's duration: lively 1, subtle 0.55. "off", and
+ * the computer's own "reduce motion" setting, turn animation off entirely.
+ */
+:root {
+  --m: 1;
+}
+[data-motion="subtle"] {
+  --m: 0.55;
+}
+[data-motion="off"] *,
+[data-motion="off"] *::before,
+[data-motion="off"] *::after {
+  /* biome-ignore lint/complexity/noImportantStyles: "no motion" must beat every component's own animation */
+  animation: none !important;
+  /* biome-ignore lint/complexity/noImportantStyles: "no motion" must beat every component's own animation */
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: "no motion" must beat every component's own animation */
+    animation: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: "no motion" must beat every component's own animation */
+    transition: none !important;
+  }
+}
+
+/* The soft colour glow behind the top of each page (AppShell). */
+.page-glow {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 460px;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+[data-glow="off"] .page-glow {
+  display: none;
+}
+/* One glow from the top centre, as wide as the page, blending the theme's
+   two brand colours left to right. It breathes slowly in place. */
+.page-glow span {
+  position: absolute;
+  top: -240px;
+  left: 50%;
+  width: 92%;
+  height: 440px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, var(--brand-from), var(--brand-to));
+  filter: blur(90px);
+  /* One wide glow spreads its colour thinner than the old two spots did. */
+  opacity: calc(var(--glow-alpha) * 1.5);
+  transform: translateX(-50%);
+  animation: glow-breathe calc(18s * var(--m)) ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes glow-breathe {
+  from {
+    transform: translateX(-50%) scale(1);
+  }
+  to {
+    transform: translateX(-50%) scale(1.08, 1.15);
+  }
+}
+[data-motion="subtle"] .page-glow span {
+  animation-play-state: paused;
+}
+
+/* Shared animations; durations scale with --m. */
+/* No blur here: <main> holds the whole page, and blurring a long one (every
+   movie poster) needs more memory than iPhone Safari allows a tab, so the
+   tab crashes and reloads. */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes bar-in {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+@keyframes crumb-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pop-in {
+  from {
+    transform: scale(0) rotate(-40deg);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ping {
+  75%,
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+@keyframes eq {
+  from {
+    height: 3px;
+  }
+  to {
+    height: 16px;
+  }
+}
+.animate-page-in {
+  /* backwards, not both: a finished animation must not leave a transform or
+     filter on <main>, which would make fixed children (save bar) scroll with it. */
+  animation: page-in calc(460ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.animate-rise {
+  animation: rise calc(560ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+/* Only the first items of a long list rise in. Every animated item gets its
+   own GPU layer, and thousands at once (the Movies page) crash iPhone Safari. */
+.animate-rise:nth-child(n + 25) {
+  animation: none;
+}
+.animate-crumb-in {
+  animation: crumb-in calc(360ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.animate-pop-in {
+  animation: pop-in calc(520ms * var(--m)) cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* A live dot: a dot with a ring that pulses outwards. */
+.ping-dot {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.ping-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  animation: ping calc(1.6s * var(--m)) cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* The sidebar's "downloading" equaliser. */
+.eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+}
+.eq i {
+  display: block;
+  width: 3px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--primary);
+  animation: eq calc(900ms * var(--m)) ease-in-out infinite alternate;
+}
+.eq i:nth-child(2) {
+  animation-delay: -0.25s;
+}
+.eq i:nth-child(3) {
+  animation-delay: -0.55s;
+}
+.eq i:nth-child(4) {
+  animation-delay: -0.8s;
+}
+.eq.idle i {
+  animation-play-state: paused;
+  height: 3px;
+}
+
+/* Jump to, pop-up notices and the save bar (durations scale with --m). */
+@keyframes pal-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+@keyframes bar-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-in {
+  animation: fade-in calc(220ms * var(--m)) ease both;
+}
+.animate-pal-in {
+  animation: pal-in calc(360ms * var(--m)) cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+.animate-toast-in {
+  animation: toast-in calc(460ms * var(--m)) cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.animate-toast-out {
+  animation: toast-out calc(280ms * var(--m)) ease both;
+}
+.animate-bar-up {
+  animation: bar-up calc(480ms * var(--m)) cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+/* A poster grid can hold thousands of titles. The browser skips laying out
+   and painting the ones far off screen; without this a big library uses more
+   memory than iPhone Safari allows a tab. Tiles within a few rows of the
+   screen (`near`, see hooks/nearScreen.tsx) are drawn ahead of time so they
+   don't pop in while scrolling. */
+.poster-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 150px auto 290px;
+}
+.poster-item.near {
+  content-visibility: visible;
+}
+
+/* Poster tiles (Movies and Series) lift on hover and a soft shine sweeps
+   across them; durations scale with --m. */
+.poster-tile {
+  transition:
+    transform calc(300ms * var(--m)) cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow calc(300ms * var(--m));
+}
+.poster-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.16) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+.poster-tile:hover,
+.poster-tile:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+}
+.poster-tile:hover::after {
+  transform: translateX(120%);
+  transition: transform calc(700ms * var(--m)) ease;
+}

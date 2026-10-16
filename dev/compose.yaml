@@ -1,0 +1,145 @@
+# Local development stack for integration tests (`just dev-stack`).
+# Runs on this Mac under Colima. It is never deployed; the credentials below
+# are throwaway local-only values, so they're written here rather than kept
+# in a secrets manager.
+#
+#   Postgres     localhost:5433  user/password/db: reelkeeper/reelkeeper/reelkeeper
+#   qBittorrent  http://localhost:8081  (used from M3; temporary admin
+#                password is printed in `docker logs reelkeeper-dev-qbittorrent`)
+#   Transmission http://localhost:9092  (RPC at /transmission/rpc; for the
+#                1.2 Transmission client; user/password: reelkeeper/reelkeeper)
+#   Deluge       http://localhost:8112  (web UI and JSON-RPC at /json; for the
+#                1.4 Deluge client; web password: reelkeeper, no username. A fresh
+#                config volume starts with Deluge's default, "deluge")
+#   Seerr        http://localhost:5055  (used from M5 for compat testing)
+#
+# Nothing here may reach the internet. The integration tests (internal/download,
+# `go test` with the REELKEEPER_TEST_* variables set) use only made-up private
+# torrents whose trackers are at 127.0.0.1, and, through each client's own
+# preferences API, turn DHT, PEX and local peer discovery OFF in all three
+# clients (Transmission's blocklist updates and port forwarding too, Deluge's
+# UPnP, NAT-PMP and release check) and leave them off: the dev clients run that
+# way permanently. A client whose config volume is new has its defaults, DHT
+# on, until the tests next run (Deluge's are on for its first minute).
+# Transmission's default incomplete folder (/downloads/incomplete) is on its own
+# volume, which qBittorrent cannot see: the tests use that for the "files in a
+# folder the other client can't see" case, and set the incomplete folder under
+# /mnt/downloads when a test needs both clients to share it.
+
+name: reelkeeper-dev
+
+services:
+  postgres:
+    # The major version Reelkeeper is tested against.
+    image: postgres:18-alpine
+    container_name: reelkeeper-dev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: reelkeeper
+      POSTGRES_PASSWORD: reelkeeper
+      POSTGRES_DB: reelkeeper
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "reelkeeper", "-d", "reelkeeper"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: reelkeeper-dev-qbittorrent
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: America/New_York
+      WEBUI_PORT: "8081"
+    ports:
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - qbittorrent-config:/config
+      - downloads:/mnt/downloads
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8081/"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  transmission:
+    # Pinned to an exact 4.x release (at least two weeks old), not latest.
+    image: lscr.io/linuxserver/transmission:4.1.3-r0-ls363
+    container_name: reelkeeper-dev-transmission
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: America/New_York
+      # Throwaway local-only login, like Postgres's.
+      USER: reelkeeper
+      PASS: reelkeeper
+    ports:
+      - "127.0.0.1:9092:9091"
+    volumes:
+      - transmission-config:/config
+      # Transmission keeps unfinished downloads in /downloads/incomplete by
+      # default, and moves them to the download folder when they finish.
+      - transmission-incomplete:/downloads
+      # The same volume as qBittorrent's, at the same path, as Reelkeeper
+      # expects of any download client.
+      - downloads:/mnt/downloads
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-u", "reelkeeper:reelkeeper", "-o", "/dev/null", "http://localhost:9091/transmission/web/"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  deluge:
+    # Pinned to an exact 2.x release (at least two weeks old), not latest.
+    image: lscr.io/linuxserver/deluge:2.2.0-ls383
+    container_name: reelkeeper-dev-deluge
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: America/New_York
+    ports:
+      # The web UI only; the daemon's own RPC port stays inside the container.
+      - "127.0.0.1:8112:8112"
+    volumes:
+      - deluge-config:/config
+      # The same volume as the other clients', at the same path, as Reelkeeper
+      # expects of any download client.
+      - downloads:/mnt/downloads
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8112/"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  seerr:
+    image: ghcr.io/seerr-team/seerr:v3.5.0
+    container_name: reelkeeper-dev-seerr
+    restart: unless-stopped
+    environment:
+      TZ: America/New_York
+    ports:
+      - "127.0.0.1:5055:5055"
+    volumes:
+      - seerr-config:/app/config
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:5055/api/v1/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  postgres:
+  qbittorrent-config:
+  transmission-config:
+  transmission-incomplete:
+  deluge-config:
+  seerr-config:
+  downloads:

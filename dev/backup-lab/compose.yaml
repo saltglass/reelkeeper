@@ -1,0 +1,218 @@
+# Reelkeeper backup lab. LAB ONLY: nothing here is a real credential or a real service.
+#
+# Everything runs on one Docker network marked `internal: true`, which has no route to the outside:
+# no internet, no LAN, no 10.0.x.x. The `driver` container drives the instances; the host script
+# (run.sh) drives the driver with `docker compose exec`.
+#
+# The keys and passwords below are made up for this lab, so they are written here on purpose.
+
+name: rk-backup-lab
+
+# The version under test: run.sh builds it from the working tree as reelkeeper-lab:current.
+# Set LAB_IMAGE to test a different image (for example a released tag) instead.
+x-image-current: &current "${LAB_IMAGE:-reelkeeper-lab:current}"
+
+x-common: &common
+  restart: unless-stopped
+  user: "65532:65532"
+  networks: [lab]
+  depends_on:
+    driver: { condition: service_healthy }
+  healthcheck:
+    test: ["CMD", "/reelkeeper", "healthcheck"]
+    interval: 5s
+    timeout: 5s
+    retries: 6
+    start_period: 10s
+
+x-env: &env
+  TZ: America/New_York
+  REELKEEPER_DATA_DIR: /config
+  REELKEEPER_PORT: "7676"
+  REELKEEPER_SECRET_KEY: lab-only-secret-key-AAAAAAAAAAAAAAAAAAAAAAAA   # LAB ONLY
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    networks: [lab]
+    # fsync off: the lab kills Reelkeeper, never Postgres, and big seeds go faster.
+    command: ["postgres", "-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "max_connections=100"]
+    environment:
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: lab-only-pg-password   # LAB ONLY
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "lab", "-d", "postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  driver:
+    build: ./driver
+    image: rk-backup-lab-driver:1
+    init: true
+    restart: unless-stopped
+    networks: [lab]
+    # Only on `lab`: it can reach the instances and Postgres, nothing else.
+    environment:
+      TZ: America/New_York
+      PGPASSWORD: lab-only-pg-password
+    command:
+      - sh
+      - -c
+      - |
+        chown 65532:65532 /vol/* 2>/dev/null
+        chmod 1777 /work
+        touch /work/.ready
+        exec sleep infinity
+    healthcheck:
+      test: ["CMD", "test", "-f", "/work/.ready"]
+      interval: 2s
+      retries: 30
+    volumes:
+      - ./bin:/labbin:ro
+      - ./driver/scripts:/lab:ro
+      - work:/work
+      - data-rk-sqlite:/vol/rk-sqlite
+      - data-rk-pg:/vol/rk-pg
+      - data-rk-fresh-sqlite:/vol/rk-fresh-sqlite
+      - data-rk-fresh-pg:/vol/rk-fresh-pg
+      - data-rk-wrongkey:/vol/rk-wrongkey
+      - data-rk-old081:/vol/rk-old081
+      - data-rk-old084:/vol/rk-old084
+      - data-rk-old081-pg:/vol/rk-old081-pg
+      - data-rk-old084-sqlite:/vol/rk-old084-sqlite
+      - rootowned:/vol-rootowned
+      - readonly:/vol-readonly
+
+  # --- current version -----------------------------------------------------------
+  rk-sqlite:
+    <<: *common
+    image: *current
+    environment:
+      <<: *env
+      REELKEEPER_DB: /config/reelkeeper.db
+    volumes:
+      - data-rk-sqlite:/config
+      - readonly:/readonly:ro
+      - rootowned:/rootowned
+    tmpfs:
+      - /tiny:size=3m,uid=65532,gid=65532,mode=0755
+
+  rk-pg:
+    <<: *common
+    image: *current
+    depends_on:
+      driver: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    environment:
+      <<: *env
+      REELKEEPER_DB: postgres://lab:lab-only-pg-password@postgres:5432/rk_pg?sslmode=disable
+    volumes:
+      - data-rk-pg:/config
+      - readonly:/readonly:ro
+      - rootowned:/rootowned
+    tmpfs:
+      - /tiny:size=3m,uid=65532,gid=65532,mode=0755
+
+  rk-fresh-sqlite:
+    <<: *common
+    image: *current
+    environment:
+      <<: *env
+      REELKEEPER_DB: /config/reelkeeper.db
+    volumes:
+      - data-rk-fresh-sqlite:/config
+
+  rk-fresh-pg:
+    <<: *common
+    image: *current
+    depends_on:
+      driver: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    environment:
+      <<: *env
+      REELKEEPER_DB: postgres://lab:lab-only-pg-password@postgres:5432/rk_fresh_pg?sslmode=disable
+    volumes:
+      - data-rk-fresh-pg:/config
+
+  # A different secret key from everything else.
+  rk-wrongkey:
+    <<: *common
+    image: *current
+    environment:
+      <<: *env
+      REELKEEPER_SECRET_KEY: lab-only-WRONG-key-BBBBBBBBBBBBBBBBBBBBBBBBBB   # LAB ONLY
+      REELKEEPER_DB: /config/reelkeeper.db
+    volumes:
+      - data-rk-wrongkey:/config
+
+  # --- older versions ------------------------------------------------------------
+  # The upgrade scenarios start from released versions 0.8.1 and 0.8.4, which
+  # have to be available locally. REELKEEPER_LAB_IMAGE names the image (without
+  # the tag) to take them from; run.sh checks they are pulled.
+  rk-old081:
+    <<: *common
+    image: ${REELKEEPER_LAB_IMAGE:-ghcr.io/saltglass/reelkeeper}:0.8.1
+    environment:
+      <<: *env
+      REELKEEPER_DB: /config/reelkeeper.db
+    volumes:
+      - data-rk-old081:/config
+
+  rk-old081-pg:
+    <<: *common
+    image: ${REELKEEPER_LAB_IMAGE:-ghcr.io/saltglass/reelkeeper}:0.8.1
+    depends_on:
+      driver: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    environment:
+      <<: *env
+      REELKEEPER_DB: postgres://lab:lab-only-pg-password@postgres:5432/rk_old081_pg?sslmode=disable
+    volumes:
+      - data-rk-old081-pg:/config
+
+  rk-old084:
+    <<: *common
+    image: ${REELKEEPER_LAB_IMAGE:-ghcr.io/saltglass/reelkeeper}:0.8.4
+    depends_on:
+      driver: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    environment:
+      <<: *env
+      REELKEEPER_DB: postgres://lab:lab-only-pg-password@postgres:5432/rk_old084_pg?sslmode=disable
+    volumes:
+      - data-rk-old084:/config
+
+  rk-old084-sqlite:
+    <<: *common
+    image: ${REELKEEPER_LAB_IMAGE:-ghcr.io/saltglass/reelkeeper}:0.8.4
+    environment:
+      <<: *env
+      REELKEEPER_DB: /config/reelkeeper.db
+    volumes:
+      - data-rk-old084-sqlite:/config
+
+networks:
+  lab:
+    # No route out: no internet, no LAN. The isolation check in run.sh proves it.
+    internal: true
+
+volumes:
+  pgdata:
+  work:
+  data-rk-sqlite:
+  data-rk-pg:
+  data-rk-fresh-sqlite:
+  data-rk-fresh-pg:
+  data-rk-wrongkey:
+  data-rk-old081:
+  data-rk-old084:
+  data-rk-old081-pg:
+  data-rk-old084-sqlite:
+  rootowned:
+  readonly:

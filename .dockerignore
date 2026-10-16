@@ -1,0 +1,10 @@
+.git
+bin
+tmp
+data
+dev
+web/node_modules
+internal/ui/dist
+**/.DS_Store
+*.log
+*.env

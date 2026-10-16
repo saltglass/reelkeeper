@@ -1,0 +1,93 @@
+/* Styles for the redesigned system pages (animations and effects Tailwind classes cannot express). Durations scale with --m (motion setting). */
+
+/* Bars that grow from the left when they appear (indexer response time, memory). */
+@keyframes growx {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.minibar > i,
+.ringbar > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transform-origin: left;
+  animation: growx calc(1000ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Next-run bar on a task row. */
+.nextbar > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width calc(600ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Busy spinner and the tick that pops in when a button's work is done. */
+.spin {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  box-sizing: border-box;
+  flex: none;
+  animation: sys-spin calc(700ms * var(--m)) linear infinite;
+}
+/* A bigger spinner for full-page waits. */
+.spin-lg {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+@keyframes sys-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.popin {
+  animation: sys-popin calc(520ms * var(--m)) cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes sys-popin {
+  from {
+    transform: scale(0) rotate(-40deg);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* The heartbeat line on the Status page. */
+.hb {
+  stroke-dasharray: 420;
+  animation: sys-hb calc(2.6s * var(--m)) linear infinite;
+}
+@keyframes sys-hb {
+  from {
+    stroke-dashoffset: 420;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.ring-fill {
+  transition: stroke-dasharray calc(900ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* One row in the Tasks list: details on the left, button on the right. */
+.trow2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 18px 20px;
+  border-top: 1px solid var(--border);
+  align-items: start;
+}
+.trow2:first-child {
+  border-top: 0;
+}

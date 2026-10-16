@@ -1,0 +1,110 @@
+[
+  {
+    "title": "Kab Salemi",
+    "originalTitle": "Kab Salemi",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 0,
+        "title": "kutomozadravrohahu"
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 0,
+        "title": "azafus"
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 0,
+        "title": "foge"
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "salemi",
+    "status": "released",
+    "overview": "Sik ap kab 22ef thegevo, Kab Salemi grala kab ujabe ol d onefamug pereha eju tirob d uvade ol azevemipumo jalafukoze erupizir kab edra dra kuplatek wofibunus eju tru jowa kab fefla.",
+    "inCinemas": "1998-03-31T00:00:00Z",
+    "physicalRelease": "1998-11-25T00:00:00Z",
+    "digitalRelease": "2000-03-19T00:00:00Z",
+    "releaseDate": "1998-03-31T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "url": "/MediaCoverProxy/2d4a3a7cda137af25959158a7203075fbeca354423b9c8f0f396f2d762525513/ep4i61mkzTPJnFn7kPcjt7A7Vyv.jpg",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/ep4i61mkzTPJnFn7kPcjt7A7Vyv.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "url": "/MediaCoverProxy/7a8c5110fb80ea1ba9f1f2cf2e7b9e195a021bffa2390aec8a982eefe3250ec3/fIHFRf98E2e6AuydrKEscguz5OA.jpg",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/fIHFRf98E2e6AuydrKEscguz5OA.jpg"
+      }
+    ],
+    "website": "https://www.example.com/kab-salemi",
+    "remotePoster": "https://image.tmdb.org/t/p/original/ep4i61mkzTPJnFn7kPcjt7A7Vyv.jpg",
+    "year": 1998,
+    "youTubeTrailerId": "VV9JXIw0yzg",
+    "studio": "Zivremi Guketasi Odikubeh",
+    "qualityProfileId": 0,
+    "movieFileId": 0,
+    "monitored": false,
+    "minimumAvailability": "tba",
+    "isAvailable": true,
+    "folderName": "",
+    "runtime": 136,
+    "cleanTitle": "kabsalemi",
+    "imdbId": "tt0200474",
+    "tmdbId": 541,
+    "titleSlug": "541",
+    "folder": "Kab Salemi (1998)",
+    "certification": "R",
+    "genres": [
+      "Action",
+      "Science Fiction"
+    ],
+    "keywords": [
+      "tejamofe",
+      "efuguhiguh ilivozivanuk (d.k.)",
+      "votuwo iki",
+      "zozagosol",
+      "fotribat"
+    ],
+    "tags": [],
+    "added": "0001-01-01T04:57:00Z",
+    "ratings": {
+      "imdb": {
+        "votes": 2283721,
+        "value": 8.7,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 28914,
+        "value": 8.261,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 73,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 83,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 54916,
+        "value": 8.78249,
+        "type": "user"
+      }
+    },
+    "collection": {
+      "title": "Kab Salemi Collection",
+      "tmdbId": 3455
+    },
+    "popularity": 47.2116
+  }
+]

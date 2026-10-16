@@ -1,0 +1,55 @@
+[
+  {
+    "path": "/media/movies-b",
+    "accessible": true,
+    "freeSpace": 16920124325888,
+    "unmappedFolders": [
+      {
+        "name": "Dokef (2018)",
+        "path": "/media/movies-b/Dokef (2018)",
+        "relativePath": "Dokef (2018)"
+      },
+      {
+        "name": "Plex Versions",
+        "path": "/media/movies-b/Plex Versions",
+        "relativePath": "Plex Versions"
+      }
+    ],
+    "id": 1
+  },
+  {
+    "path": "/media/movies",
+    "accessible": true,
+    "freeSpace": 16920124325888,
+    "unmappedFolders": [
+      {
+        "name": "Ufulubev 2 Kab Nom Hivaz (1990) {tmdb-491}",
+        "path": "/media/movies/Ufulubev 2 Kab Nom Hivaz (1990) {tmdb-491}",
+        "relativePath": "Ufulubev 2 Kab Nom Hivaz (1990) {tmdb-491}"
+      },
+      {
+        "name": "Gefan Famodi dra kab Egiwemu Naheboj - Ekri 2 (2011)",
+        "path": "/media/movies/Gefan Famodi dra kab Egiwemu Naheboj - Ekri 2 (2011)",
+        "relativePath": "Gefan Famodi dra kab Egiwemu Naheboj - Ekri 2 (2011)"
+      },
+      {
+        "name": "Ebutiza Sebozel Du Kab Gobazi (2017)",
+        "path": "/media/movies/Ebutiza Sebozel Du Kab Gobazi (2017)",
+        "relativePath": "Ebutiza Sebozel Du Kab Gobazi (2017)"
+      },
+      {
+        "name": "Oske & Wakobi (2025)",
+        "path": "/media/movies/Oske & Wakobi (2025)",
+        "relativePath": "Oske & Wakobi (2025)"
+      }
+    ],
+    "id": 2
+  },
+  {
+    "path": "/media/movies-c",
+    "accessible": true,
+    "freeSpace": 16920124325888,
+    "unmappedFolders": [],
+    "id": 3
+  }
+]

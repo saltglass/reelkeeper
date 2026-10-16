@@ -1,0 +1,93 @@
+# Continuous integration for Reelkeeper on a self-hosted Forgejo runner
+# (label "docker"; jobs run in an Ubuntu container with the host's docker
+# socket mounted).
+#
+# Every push: lint, tests on SQLite and Postgres, a check that generated
+# code is up to date, and a full build.
+#
+# Release images are not built here. Version tags are built and pushed to
+# ghcr.io by .github/workflows/release.yml on the public repository.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+env:
+  GOLANGCI_LINT_VERSION: v2.14.0
+  JUST_VERSION: 1.58.0
+
+jobs:
+  check:
+    runs-on: docker
+    # Same image as the runner's default, plus a cache dir kept on the runner host
+    # between runs (allowed by valid_volumes in its services/forgejo-runner.nix).
+    # Deleting /var/cache/forgejo-runner/aerie on the host is always safe.
+    container:
+      image: ghcr.io/catthehacker/ubuntu:act-24.04
+      volumes:
+        - /var/cache/forgejo-runner/aerie:/cache
+    env:
+      GOMODCACHE: /cache/go/mod
+      GOCACHE: /cache/go/build
+      GOLANGCI_LINT_CACHE: /cache/golangci-lint
+      npm_config_cache: /cache/npm
+      # setup-go and setup-node keep downloaded toolchains here.
+      RUNNER_TOOL_CACHE: /cache/toolcache
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: reelkeeper
+          POSTGRES_PASSWORD: reelkeeper
+          POSTGRES_DB: reelkeeper
+    steps:
+      - uses: actions/checkout@v4
+
+      # The actions' own caching needs the runner's cache server, which is
+      # off; the mounted /cache above does the job instead.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install just and golangci-lint (kept in /cache/bin)
+        run: |
+          mkdir -p /cache/bin
+          export PATH="/cache/bin:$PATH"
+          if [ "$(just --version 2>/dev/null)" != "just ${JUST_VERSION}" ]; then
+            curl -sSfL "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+              | tar -xz -C /cache/bin just
+          fi
+          if ! golangci-lint --version 2>/dev/null | grep -q "version ${GOLANGCI_LINT_VERSION#v} "; then
+            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+              | sh -s -- -b /cache/bin "${GOLANGCI_LINT_VERSION}"
+          fi
+          echo /cache/bin >> "$GITHUB_PATH"
+
+      - name: Lint
+        run: just lint
+
+      - name: Generated code is up to date
+        run: |
+          just gen
+          git diff --exit-code -- internal/api/gen web/src/api \
+            || (echo "Run 'just gen' and commit the result." && exit 1)
+
+      - name: Tests (SQLite, plus frontend)
+        run: just test
+
+      - name: Tests (Postgres)
+        env:
+          REELKEEPER_TEST_POSTGRES: postgres://reelkeeper:reelkeeper@postgres:5432/reelkeeper?sslmode=disable
+        run: |
+          # Wait for the database container to accept connections.
+          for i in $(seq 1 30); do (echo > /dev/tcp/postgres/5432) 2>/dev/null && break; sleep 1; done
+          go test -race ./...
+
+      - name: Build
+        run: just build

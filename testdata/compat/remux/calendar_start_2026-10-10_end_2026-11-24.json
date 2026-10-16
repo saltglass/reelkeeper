@@ -1,0 +1,231 @@
+[
+  {
+    "title": "Itastro ol kab Jaregule",
+    "originalTitle": "Itastro ol kab Jaregule",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 21,
+        "title": "MAME",
+        "id": 242
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 21,
+        "title": "edotegufevobu",
+        "id": 243
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 21,
+        "title": "SUFA AFU VELEGABA",
+        "id": 244
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "itastro ol kab jaregule",
+    "sizeOnDisk": 0,
+    "status": "released",
+    "overview": "Nebuw astev zemopugez vru 15 ethor, kab Ekija ol Kijav dafar Fadafu Fazi goho du Goderiw, rotev ib udulahibe hoz fela atohapleb rudis kab powusehi jowa ol Kejojifo. Du fane hoz vithak dra hoz masoh, Fazi fahu kamo mazlus moji hoz esosodo ohedud, Mojif dra Zogoda/Oro-Ul-Sezu, dra futhozi hoz ezlo lehidub iz Ib-Oro — kab odak kuplatek oro ap kab jaregule.",
+    "inCinemas": "2022-06-03T00:00:00Z",
+    "physicalRelease": "2022-10-20T00:00:00Z",
+    "digitalRelease": "2022-07-21T00:00:00Z",
+    "releaseDate": "2022-07-21T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/XCjn58mW8FRLznLEz7Qh1e8pD8T.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/RZ4ogbgdi6p0di3QEfTWj9UUasu.jpg"
+      }
+    ],
+    "website": "https://www.example.com/itastro-ol-kab-jaregule",
+    "year": 2022,
+    "youTubeTrailerId": "9nOj5a13dfR",
+    "studio": "Oprisa Anopran",
+    "path": "/media/remux/Itastro ol kab Jaregule (2022)",
+    "qualityProfileId": 7,
+    "hasFile": false,
+    "movieFileId": 0,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": true,
+    "folderName": "/media/remux/Itastro ol kab Jaregule (2022)",
+    "runtime": 141,
+    "cleanTitle": "itastroolkabjaregule",
+    "imdbId": "tt0191594",
+    "tmdbId": 460651,
+    "titleSlug": "460651",
+    "certification": "PG-13",
+    "genres": [
+      "Action",
+      "Fantasy",
+      "Science Fiction"
+    ],
+    "keywords": [
+      "haramufebesifokilev",
+      "revro isusto",
+      "jimuf oj oko",
+      "jimuf oj oz tovepo",
+      "akruzovopohumamilaze"
+    ],
+    "tags": [
+      1
+    ],
+    "added": "2026-07-28T20:16:51Z",
+    "ratings": {
+      "imdb": {
+        "votes": 126852,
+        "value": 6.4,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 2207,
+        "value": 7.101,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 52,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 3780,
+        "value": 7.25847,
+        "type": "user"
+      }
+    },
+    "popularity": 41.8815,
+    "lastSearchTime": "2026-07-28T20:16:52Z",
+    "statistics": {
+      "movieFileCount": 0,
+      "sizeOnDisk": 0,
+      "releaseGroups": [],
+      "movieFileQualities": []
+    },
+    "id": 12
+  },
+  {
+    "title": "Kab Feronug",
+    "originalTitle": "Kab Feronug",
+    "originalLanguage": {
+      "id": 1,
+      "name": "English"
+    },
+    "alternateTitles": [
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 16,
+        "title": "Vohazlaz",
+        "id": 251
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 16,
+        "title": "wajujabir",
+        "id": 129
+      },
+      {
+        "sourceType": "tmdb",
+        "movieMetadataId": 16,
+        "title": "Sofuzale",
+        "id": 193
+      }
+    ],
+    "secondaryYearSourceId": 0,
+    "sortTitle": "feronug",
+    "sizeOnDisk": 0,
+    "status": "inCinemas",
+    "overview": "Fubasoha, kab erivodujo Wude ol Rebeto, rorimoh oj d eklo dra ruherive wemudir fela dregomemu kab Idofef Dez. Ariwekrodo hoz pasker, ib ru wiluji du osawepov kab dunol ol woso, fikivoziwone thaworaj, dra fedibo debu jorikiv ezut hoz lepluvi dra hoz kadajedu du kab eflehaza fevat.",
+    "inCinemas": "2021-07-15T00:00:00Z",
+    "physicalRelease": "2021-11-17T00:00:00Z",
+    "digitalRelease": "2021-11-17T00:00:00Z",
+    "releaseDate": "2021-11-17T00:00:00Z",
+    "images": [
+      {
+        "coverType": "poster",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/N4n2b7Ko4DeVhLl3R3UiwPV9Cde.jpg"
+      },
+      {
+        "coverType": "fanart",
+        "remoteUrl": "https://image.tmdb.org/t/p/original/kuEhgDpvjRykmcbVjztK42HEiig.jpg"
+      }
+    ],
+    "website": "https://www.example.com/kab-feronug",
+    "year": 2021,
+    "youTubeTrailerId": "4KfXoeOaGaO",
+    "studio": "Obrizodug Odikubeh",
+    "path": "/media/remux/Kab Feronug (2021)",
+    "qualityProfileId": 7,
+    "hasFile": false,
+    "movieFileId": 0,
+    "monitored": true,
+    "minimumAvailability": "released",
+    "isAvailable": false,
+    "folderName": "/media/remux/Kab Feronug (2021)",
+    "runtime": 173,
+    "cleanTitle": "kabferonug",
+    "imdbId": "tt22644153",
+    "tmdbId": 3651114,
+    "titleSlug": "3651114",
+    "certification": "R",
+    "genres": [
+      "Adventure",
+      "Action",
+      "Fantasy"
+    ],
+    "keywords": [
+      "fewoduf",
+      "fewoduf masoh",
+      "jimuf oj ekra, misu ik wataz",
+      "unisah kad",
+      "niga dathepe"
+    ],
+    "tags": [
+      1
+    ],
+    "added": "2026-07-07T14:37:31Z",
+    "ratings": {
+      "imdb": {
+        "votes": 519743,
+        "value": 8.4,
+        "type": "user"
+      },
+      "tmdb": {
+        "votes": 4058,
+        "value": 8.012,
+        "type": "user"
+      },
+      "metacritic": {
+        "votes": 0,
+        "value": 88,
+        "type": "user"
+      },
+      "rottenTomatoes": {
+        "votes": 0,
+        "value": 94,
+        "type": "user"
+      },
+      "trakt": {
+        "votes": 116,
+        "value": 5.75,
+        "type": "user"
+      }
+    },
+    "popularity": 347.4248,
+    "lastSearchTime": "2026-07-07T14:40:58Z",
+    "statistics": {
+      "movieFileCount": 0,
+      "sizeOnDisk": 0,
+      "releaseGroups": [],
+      "movieFileQualities": []
+    },
+    "id": 6
+  }
+]

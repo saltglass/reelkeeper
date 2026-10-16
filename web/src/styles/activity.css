@@ -1,0 +1,168 @@
+/* Styles for the redesigned activity pages (animations and effects Tailwind classes cannot express). Durations scale with --m (motion setting). */
+
+/* ---- Queue ---- */
+.q-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--muted);
+  overflow: hidden;
+  position: relative;
+  margin-top: 12px;
+}
+.q-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand-from), var(--brand-to));
+  position: relative;
+  overflow: hidden;
+  transition: width calc(900ms * var(--m)) linear;
+}
+.q-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  transform: translateX(-100%);
+  animation: q-shim calc(1.8s * var(--m)) linear infinite;
+}
+.q-fill.warn {
+  background-color: var(--warning);
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.2) 0 6px,
+    transparent 6px 12px
+  );
+}
+.q-fill.done {
+  background: var(--success);
+}
+.q-fill.warn::after,
+.q-fill.done::after {
+  display: none;
+}
+.q-indet {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 30%;
+  border-radius: inherit;
+  background: var(--primary);
+  animation: q-indet calc(1.5s * var(--m)) ease-in-out infinite;
+}
+@keyframes q-shim {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes q-indet {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(360%);
+  }
+}
+.q-row {
+  transition: background-color calc(200ms * var(--m));
+}
+.q-row:hover {
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+}
+
+/* ---- History timeline ---- */
+.tl {
+  position: relative;
+}
+.tl::before {
+  content: "";
+  position: absolute;
+  left: 19px;
+  top: 20px;
+  bottom: 20px;
+  width: 2px;
+  background: var(--border);
+  border-radius: 1px;
+}
+.tl-node {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  position: relative;
+  z-index: 1;
+  transition:
+    transform calc(360ms * var(--m)) cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color calc(200ms * var(--m));
+}
+.tl-row:hover .tl-node {
+  transform: scale(1.12);
+  border-color: currentColor;
+}
+.tl-body {
+  transition:
+    transform calc(300ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color calc(200ms * var(--m));
+}
+.tl-row:hover .tl-body {
+  transform: translateX(4px);
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+}
+.k-grab,
+.k-import {
+  color: var(--success);
+}
+.k-search {
+  color: var(--link);
+}
+.k-rss {
+  color: var(--muted-foreground);
+}
+.k-removed {
+  color: var(--destructive);
+}
+.k-warn {
+  color: var(--warning);
+}
+@media (max-width: 640px) {
+  .tl::before {
+    left: 15px;
+  }
+}
+
+/* ---- Seeding ring ---- */
+.seed-ring {
+  animation: seed-ring-in calc(1100ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes seed-ring-in {
+  from {
+    stroke-dasharray: 0 101;
+  }
+}
+
+/* ---- Leaving rows ---- */
+.row-leave {
+  animation: row-leave calc(420ms * var(--m)) ease forwards;
+  overflow: hidden;
+}
+@keyframes row-leave {
+  0% {
+    opacity: 1;
+    max-height: 240px;
+  }
+  55% {
+    opacity: 0;
+    transform: translateX(40px);
+    max-height: 240px;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(40px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
