@@ -67,6 +67,7 @@ all mediocre" app.
 - Import lists (Trakt/IMDb)
 - Multiple users with roles
 - Telegram notifications (Dan, 2026-10-09).
+- Jellyfin and Plex library updates, like Emby's (planned for 2.0).
 - Interactive (user-driven) search. Seerr already does this well (Dan,
   2026-10-08); Reelkeeper searches automatically. The search engine exists for
   that; only the screens are left out.
@@ -467,8 +468,8 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
 
 Ask Dan, then update this file once each is settled.
 
-- **Usenet and anime:** not in 1.x; probably 2.0, each from a plan Dan
-  approves.
+- **Usenet, anime, Jellyfin and Plex:** not in 1.x; 2.0, each from a plan
+  Dan approves.
 
 ## Roadmap
 
@@ -485,4 +486,14 @@ previous one is half-done.
 - **1.0.0** (2026-10-16): the first public release. 1.x continues on
   `main`.
 - **2.0:** cut `release/1.x` from the last 1.x tag first, then Usenet and
-  anime. Other torrent clients only if users ask for them.
+  anime, and Jellyfin and Plex next to Emby (Dan, 2026-10-16), each from a
+  plan Dan approves. Other torrent clients only if users ask for them.
+  - **Jellyfin and Plex:** the same job Emby has today: after an import,
+    delete or rename, tell the media server which folder changed (with the
+    same path translation), so it shows up without a full library scan,
+    plus a Test button. Jellyfin forked from Emby and has the same
+    "media updated" call, so it is small. Plex needs its own client: find
+    the library section that holds the folder, then ask for a partial scan
+    of that folder with the server's token. Naming and scanning already
+    follow Jellyfin's and Plex's conventions (multi-version names, Plex
+    edition tags, "Plex Versions" folders skipped).
