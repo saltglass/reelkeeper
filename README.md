@@ -198,8 +198,9 @@ happy.
 
 Reelkeeper deliberately leaves out subtitles (use Bazarr), music and books,
 playing media, request management (that's Seerr's job), and solving
-Cloudflare challenges itself. Usenet and anime-specific numbering are not
-supported yet; they're the main candidates for 2.0.
+Cloudflare challenges itself. Usenet, anime-specific numbering, and library
+updates for Jellyfin and Plex (Emby is supported today) are not supported
+yet; they're planned for 2.0.
 
 ## Development
 
