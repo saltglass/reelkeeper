@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { json, renderApp, signedIn } from "@/test/app";
@@ -45,6 +45,7 @@ const movie = {
       rootPath: "/media/movies",
       folder: "28 Days Later (2002)",
       monitored: true,
+      upgrades: true,
       files: 1,
       missing: 0,
       size: file.size,
@@ -168,6 +169,39 @@ describe("movie page", () => {
       "href",
       "/activity/history",
     );
+  });
+
+  it("switches a version's upgrades without touching monitoring, and back", async () => {
+    const bodies: unknown[] = [];
+    renderApp("/movies/3", {
+      "GET /auth/state": json(signedIn),
+      "GET /settings/general": json({ instanceName: "Reelkeeper", logLevel: "info" }),
+      "GET /movies/3": json(movie),
+      "PATCH /movies/3/versions/11": async (req) => {
+        bodies.push(await req.json());
+        return new Response(null, { status: 204 });
+      },
+    });
+    const upgrades = await screen.findByRole("switch", { name: "Upgrades" });
+    expect(upgrades).toBeChecked();
+    await userEvent.click(upgrades);
+    await userEvent.click(screen.getByRole("switch", { name: "Monitored" }));
+    await waitFor(() => expect(bodies).toEqual([{ upgrades: false }, { monitored: false }]));
+  });
+
+  it("says what turned-off upgrades mean", async () => {
+    const off = { ...movie, versions: [{ ...movie.versions[0], upgrades: false }] };
+    renderApp("/movies/3", {
+      "GET /auth/state": json(signedIn),
+      "GET /settings/general": json({ instanceName: "Reelkeeper", logLevel: "info" }),
+      "GET /movies/3": json(off),
+    });
+    expect(await screen.findByRole("switch", { name: "Upgrades" })).not.toBeChecked();
+    expect(
+      screen.getByText(
+        "Off: Reelkeeper keeps this file and never looks for a better copy. A missing file is still downloaded again.",
+      ),
+    ).toBeInTheDocument();
   });
 
   describe("deleting", () => {

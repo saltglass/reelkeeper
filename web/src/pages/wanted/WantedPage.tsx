@@ -180,7 +180,7 @@ export function WantedPage() {
     <div>
       <PageHeader
         title="Wanted"
-        description="What Reelkeeper is still looking for, and why it hasn't found it yet. Movies and episodes that aren't out yet don't appear."
+        description="What Reelkeeper is still looking for, and why it hasn't found it yet. Movies and episodes that aren't out yet don't appear. Movies with upgrades turned off aren't listed as upgrades."
       />
 
       <div className="mb-5 flex flex-wrap items-center gap-2.5">

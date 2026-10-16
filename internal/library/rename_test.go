@@ -62,7 +62,7 @@ func TestRename(t *testing.T) {
 			t.Fatal("renamed a file in a folder Reelkeeper doesn't manage")
 		}
 
-		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true); err != nil {
+		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true, nil); err != nil {
 			t.Fatal(err)
 		}
 		done, err := f.svc.Rename(ctx, movie.ID)
@@ -104,7 +104,7 @@ func TestRenameNeverOverwrites(t *testing.T) {
 		if _, err := f.svc.Scan(ctx, f.hd.ID, nil); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true); err != nil {
+		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true, nil); err != nil {
 			t.Fatal(err)
 		}
 		movie := f.titleByTMDB(t, 170)

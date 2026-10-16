@@ -24,7 +24,7 @@ func TestUpcomingMovies(t *testing.T) {
 			if _, err := db.DB.NewInsert().Model(title).Exec(ctx); err != nil {
 				t.Fatal(err)
 			}
-			v := &Version{TitleID: title.ID, ProfileID: 1, RootFolderID: f.hd.ID, Monitored: monitored, CreatedAt: now}
+			v := &Version{TitleID: title.ID, ProfileID: 1, RootFolderID: f.hd.ID, Monitored: monitored, Upgrades: true, CreatedAt: now}
 			if _, err := db.DB.NewInsert().Model(v).Exec(ctx); err != nil {
 				t.Fatal(err)
 			}

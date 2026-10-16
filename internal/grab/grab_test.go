@@ -186,7 +186,7 @@ func newFixture(t *testing.T, db *store.Store) *fixture {
 		if _, err := db.DB.NewInsert().Model(title).Exec(ctx); err != nil {
 			t.Fatal(err)
 		}
-		v := &library.Version{TitleID: title.ID, ProfileID: 1, RootFolderID: root.ID, Monitored: true, CreatedAt: now}
+		v := &library.Version{TitleID: title.ID, ProfileID: 1, RootFolderID: root.ID, Monitored: true, Upgrades: true, CreatedAt: now}
 		if _, err := db.DB.NewInsert().Model(v).Exec(ctx); err != nil {
 			t.Fatal(err)
 		}

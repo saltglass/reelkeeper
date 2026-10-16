@@ -338,7 +338,9 @@ func (h *handler) fileResource(f library.MediaFile, pm *library.ProfileMovie, pr
 			mf.MediaInfo.AudioStreamCount = len(mi.Audio)
 		}
 	}
-	mf.QualityCutoffNotMet = !prof.CutoffMet(&decision.Existing{Name: f.ScoringName(), FileName: filepath.Base(f.Path), Quality: q, Revision: r.Revision, Size: f.Size},
+	// Radarr's meaning is "would still upgrade", so it's false while the
+	// version's upgrades are off.
+	mf.QualityCutoffNotMet = pm.Version.Upgrades && !prof.CutoffMet(&decision.Existing{Name: f.ScoringName(), FileName: filepath.Base(f.Path), Quality: q, Revision: r.Revision, Size: f.Size},
 		decision.Movie{Title: pm.Title.Title, Year: pm.Title.Year, Runtime: pm.Title.Runtime, OriginalLanguage: decision.LanguageByCode(pm.Title.OriginalLanguage)})
 	return mf
 }

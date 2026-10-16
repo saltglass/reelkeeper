@@ -198,8 +198,14 @@ func (w wanted) label() string {
 	return fmt.Sprintf("%s (%d), %s", w.v.Title.Title, w.v.Title.Year, w.pname)
 }
 
+// upgradesOffReason is why every release is turned down for a movie that
+// has a file while its Upgrades switch is off.
+const upgradesOffReason = "Upgrades are off for this movie, so Reelkeeper keeps the file it has."
+
 // load prepares versions for deciding. With onlyWanted, versions whose
-// file already meets the profile's cutoff are left out.
+// file already meets the profile's cutoff are left out, and so are those
+// with a file whose upgrades are off (a version with no file is still
+// wanted, whatever the switch says).
 func (s *Service) load(ctx context.Context, onlyWanted bool, ids ...int64) ([]wanted, error) {
 	vs, err := s.lib.MonitoredMovieVersions(ctx, ids...)
 	if err != nil {
@@ -234,7 +240,7 @@ func (s *Service) load(ctx context.Context, onlyWanted bool, ids ...int64) ([]wa
 		}
 		w := wanted{v: v, profile: p, pname: names[v.Version.ProfileID], movie: movieOf(v.Title)}
 		w.have = bestFile(p, v.Files)
-		if onlyWanted && w.have != nil && p.CutoffMet(w.have, w.movie) {
+		if onlyWanted && w.have != nil && (!v.Version.Upgrades || p.CutoffMet(w.have, w.movie)) {
 			continue
 		}
 		out = append(out, w)
@@ -372,6 +378,10 @@ func (s *Service) decide(ctx context.Context, w wanted, rels []indexer.Release) 
 			Name: r.Title, Size: r.Size, Seeders: r.Seeders, MinSeeders: minSeeders,
 			IndexerFlags: indexerFlags(r.Release), Blocklisted: blocked(r.Title, r.InfoHash),
 		}, w.have)}
+		if w.have != nil && !w.v.Version.Upgrades {
+			out[i].d.Accepted = false
+			out[i].d.Rejections = append(out[i].d.Rejections, upgradesOffReason)
+		}
 	}
 	slices.SortStableFunc(out, func(a, b candidate) int { return w.profile.Compare(a.d, b.d) })
 	return out, nil

@@ -78,6 +78,17 @@ things. Turn it on when you want Reelkeeper to import new downloads there and
 rename files. If another app (Radarr, Sonarr) still manages the same folder,
 keep it off until that app is retired, or the two will fight over the files.
 
+**Upgrade movies found here.** Movie folders have a second switch, and new
+ones start with it **off**. Off, Reelkeeper catalogs the movies it finds and
+keeps their files exactly as they are; it never goes looking for better copies,
+so adding a big library does not start hundreds of upgrade searches. Movies
+Reelkeeper downloads later are still upgraded as their quality profile says.
+Turn the switch on and Reelkeeper looks for better copies of every movie in
+the folder, at its usual pace (three searches an hour). Each movie also has
+its own Upgrades switch on its page, so you can keep one file or upgrade just
+one movie. A movie whose file goes missing is still downloaded again, whatever
+the switch says. TV folders have no such switch.
+
 The Media folders page also has buttons to import from Radarr and Sonarr, and
 the file naming settings. They are optional.
 

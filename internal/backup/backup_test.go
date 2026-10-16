@@ -60,7 +60,7 @@ func seed(t *testing.T, s *store.Store) {
 			Status: "Released", OriginalLanguage: "en", CreatedAt: at, Genres: `["Crime", "Drama"]`, AltTitles: "[]",
 			Popularity: 12.5 + float64(i)}
 		mustInsert(t, s, title)
-		v := &library.Version{TitleID: title.ID, ProfileID: 1, RootFolderID: root.ID, Monitored: i != 1, CreatedAt: at}
+		v := &library.Version{TitleID: title.ID, ProfileID: 1, RootFolderID: root.ID, Monitored: i != 1, Upgrades: true, CreatedAt: at}
 		mustInsert(t, s, v)
 		mf := &library.MediaFile{VersionID: v.ID, RootFolderID: root.ID, Path: name + "/" + name + ".mkv", Size: 4 << 30,
 			ModifiedAt: at, Resolution: 1080, Source: "WEB-DL", Quality: "WEBDL-1080p", ReleaseInfo: `{"group": "GRP"}`,
@@ -435,6 +435,45 @@ func TestOlderBackupIsUpgraded(t *testing.T) {
 		// (SQLite's date functions keep milliseconds, so allow for that.)
 		if bl.Rule != "stalled" || bl.ExpiresAt == nil || bl.ExpiresAt.Sub(at.Add(30*24*time.Hour)).Abs() > time.Second {
 			t.Errorf("blocklist entry = %+v, want a temporary 'stalled' one", bl)
+		}
+	})
+}
+
+// A backup made before migration 22 (opt-in upgrades) has neither upgrade
+// column; restoring it gives both the value existing installs behave with:
+// TRUE, so nothing changes for them.
+func TestBackupBeforeUpgradeOptInRestoresWithUpgradesOn(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, s *store.Store) {
+		old := storetest.OpenEmpty(t, s.Engine)
+		if err := old.MigrateTo(ctx, 21); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := old.DB.NewRaw(`INSERT INTO root_folders (path, media_type, default_profile_id, manage_files, created_at)
+			VALUES (?, ?, ?, ?, ?)`, "/movies", "movie", 1, true, at).Exec(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := old.DB.NewRaw(`INSERT INTO titles (media_type, tmdb_id, title, sort_title, year, created_at, genres, alt_titles)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, "movie", 603, "The Matrix", "matrix", 1999, at, "[]", "[]").Exec(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := old.DB.NewRaw(`INSERT INTO versions (title_id, profile_id, root_folder_id, monitored, created_at)
+			VALUES (1, 1, 1, ?, ?)`, true, at).Exec(ctx); err != nil {
+			t.Fatal(err)
+		}
+		path := writeFile(t, old, Meta{})
+		if _, err := Restore(ctx, s, path, RestoreOptions{CheckKey: keyCheckOK, ScratchDir: t.TempDir()}); err != nil {
+			t.Fatal(err)
+		}
+		var got struct {
+			Upgrades     bool `bun:"upgrades"`
+			UpgradeFound bool `bun:"upgrade_found"`
+		}
+		if err := s.DB.NewSelect().TableExpr("versions AS v").ColumnExpr("v.upgrades, r.upgrade_found").
+			Join("JOIN root_folders AS r ON r.id = v.root_folder_id").Scan(ctx, &got); err != nil {
+			t.Fatal(err)
+		}
+		if !got.Upgrades || !got.UpgradeFound {
+			t.Errorf("after restoring a pre-00022 backup: %+v, want both true", got)
 		}
 	})
 }

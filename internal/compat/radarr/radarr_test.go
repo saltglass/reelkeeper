@@ -52,7 +52,7 @@ func newFakeLib() *fakeLib {
 	hdRoot := library.RootFolder{ID: 1, Path: "/media/movies", MediaType: library.Movie, DefaultProfileID: 1}
 	f.versions = []library.ProfileMovie{{
 		Title: *f.titles[603], Root: hdRoot,
-		Version: library.Version{ID: 50, TitleID: 10, ProfileID: 1, RootFolderID: 1, Folder: "The Matrix (1999)", Monitored: true, CreatedAt: now, LastSearchAt: &now},
+		Version: library.Version{ID: 50, TitleID: 10, ProfileID: 1, RootFolderID: 1, Folder: "The Matrix (1999)", Monitored: true, Upgrades: true, CreatedAt: now, LastSearchAt: &now},
 		Files: []library.MediaFile{{ID: 7, VersionID: 50, RootFolderID: 1, Path: "The Matrix (1999)/The Matrix (1999) [Bluray-1080p]-GRP.mkv",
 			Size: 8 << 30, Resolution: 1080, Source: "BluRay", Quality: "Bluray-1080p", ReleaseGroup: "GRP", ReleaseInfo: "{}", MediaInfo: "{}", AddedAt: now}},
 	}}
@@ -171,7 +171,7 @@ func (f *fakeLib) AddMovie(_ context.Context, tmdbID int, profileID, rootID int6
 			root = r
 		}
 	}
-	v := library.Version{ID: f.nextID, TitleID: t.ID, ProfileID: profileID, RootFolderID: rootID, Folder: t.Title + fmt.Sprintf(" (%d)", t.Year), Monitored: monitored}
+	v := library.Version{ID: f.nextID, TitleID: t.ID, ProfileID: profileID, RootFolderID: rootID, Folder: t.Title + fmt.Sprintf(" (%d)", t.Year), Monitored: monitored, Upgrades: true}
 	f.versions = append(f.versions, library.ProfileMovie{Title: *t, Version: v, Root: root})
 	return &library.MovieView{Title: *t, Versions: []library.VersionView{{Version: v}}}, nil
 }
@@ -446,6 +446,25 @@ func TestLibraryMovieShape(t *testing.T) {
 	}
 	if code, _ := g.do(t, "GET", "remux/api/v3/movie/50", ""); code != 404 {
 		t.Errorf("another profile's version: %d", code)
+	}
+}
+
+// qualityCutoffNotMet means "would still upgrade" (Radarr's meaning), so a
+// version with upgrades off reports false even below its profile's target.
+func TestQualityCutoffNotMetFollowsUpgrades(t *testing.T) {
+	g := newRig(t)
+	g.lib.versions[0].Files[0].Source = "WEB-DL" // below HD's Blu-ray target
+	cutoffNotMet := func() any {
+		t.Helper()
+		_, b := g.do(t, "GET", "hd/api/v3/movie/50", "")
+		return decode[map[string]any](t, b)["movieFile"].(map[string]any)["qualityCutoffNotMet"]
+	}
+	if got := cutoffNotMet(); got != true {
+		t.Fatalf("upgrades on, below the target: qualityCutoffNotMet = %v", got)
+	}
+	g.lib.versions[0].Version.Upgrades = false
+	if got := cutoffNotMet(); got != false {
+		t.Errorf("upgrades off: qualityCutoffNotMet = %v, want false", got)
 	}
 }
 

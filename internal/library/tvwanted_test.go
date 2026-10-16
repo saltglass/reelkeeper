@@ -37,7 +37,7 @@ func TestSeriesWantedEpisodes(t *testing.T) {
 		future := ep(2, 3, "2026-12-01")  // not aired yet
 		special := ep(0, 1, "2026-10-06") // a special: needs a choice
 		from := "2026-10-01"
-		v := &Version{TitleID: show.ID, ProfileID: 1, RootFolderID: f.hd.ID, Folder: "Show (2020)", Monitored: true,
+		v := &Version{TitleID: show.ID, ProfileID: 1, RootFolderID: f.hd.ID, Folder: "Show (2020)", Monitored: true, Upgrades: true,
 			CreatedAt: now, MonitorFrom: &from}
 		if _, err := db.DB.NewInsert().Model(v).Exec(ctx); err != nil {
 			t.Fatal(err)

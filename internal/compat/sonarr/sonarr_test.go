@@ -58,7 +58,7 @@ func newFakeLib() *fakeLib {
 		Genres: `["Comedy"]`, AltTitles: `["MQ"]`, SeriesType: "standard", VoteAverage: 7.8, CreatedAt: now}
 	eps := []library.Episode{ep(100, 0, 1, aired), ep(101, 1, 1, aired), ep(102, 1, 2, aired), ep(103, 1, 3, aired),
 		ep(201, 2, 1, aired), ep(202, 2, 2, future)}
-	v := library.Version{ID: 50, TitleID: 10, ProfileID: 1, RootFolderID: 3, Folder: "Velmora Quill (2020)", Monitored: true,
+	v := library.Version{ID: 50, TitleID: 10, ProfileID: 1, RootFolderID: 3, Folder: "Velmora Quill (2020)", Monitored: true, Upgrades: true,
 		MonitorFrom: &from, CreatedAt: now}
 	ps := library.ProfileSeries{
 		SeriesVersion: library.SeriesVersion{Version: v, Title: mq, Episodes: eps,
@@ -210,7 +210,7 @@ func (f *fakeLib) AddSeries(_ context.Context, tmdbID int, profileID, rootID int
 			root = r
 		}
 	}
-	v := library.Version{ID: f.nextID, TitleID: t.ID, ProfileID: profileID, RootFolderID: rootID, Folder: "The Dravnik Reach (2015)", Monitored: monitored}
+	v := library.Version{ID: f.nextID, TitleID: t.ID, ProfileID: profileID, RootFolderID: rootID, Folder: "The Dravnik Reach (2015)", Monitored: monitored, Upgrades: true}
 	f.series = append(f.series, library.ProfileSeries{
 		SeriesVersion: library.SeriesVersion{Version: v, Title: t, Episodes: eps, HasFile: map[int64]bool{}, Monitored: map[int64]bool{}},
 		Root:          root, FileEpisodes: map[int64][]int64{},

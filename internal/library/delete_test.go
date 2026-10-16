@@ -73,7 +73,7 @@ func TestDeleteMovieWithFiles(t *testing.T) {
 		}
 		f.titleByTMDB(t, 170)
 
-		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true); err != nil {
+		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true, nil); err != nil {
 			t.Fatal(err)
 		}
 		res, err := f.svc.DeleteMovie(ctx, movie.ID, true)
@@ -99,7 +99,7 @@ func TestDeleteMovieKeepsFoldersWithOtherVideos(t *testing.T) {
 		if _, err := f.svc.Scan(ctx, f.hd.ID, nil); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true); err != nil {
+		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true, nil); err != nil {
 			t.Fatal(err)
 		}
 		movie := f.titleByTMDB(t, 170)

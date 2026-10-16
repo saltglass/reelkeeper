@@ -148,7 +148,9 @@ func (s *Service) EnsureVersion(ctx context.Context, tmdbID int, profileID, root
 	if folder == "" {
 		folder = s.folderName(ctx, t, profileID)
 	}
-	v = &Version{TitleID: t.ID, ProfileID: profileID, RootFolderID: root.ID, Folder: folder, Monitored: monitored, CreatedAt: s.now().UTC()}
+	// Movies from Radarr follow the folder's setting, like movies a scan finds.
+	v = &Version{TitleID: t.ID, ProfileID: profileID, RootFolderID: root.ID, Folder: folder, Monitored: monitored,
+		Upgrades: root.MediaType != Movie || root.UpgradeFound, CreatedAt: s.now().UTC()}
 	if _, err := s.db.DB.NewInsert().Model(v).Exec(ctx); err != nil {
 		return nil, false, err
 	}

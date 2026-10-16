@@ -31,7 +31,7 @@ func addSeries(t *testing.T, db *store.Store, f *fixture, title, seriesType stri
 	if err := db.DB.NewSelect().Model(&root).Limit(1).Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
-	v := &library.Version{TitleID: show.ID, ProfileID: 1, RootFolderID: root.ID, Monitored: true, CreatedAt: f.now}
+	v := &library.Version{TitleID: show.ID, ProfileID: 1, RootFolderID: root.ID, Monitored: true, Upgrades: true, CreatedAt: f.now}
 	if _, err := db.DB.NewInsert().Model(v).Exec(ctx); err != nil {
 		t.Fatal(err)
 	}

@@ -9,6 +9,7 @@ export const seriesVersion = (over: Partial<SeriesSummary["versions"][number]> =
   rootPath: "/media/shows",
   folder: "Show",
   monitored: true,
+  upgrades: true,
   files: 3,
   missing: 0,
   size: 6 * 1024 ** 3,

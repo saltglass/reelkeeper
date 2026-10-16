@@ -28,7 +28,7 @@ func TestTVDownload(t *testing.T) {
 		if _, err := db.DB.NewInsert().Model(show).Exec(ctx); err != nil {
 			t.Fatal(err)
 		}
-		v := &library.Version{TitleID: show.ID, ProfileID: 1, RootFolderID: f.mv.Version.RootFolderID, Monitored: true, CreatedAt: now}
+		v := &library.Version{TitleID: show.ID, ProfileID: 1, RootFolderID: f.mv.Version.RootFolderID, Monitored: true, Upgrades: true, CreatedAt: now}
 		if _, err := db.DB.NewInsert().Model(v).Exec(ctx); err != nil {
 			t.Fatal(err)
 		}
@@ -122,7 +122,7 @@ func tvShow(t *testing.T, db *store.Store, f *dfix) (*library.Title, *library.Ve
 	if _, err := db.DB.NewInsert().Model(show).Exec(ctx); err != nil {
 		t.Fatal(err)
 	}
-	v := &library.Version{TitleID: show.ID, ProfileID: 1, RootFolderID: f.mv.Version.RootFolderID, Monitored: true, CreatedAt: now}
+	v := &library.Version{TitleID: show.ID, ProfileID: 1, RootFolderID: f.mv.Version.RootFolderID, Monitored: true, Upgrades: true, CreatedAt: now}
 	if _, err := db.DB.NewInsert().Model(v).Exec(ctx); err != nil {
 		t.Fatal(err)
 	}

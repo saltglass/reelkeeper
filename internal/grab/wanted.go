@@ -173,6 +173,8 @@ func (s *Service) Wanted(ctx context.Context, full bool) (*WantedList, error) {
 		upgrade := false
 		switch {
 		case w.have == nil:
+		case !w.v.Version.Upgrades:
+			continue // has a file and upgrades are off: nothing is wanted
 		case !w.profile.CutoffMet(w.have, w.movie):
 			upgrade = true
 			it.Quality, it.Target = w.have.Quality.Name, w.profile.UpgradeUntil

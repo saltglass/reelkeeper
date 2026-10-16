@@ -199,7 +199,7 @@ func newDFix(t *testing.T, db *store.Store) *dfix {
 			t.Fatal(err)
 		}
 	}
-	v := &library.Version{TitleID: title.ID, ProfileID: 1, RootFolderID: root.ID, Monitored: true, CreatedAt: now}
+	v := &library.Version{TitleID: title.ID, ProfileID: 1, RootFolderID: root.ID, Monitored: true, Upgrades: true, CreatedAt: now}
 	ix := &indexer.Indexer{Name: "Tracker", Kind: "knaben", Enabled: true, Settings: "{}", Categories: "[]", CreatedAt: now, UpdatedAt: now}
 	for _, m := range []any{v, ix} {
 		if _, err := db.DB.NewInsert().Model(m).Exec(ctx); err != nil {

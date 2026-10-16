@@ -178,7 +178,7 @@ func (h *Handlers) toRoot(ctx context.Context, root library.RootFolder) (gen.Roo
 	}
 	return gen.RootFolder{
 		Id: root.ID, Path: root.Path, MediaType: gen.RootFolderMediaType(root.MediaType),
-		DefaultProfileId: root.DefaultProfileID, ManageFiles: root.ManageFiles, LastScanAt: root.LastScanAt,
+		DefaultProfileId: root.DefaultProfileID, ManageFiles: root.ManageFiles, UpgradeFound: root.UpgradeFound, LastScanAt: root.LastScanAt,
 		Titles: st.Titles, Files: st.Files, Missing: st.Missing, Review: st.Review, Size: st.Size, FreeSpace: st.FreeSpace,
 	}, nil
 }
@@ -191,6 +191,7 @@ func (h *Handlers) AddRootFolder(w http.ResponseWriter, r *http.Request) {
 	}
 	root, err := h.Library.AddRootFolder(r.Context(), library.RootInput{
 		Path: body.Path, MediaType: string(body.MediaType), DefaultProfileID: body.DefaultProfileId,
+		UpgradeFound: body.UpgradeFound != nil && *body.UpgradeFound,
 	})
 	if err != nil {
 		h.writeServiceError(w, r, err)
@@ -213,7 +214,7 @@ func (h *Handlers) UpdateRootFolder(w http.ResponseWriter, r *http.Request, id i
 	if !decode(w, r, &body) {
 		return
 	}
-	root, err := h.Library.UpdateRootFolder(r.Context(), id, body.DefaultProfileId, body.ManageFiles)
+	root, err := h.Library.UpdateRootFolder(r.Context(), id, body.DefaultProfileId, body.ManageFiles, body.UpgradeFound)
 	if err != nil {
 		h.writeLibraryError(w, r, err)
 		return
@@ -426,30 +427,45 @@ func (h *Handlers) RefreshMovie(w http.ResponseWriter, r *http.Request, id int64
 	writeJSON(w, http.StatusOK, toMovieDetail(*m))
 }
 
-// UpdateVersion turns monitoring on or off.
+// UpdateVersion turns a movie version's monitoring and upgrades on or off.
 func (h *Handlers) UpdateVersion(w http.ResponseWriter, r *http.Request, id, versionID int64) {
 	var body gen.UpdateVersionJSONRequestBody
 	if !decode(w, r, &body) {
 		return
 	}
+	if body.Monitored == nil && body.Upgrades == nil {
+		h.writeServiceError(w, r, validation.Errors{"monitored": "Send monitored, upgrades, or both."})
+		return
+	}
 	if !h.requireKind(w, r, id, library.Movie) {
 		return
 	}
-	wasMonitored := true
-	if body.Monitored {
-		if m, err := h.Library.MovieDetail(r.Context(), id); err == nil {
-			for _, v := range m.Versions {
-				if v.ID == versionID {
-					wasMonitored = v.Monitored
-				}
+	// What the version was, to search when this change makes it wanted.
+	wasMonitored, hadUpgrades := true, true
+	if m, err := h.Library.MovieDetail(r.Context(), id); err == nil {
+		for _, v := range m.Versions {
+			if v.ID == versionID {
+				wasMonitored, hadUpgrades = v.Monitored, v.Upgrades
 			}
 		}
 	}
-	if err := h.Library.SetMonitored(r.Context(), id, versionID, body.Monitored); err != nil {
-		h.writeLibraryError(w, r, err)
-		return
+	monitored := wasMonitored
+	if body.Monitored != nil {
+		if err := h.Library.SetMonitored(r.Context(), id, versionID, *body.Monitored); err != nil {
+			h.writeLibraryError(w, r, err)
+			return
+		}
+		monitored = *body.Monitored
 	}
-	if body.Monitored && !wasMonitored {
+	if body.Upgrades != nil {
+		if err := h.Library.SetUpgrades(r.Context(), id, versionID, *body.Upgrades); err != nil {
+			h.writeLibraryError(w, r, err)
+			return
+		}
+	}
+	turnedOnMonitoring := body.Monitored != nil && monitored && !wasMonitored
+	turnedOnUpgrades := body.Upgrades != nil && *body.Upgrades && !hadUpgrades && monitored
+	if turnedOnMonitoring || turnedOnUpgrades {
 		h.searchOnAdd(r.Context(), versionID)
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -509,7 +525,7 @@ func toVersionSummary(v library.VersionView) gen.VersionSummary {
 	}
 	return gen.VersionSummary{
 		Id: v.ID, ProfileId: v.ProfileID, ProfileName: v.ProfileName, RootFolderId: v.RootFolderID, RootPath: v.RootPath,
-		Folder: v.Folder, Monitored: v.Monitored, Files: v.Files, Missing: v.Missing, Size: v.Size,
+		Folder: v.Folder, Monitored: v.Monitored, Upgrades: v.Upgrades, Files: v.Files, Missing: v.Missing, Size: v.Size,
 		Quality: v.Quality, Resolution: v.Resolution, Hdr: hdr,
 		VideoCodec: v.VideoCodec, AudioCodec: v.AudioCodec, AudioChannels: v.AudioChannels,
 		ReleaseGroup: v.ReleaseGroup, Edition: v.Edition, EpisodesWithFiles: v.EpisodesWithFiles,
@@ -520,7 +536,7 @@ func toVersionDetail(v library.VersionView) gen.VersionDetail {
 	s := toVersionSummary(v)
 	vd := gen.VersionDetail{
 		Id: s.Id, ProfileId: s.ProfileId, ProfileName: s.ProfileName, RootFolderId: s.RootFolderId, RootPath: s.RootPath,
-		Folder: s.Folder, Monitored: s.Monitored, Files: s.Files, Missing: s.Missing, Size: s.Size,
+		Folder: s.Folder, Monitored: s.Monitored, Upgrades: s.Upgrades, Files: s.Files, Missing: s.Missing, Size: s.Size,
 		Quality: s.Quality, Resolution: s.Resolution, Hdr: s.Hdr,
 		VideoCodec: s.VideoCodec, AudioCodec: s.AudioCodec, AudioChannels: s.AudioChannels,
 		ReleaseGroup: s.ReleaseGroup, Edition: s.Edition, EpisodesWithFiles: s.EpisodesWithFiles,

@@ -186,6 +186,15 @@ are two versions of one title, not two instances. Metadata is shared.
   folder using Emby/Jellyfin multi-version naming
   (`Movie (2020) - Remux.mkv`).
 - Each version is searched, upgraded and cleaned up independently.
+- **Upgrades are opt-in for movies already on disk** (Dan, 2026-10-16).
+  `Version.Upgrades` (movies only; series versions keep true): false means
+  Reelkeeper keeps the file it has and never looks for a better copy, though a
+  version with no file is still searched. The root folder's `upgrade_found`
+  decides it for movies found from files on disk (scans, review accept, Radarr
+  import); movies added by hand or by Seerr are always true. New folders
+  default to off; folders from before migration 22 are on. Switching a movie
+  folder rewrites every movie version in it. Every `Version` insert must set
+  `Upgrades` (Bun writes false for a zero bool).
 
 ### Quality profiles (easier than Radarr/Sonarr)
 Same power as Radarr/Sonarr, but configured in plain choices instead of score

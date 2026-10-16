@@ -339,7 +339,7 @@ func (s *Service) AddSeries(ctx context.Context, tmdbID int, profileID, rootID i
 		return nil, err
 	}
 	folder := naming.FormatSeries(s.naming().SeriesFolder, seriesFacts(t, p.Name))
-	v := &Version{TitleID: t.ID, ProfileID: profileID, RootFolderID: root.ID, Folder: folder, Monitored: monitored, CreatedAt: s.now().UTC()}
+	v := &Version{TitleID: t.ID, ProfileID: profileID, RootFolderID: root.ID, Folder: folder, Monitored: monitored, Upgrades: true, CreatedAt: s.now().UTC()}
 	if monitored {
 		// Added on purpose: every episode is wanted, aired or not.
 		v.MonitorFrom = ptr(AllEpisodes)

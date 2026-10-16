@@ -15,6 +15,7 @@ const v = (over: Partial<MovieSummary["versions"][number]> = {}) => ({
   rootPath: "/media/movies",
   folder: "x",
   monitored: true,
+  upgrades: true,
   files: 1,
   missing: 0,
   size: 5 * 1024 ** 3,

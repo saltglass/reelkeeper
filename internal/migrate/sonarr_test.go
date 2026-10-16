@@ -537,7 +537,7 @@ func TestPlanSeriesMatching(t *testing.T) {
 	}
 	ps := library.ProfileSeries{
 		SeriesVersion: library.SeriesVersion{
-			Version: library.Version{Monitored: true, MonitorFrom: ptrTo("2026-10-11")},
+			Version: library.Version{Monitored: true, Upgrades: true, MonitorFrom: ptrTo("2026-10-11")},
 			Episodes: []library.Episode{
 				ep(1, 1, 1, "2020-01-10"), ep(2, 1, 2, "2020-01-17"), ep(3, 1, 3, "2020-01-24"),
 				ep(4, 2, 1, "2021-03-01"), ep(5, 2, 2, "2021-03-01"), // same date twice

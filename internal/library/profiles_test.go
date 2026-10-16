@@ -176,7 +176,7 @@ func TestProfileUsageAndFit(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = svc.UpdateRootFolder(ctx, f.hd.ID, tv.ID, false)
+		_, err = svc.UpdateRootFolder(ctx, f.hd.ID, tv.ID, false, nil)
 		if msg := fieldError(t, err, "defaultProfileId"); !strings.Contains(msg, "TV only isn't for movies") {
 			t.Errorf("message = %q", msg)
 		}
@@ -212,7 +212,7 @@ func TestSwitchingFolderProfileMovesItsMovies(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, p1080.ID, false); err != nil {
+		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, p1080.ID, false, nil); err != nil {
 			t.Fatal(err)
 		}
 		if n := count("root_folder_id = ? AND profile_id = ?", f.hd.ID, p1080.ID); n != before {
@@ -244,7 +244,7 @@ func TestSwitchingFolderProfileMovesItsMovies(t *testing.T) {
 		if _, err := f.svc.Scan(ctx, remux.ID, nil); err != nil {
 			t.Fatal(err)
 		}
-		_, err = f.svc.UpdateRootFolder(ctx, f.hd.ID, 2, false)
+		_, err = f.svc.UpdateRootFolder(ctx, f.hd.ID, 2, false, nil)
 		var errs validation.Errors
 		if !errors.As(err, &errs) || !strings.Contains(errs["defaultProfileId"], "1 movie here already has a Remux copy in another folder (1917)") {
 			t.Errorf("err = %v", err)

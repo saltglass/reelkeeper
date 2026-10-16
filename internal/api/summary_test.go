@@ -59,7 +59,7 @@ func TestSummaryAPI(t *testing.T) {
 		} {
 			title := &library.Title{MediaType: library.Movie, TMDBID: 7000 + i, Title: m.name, SortTitle: m.name, Year: 2026,
 				DigitalRelease: m.digital, TheatricalRelease: m.theatrical, CreatedAt: now, Genres: "[]", AltTitles: "[]"}
-			v := &library.Version{ProfileID: 1, RootFolderID: root, Monitored: m.monitored, CreatedAt: now}
+			v := &library.Version{ProfileID: 1, RootFolderID: root, Monitored: m.monitored, Upgrades: true, CreatedAt: now}
 			if _, err := db.DB.NewInsert().Model(title).Exec(ctx); err != nil {
 				t.Fatal(err)
 			}
@@ -96,7 +96,7 @@ func TestSummaryAPI(t *testing.T) {
 			t.Fatal(err)
 		}
 		all := library.AllEpisodes
-		sv := &library.Version{TitleID: show.ID, ProfileID: 1, RootFolderID: tvRoot.ID, Monitored: true, MonitorFrom: &all, CreatedAt: now}
+		sv := &library.Version{TitleID: show.ID, ProfileID: 1, RootFolderID: tvRoot.ID, Monitored: true, Upgrades: true, MonitorFrom: &all, CreatedAt: now}
 		if _, err := db.DB.NewInsert().Model(sv).Exec(ctx); err != nil {
 			t.Fatal(err)
 		}

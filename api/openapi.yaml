@@ -1099,14 +1099,20 @@ paths:
           application/json:
             schema:
               type: object
-              required: [monitored]
+              description: Send at least one of the two; one that's left out is unchanged.
               properties:
                 monitored: { type: boolean }
+                upgrades:
+                  type: boolean
+                  description: >-
+                    Whether Reelkeeper may replace this movie's file with a better release.
+                    Off: it keeps the file it has, but still downloads the movie again if the file is missing.
       responses:
         "204":
           description: Saved.
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
     delete:
       tags: [movies]
       operationId: removeVersion
@@ -4784,7 +4790,7 @@ components:
 
     RootFolder:
       type: object
-      required: [id, path, mediaType, defaultProfileId, manageFiles, titles, files, missing, review, size, freeSpace]
+      required: [id, path, mediaType, defaultProfileId, manageFiles, upgradeFound, titles, files, missing, review, size, freeSpace]
       properties:
         id: { type: integer, format: int64 }
         path: { type: string }
@@ -4798,6 +4804,12 @@ components:
           description: |
             Whether Reelkeeper may rename, move or delete files here. Off while
             another app (Radarr) still manages the folder; Reelkeeper then only reads it.
+        upgradeFound:
+          type: boolean
+          description: |
+            Movie folders: whether movies found here (already on disk, or imported from
+            Radarr) are upgraded when a better release turns up. Each movie can still be
+            switched on or off on its own page. Always true for series folders, which ignore it.
         lastScanAt: { type: string, format: date-time }
         titles: { type: integer }
         files: { type: integer }
@@ -4813,6 +4825,11 @@ components:
         path: { type: string }
         mediaType: { type: string, enum: [movie, series] }
         defaultProfileId: { type: integer, format: int64 }
+        upgradeFound:
+          type: boolean
+          description: >-
+            Movie folders: whether movies found here are upgraded. Off when left out so adding
+            a large library doesn't queue an upgrade search for every movie.
 
     RootFolderUpdate:
       type: object
@@ -4820,6 +4837,12 @@ components:
       properties:
         defaultProfileId: { type: integer, format: int64 }
         manageFiles: { type: boolean }
+        upgradeFound:
+          type: boolean
+          description: >-
+            Movie folders: turn upgrades on or off for every movie in the folder, including
+            ones Reelkeeper downloaded. Left out: unchanged. Turning it on doesn't start
+            searches; the scheduled pass picks the movies up at its usual pace.
 
     FolderListing:
       type: object
@@ -4871,7 +4894,7 @@ components:
 
     VersionSummary:
       type: object
-      required: [id, profileId, profileName, rootFolderId, rootPath, folder, monitored, files, missing, size, quality, resolution, hdr, videoCodec, audioCodec, audioChannels, releaseGroup, edition, episodesWithFiles]
+      required: [id, profileId, profileName, rootFolderId, rootPath, folder, monitored, upgrades, files, missing, size, quality, resolution, hdr, videoCodec, audioCodec, audioChannels, releaseGroup, edition, episodesWithFiles]
       properties:
         id: { type: integer, format: int64 }
         profileId: { type: integer, format: int64 }
@@ -4880,6 +4903,9 @@ components:
         rootPath: { type: string }
         folder: { type: string }
         monitored: { type: boolean }
+        upgrades:
+          type: boolean
+          description: "Movies only: whether Reelkeeper may replace the file with a better release. Series versions are always true."
         files: { type: integer, description: Video files on disk (not counting missing ones). }
         missing: { type: integer }
         size: { type: integer, format: int64 }

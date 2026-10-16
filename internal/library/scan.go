@@ -688,7 +688,10 @@ func (s *Service) ensureVersion(ctx context.Context, t *Title, root *RootFolder,
 	if !errors.Is(err, sql.ErrNoRows) {
 		return nil, "", err
 	}
-	v = &Version{TitleID: t.ID, ProfileID: root.DefaultProfileID, RootFolderID: root.ID, Folder: folder, Monitored: true, CreatedAt: s.now().UTC()}
+	// A movie found on disk is upgraded only if its folder says so. A
+	// series ignores the setting (TV has no upgrades).
+	v = &Version{TitleID: t.ID, ProfileID: root.DefaultProfileID, RootFolderID: root.ID, Folder: folder, Monitored: true,
+		Upgrades: t.MediaType == Series || root.UpgradeFound, CreatedAt: s.now().UTC()}
 	if t.MediaType == Series {
 		// A show found on disk wants only episodes from now on; older
 		// missing ones can be turned on per season (2026-10-11).

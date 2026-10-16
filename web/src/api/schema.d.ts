@@ -3927,6 +3927,12 @@ export interface components {
              *     another app (Radarr) still manages the folder; Reelkeeper then only reads it.
              */
             manageFiles: boolean;
+            /**
+             * @description Movie folders: whether movies found here (already on disk, or imported from
+             *     Radarr) are upgraded when a better release turns up. Each movie can still be
+             *     switched on or off on its own page. Always true for series folders, which ignore it.
+             */
+            upgradeFound: boolean;
             /** Format: date-time */
             lastScanAt?: string;
             titles: number;
@@ -3952,11 +3958,15 @@ export interface components {
             mediaType: "movie" | "series";
             /** Format: int64 */
             defaultProfileId: number;
+            /** @description Movie folders: whether movies found here are upgraded. Off when left out so adding a large library doesn't queue an upgrade search for every movie. */
+            upgradeFound?: boolean;
         };
         RootFolderUpdate: {
             /** Format: int64 */
             defaultProfileId: number;
             manageFiles: boolean;
+            /** @description Movie folders: turn upgrades on or off for every movie in the folder, including ones Reelkeeper downloaded. Left out: unchanged. Turning it on doesn't start searches; the scheduled pass picks the movies up at its usual pace. */
+            upgradeFound?: boolean;
         };
         FolderListing: {
             path: string;
@@ -4007,6 +4017,8 @@ export interface components {
             rootPath: string;
             folder: string;
             monitored: boolean;
+            /** @description Movies only: whether Reelkeeper may replace the file with a better release. Series versions are always true. */
+            upgrades: boolean;
             /** @description Video files on disk (not counting missing ones). */
             files: number;
             missing: number;
@@ -5782,7 +5794,9 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    monitored: boolean;
+                    monitored?: boolean;
+                    /** @description Whether Reelkeeper may replace this movie's file with a better release. Off: it keeps the file it has, but still downloads the movie again if the file is missing. */
+                    upgrades?: boolean;
                 };
             };
         };
@@ -5796,6 +5810,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     searchVersion: {

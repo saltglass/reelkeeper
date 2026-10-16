@@ -506,7 +506,7 @@ func addMovieVersion(t *testing.T, db *store.Store, f *fixture, title string) {
 	if _, err := db.DB.NewInsert().Model(m).Exec(ctx); err != nil {
 		t.Fatal(err)
 	}
-	v := &library.Version{TitleID: m.ID, ProfileID: 1, RootFolderID: root.ID, Monitored: true, CreatedAt: f.now}
+	v := &library.Version{TitleID: m.ID, ProfileID: 1, RootFolderID: root.ID, Monitored: true, Upgrades: true, CreatedAt: f.now}
 	if _, err := db.DB.NewInsert().Model(v).Exec(ctx); err != nil {
 		t.Fatal(err)
 	}

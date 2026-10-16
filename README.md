@@ -49,6 +49,9 @@ does the same job, and uses the fact that everything lives together:
 - **Versions:** each title can have several copies, each with its own quality
   profile, folder, upgrades and history. A regular copy and a remux are two
   versions of one movie, not two apps.
+- Adding an existing library doesn't start upgrading it: each folder decides
+  whether movies found there are upgraded, and each movie can be switched on
+  or off.
 - Scans and identifies an existing library on its own, using IDs in folder
   names when present, otherwise a scored TMDB match. Uncertain matches wait
   for you on a review screen; nothing is guessed silently.

@@ -519,7 +519,7 @@ func TestBlocklistAPI(t *testing.T) {
 			if _, err := db.DB.NewInsert().Model(title).Exec(ctx); err != nil {
 				t.Fatal(err)
 			}
-			v := &library.Version{TitleID: title.ID, ProfileID: 1, RootFolderID: root, Monitored: monitored, CreatedAt: now}
+			v := &library.Version{TitleID: title.ID, ProfileID: 1, RootFolderID: root, Monitored: monitored, Upgrades: true, CreatedAt: now}
 			if _, err := db.DB.NewInsert().Model(v).Exec(ctx); err != nil {
 				t.Fatal(err)
 			}

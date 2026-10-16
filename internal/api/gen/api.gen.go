@@ -2834,6 +2834,11 @@ type RootFolder struct {
 	// Size Total size of the files
 	Size   int64 `json:"size"`
 	Titles int   `json:"titles"`
+
+	// UpgradeFound Movie folders: whether movies found here (already on disk, or imported from
+	// Radarr) are upgraded when a better release turns up. Each movie can still be
+	// switched on or off on its own page. Always true for series folders, which ignore it.
+	UpgradeFound bool `json:"upgradeFound"`
 }
 
 // RootFolderMediaType defines model for RootFolder.MediaType.
@@ -2844,6 +2849,9 @@ type RootFolderInput struct {
 	DefaultProfileId int64                    `json:"defaultProfileId"`
 	MediaType        RootFolderInputMediaType `json:"mediaType"`
 	Path             string                   `json:"path"`
+
+	// UpgradeFound Movie folders: whether movies found here are upgraded. Off when left out so adding a large library doesn't queue an upgrade search for every movie.
+	UpgradeFound *bool `json:"upgradeFound,omitempty"`
 }
 
 // RootFolderInputMediaType defines model for RootFolderInput.MediaType.
@@ -2853,6 +2861,9 @@ type RootFolderInputMediaType string
 type RootFolderUpdate struct {
 	DefaultProfileId int64 `json:"defaultProfileId"`
 	ManageFiles      bool  `json:"manageFiles"`
+
+	// UpgradeFound Movie folders: turn upgrades on or off for every movie in the folder, including ones Reelkeeper downloaded. Left out: unchanged. Turning it on doesn't start searches; the scheduled pass picks the movies up at its usual pace.
+	UpgradeFound *bool `json:"upgradeFound,omitempty"`
 }
 
 // SeasonDetail defines model for SeasonDetail.
@@ -3365,6 +3376,9 @@ type VersionDetail struct {
 	RootPath     string `json:"rootPath"`
 	Size         int64  `json:"size"`
 
+	// Upgrades Movies only: whether Reelkeeper may replace the file with a better release. Series versions are always true.
+	Upgrades bool `json:"upgrades"`
+
 	// VideoCodec The best file's video codec, e.g. "H.265"; empty if unknown.
 	VideoCodec string `json:"videoCodec"`
 }
@@ -3416,6 +3430,9 @@ type VersionSummary struct {
 	RootFolderId int64  `json:"rootFolderId"`
 	RootPath     string `json:"rootPath"`
 	Size         int64  `json:"size"`
+
+	// Upgrades Movies only: whether Reelkeeper may replace the file with a better release. Series versions are always true.
+	Upgrades bool `json:"upgrades"`
 
 	// VideoCodec The best file's video codec, e.g. "H.265"; empty if unknown.
 	VideoCodec string `json:"videoCodec"`
@@ -3720,7 +3737,10 @@ type DeleteMovieParams struct {
 
 // UpdateVersionJSONBody defines parameters for UpdateVersion.
 type UpdateVersionJSONBody struct {
-	Monitored bool `json:"monitored"`
+	Monitored *bool `json:"monitored,omitempty"`
+
+	// Upgrades Whether Reelkeeper may replace this movie's file with a better release. Off: it keeps the file it has, but still downloads the movie again if the file is missing.
+	Upgrades *bool `json:"upgrades,omitempty"`
 }
 
 // RemoveFromQueueJSONBody defines parameters for RemoveFromQueue.

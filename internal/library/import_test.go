@@ -44,7 +44,7 @@ func TestImportMovie(t *testing.T) {
 		if _, err := f.svc.ImportMovie(ctx, req); !errors.Is(err, ErrNotManaged) {
 			t.Fatalf("unmanaged: %v", err)
 		}
-		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true); err != nil {
+		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true, nil); err != nil {
 			t.Fatal(err)
 		}
 
@@ -117,7 +117,7 @@ func TestImportRefusesDiscImage(t *testing.T) {
 		if _, err := f.svc.Scan(ctx, f.hd.ID, nil); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true); err != nil {
+		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true, nil); err != nil {
 			t.Fatal(err)
 		}
 		movie := f.titleByTMDB(t, 170)
@@ -150,7 +150,7 @@ func TestImportCancelledLeavesNothing(t *testing.T) {
 		if _, err := f.svc.Scan(ctx, f.hd.ID, nil); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true); err != nil {
+		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true, nil); err != nil {
 			t.Fatal(err)
 		}
 		movie := f.titleByTMDB(t, 170)
@@ -188,7 +188,7 @@ func TestEmptyReplaced(t *testing.T) {
 		if got, _ := f.svc.EmptyReplaced(ctx, 30*24*time.Hour, false); len(got) != 0 {
 			t.Fatalf("emptied in an unmanaged folder: %v", got)
 		}
-		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true); err != nil {
+		if _, err := f.svc.UpdateRootFolder(ctx, f.hd.ID, 1, true, nil); err != nil {
 			t.Fatal(err)
 		}
 		got, err := f.svc.EmptyReplaced(ctx, 30*24*time.Hour, true)

@@ -184,6 +184,9 @@ function ReleaseDates({ m }: { m: MovieDetail }) {
   );
 }
 
+const UPGRADES_OFF_HELP =
+  "Off: Reelkeeper keeps this file and never looks for a better copy. A missing file is still downloaded again.";
+
 function VersionCard({
   movieId,
   version: v,
@@ -218,6 +221,17 @@ function VersionCard({
         api.PATCH("/movies/{id}/versions/{versionId}", {
           params: { path: { id: movieId, versionId: v.id } },
           body: { monitored },
+        }),
+      ),
+    onSuccess: invalidate,
+    onError: (e) => setError(e.message),
+  });
+  const upgrades = useMutation({
+    mutationFn: (upgrades: boolean) =>
+      unwrap(
+        api.PATCH("/movies/{id}/versions/{versionId}", {
+          params: { path: { id: movieId, versionId: v.id } },
+          body: { upgrades },
         }),
       ),
     onSuccess: invalidate,
@@ -264,11 +278,24 @@ function VersionCard({
             onCheckedChange={(c) => monitor.mutate(c)}
           />
         </label>
+        <label
+          className="flex items-center gap-2 text-sm"
+          htmlFor={`upg-${v.id}`}
+          title={UPGRADES_OFF_HELP}
+        >
+          Upgrades
+          <Switch
+            id={`upg-${v.id}`}
+            checked={v.upgrades}
+            onCheckedChange={(c) => upgrades.mutate(c)}
+          />
+        </label>
       </CardHeader>
       <CardContent>
         <p className="font-mono text-xs break-all text-muted-foreground">
           {v.rootPath}/{v.folder}
         </p>
+        {!v.upgrades && <p className="text-sm text-muted-foreground">{UPGRADES_OFF_HELP}</p>}
         {error && <Alert variant="error">{error}</Alert>}
         {searched && (
           <p role="status" className="text-sm text-muted-foreground">

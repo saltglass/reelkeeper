@@ -558,3 +558,68 @@ func TestDownloadRequestedMigration(t *testing.T) {
 		})
 	}
 }
+
+// Migration 22 (upgrades are opt-in for movies already on disk): existing
+// versions and media folders get TRUE, so an upgrading install behaves as
+// before; the columns can be set to FALSE afterwards, and the migration
+// goes back down cleanly.
+func TestUpgradeOptInMigration(t *testing.T) {
+	for _, engine := range storetest.Engines() {
+		t.Run(string(engine), func(t *testing.T) {
+			ctx := context.Background()
+			s := storetest.OpenEmpty(t, engine)
+			store.UseMigrationsForTest(s, store.MigrationsUpToForTest(engine, 21))
+			if _, err := s.Migrate(ctx, ""); err != nil {
+				t.Fatal(err)
+			}
+			made := time.Date(2026, 10, 1, 8, 30, 0, 0, time.UTC)
+			var root, title int64
+			if err := s.DB.QueryRowContext(ctx, "INSERT INTO root_folders (path, media_type, default_profile_id, created_at) VALUES ('/movies', 'movie', 1, ?) RETURNING id", made).Scan(&root); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.DB.QueryRowContext(ctx, "INSERT INTO titles (media_type, tmdb_id, title, sort_title, year, created_at) VALUES ('movie', 603, 'The Matrix', 'matrix', 1999, ?) RETURNING id", made).Scan(&title); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := s.DB.ExecContext(ctx, "INSERT INTO versions (title_id, profile_id, root_folder_id, folder, monitored, created_at) VALUES (?, 1, ?, '', TRUE, ?)", title, root, made); err != nil {
+				t.Fatal(err)
+			}
+			store.UseMigrationsForTest(s, store.AllMigrationsForTest(engine))
+			res, err := s.Migrate(ctx, "")
+			if err != nil || res.To < 22 || res.Applied != int(res.To-21) {
+				t.Fatalf("migrate: %+v %v", res, err)
+			}
+			var upgrades, upgradeFound bool
+			if err := s.DB.QueryRowContext(ctx, "SELECT v.upgrades, r.upgrade_found FROM versions v JOIN root_folders r ON r.id = v.root_folder_id").Scan(&upgrades, &upgradeFound); err != nil {
+				t.Fatal(err)
+			}
+			if !upgrades || !upgradeFound {
+				t.Errorf("existing rows: upgrades %v, upgrade_found %v, want both true", upgrades, upgradeFound)
+			}
+			// Both can be turned off, per row.
+			if _, err := s.DB.ExecContext(ctx, "UPDATE versions SET upgrades = ?", false); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := s.DB.ExecContext(ctx, "UPDATE root_folders SET upgrade_found = ?", false); err != nil {
+				t.Fatal(err)
+			}
+			var n int
+			if err := s.DB.QueryRowContext(ctx, "SELECT count(*) FROM versions WHERE NOT upgrades").Scan(&n); err != nil || n != 1 {
+				t.Errorf("versions with upgrades off = %d, %v", n, err)
+			}
+			// Down again: the rows stay.
+			p, err := s.ProviderForTest()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := p.DownTo(ctx, 21); err != nil {
+				t.Fatalf("down: %v", err)
+			}
+			if err := s.DB.QueryRowContext(ctx, "SELECT count(*) FROM versions").Scan(&n); err != nil || n != 1 {
+				t.Errorf("versions after down: %d %v", n, err)
+			}
+			if err := s.DB.QueryRowContext(ctx, "SELECT count(*) FROM root_folders").Scan(&n); err != nil || n != 1 {
+				t.Errorf("root folders after down: %d %v", n, err)
+			}
+		})
+	}
+}

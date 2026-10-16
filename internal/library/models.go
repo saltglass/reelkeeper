@@ -43,13 +43,17 @@ type Profile struct {
 type RootFolder struct {
 	bun.BaseModel `bun:"table:root_folders"`
 
-	ID               int64      `bun:"id,pk,autoincrement"`
-	Path             string     `bun:"path"`
-	MediaType        string     `bun:"media_type"`
-	DefaultProfileID int64      `bun:"default_profile_id"`
-	ManageFiles      bool       `bun:"manage_files"`
-	CreatedAt        time.Time  `bun:"created_at"`
-	LastScanAt       *time.Time `bun:"last_scan_at"`
+	ID               int64  `bun:"id,pk,autoincrement"`
+	Path             string `bun:"path"`
+	MediaType        string `bun:"media_type"`
+	DefaultProfileID int64  `bun:"default_profile_id"`
+	ManageFiles      bool   `bun:"manage_files"`
+	// UpgradeFound (movie folders): whether movies found here, from files
+	// already on disk or a Radarr import, start with Version.Upgrades on.
+	// New folders default to off. Series folders store true and ignore it.
+	UpgradeFound bool       `bun:"upgrade_found"`
+	CreatedAt    time.Time  `bun:"created_at"`
+	LastScanAt   *time.Time `bun:"last_scan_at"`
 }
 
 // Title is a movie (or, from M2, a series) and its TMDB metadata.
@@ -118,13 +122,18 @@ func encodeList(l []string) string {
 type Version struct {
 	bun.BaseModel `bun:"table:versions"`
 
-	ID           int64     `bun:"id,pk,autoincrement"`
-	TitleID      int64     `bun:"title_id"`
-	ProfileID    int64     `bun:"profile_id"`
-	RootFolderID int64     `bun:"root_folder_id"`
-	Folder       string    `bun:"folder"` // relative to the root folder
-	Monitored    bool      `bun:"monitored"`
-	CreatedAt    time.Time `bun:"created_at"`
+	ID           int64  `bun:"id,pk,autoincrement"`
+	TitleID      int64  `bun:"title_id"`
+	ProfileID    int64  `bun:"profile_id"`
+	RootFolderID int64  `bun:"root_folder_id"`
+	Folder       string `bun:"folder"` // relative to the root folder
+	Monitored    bool   `bun:"monitored"`
+	// Upgrades (movies only): whether Reelkeeper may replace the file with a
+	// better release. Off, it keeps the file it has, but still searches
+	// when the file is missing. Series versions keep it true and ignore it.
+	// Bun writes false for a zero bool, so every insert sets it.
+	Upgrades  bool      `bun:"upgrades"`
+	CreatedAt time.Time `bun:"created_at"`
 	// LastSearchAt is when Reelkeeper last searched indexers for this version.
 	LastSearchAt *time.Time `bun:"last_search_at"`
 	// MonitorFrom (series only, "YYYY-MM-DD"): episodes airing on or after

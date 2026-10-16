@@ -35,7 +35,7 @@ func newImportFixture(t *testing.T, db *store.Store, seriesType string, episodes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root, err = f.svc.UpdateRootFolder(ctx, root.ID, 1, true); err != nil {
+	if root, err = f.svc.UpdateRootFolder(ctx, root.ID, 1, true, nil); err != nil {
 		t.Fatal(err)
 	}
 	now := f.svc.now()
@@ -57,7 +57,7 @@ func newImportFixture(t *testing.T, db *store.Store, seriesType string, episodes
 		}
 		tf.ep[label] = e
 	}
-	tf.v = &Version{TitleID: show.ID, ProfileID: 1, RootFolderID: root.ID, Monitored: true, CreatedAt: now}
+	tf.v = &Version{TitleID: show.ID, ProfileID: 1, RootFolderID: root.ID, Monitored: true, Upgrades: true, CreatedAt: now}
 	if _, err := db.DB.NewInsert().Model(tf.v).Exec(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +224,7 @@ func TestImportEpisodesNoneWanted(t *testing.T) {
 			t.Errorf("err = %v", err)
 		}
 		// And a folder Reelkeeper doesn't manage is never written to.
-		if _, err := tf.svc.UpdateRootFolder(ctx, tf.root.ID, 1, false); err != nil {
+		if _, err := tf.svc.UpdateRootFolder(ctx, tf.root.ID, 1, false, nil); err != nil {
 			t.Fatal(err)
 		}
 		_, err = tf.svc.ImportEpisodes(ctx, EpisodeImportRequest{VersionID: tf.v.ID, Source: dl, EpisodeIDs: tf.ids("S01E02")})
@@ -366,7 +366,7 @@ func TestImportEpisodesFixRefusedWhenUnmanaged(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := tf.svc.UpdateRootFolder(ctx, tf.root.ID, 1, false); err != nil {
+		if _, err := tf.svc.UpdateRootFolder(ctx, tf.root.ID, 1, false, nil); err != nil {
 			t.Fatal(err)
 		}
 		touch(t, dl, "fixed.mkv", []byte("b"))

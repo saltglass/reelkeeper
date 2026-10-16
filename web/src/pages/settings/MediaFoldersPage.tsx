@@ -68,10 +68,15 @@ function RootCard({ root, index }: { root: RootFolder; index: number }) {
   const invalidate = useInvalidateLibrary();
   const scan = useScanRoot();
   const [confirmManage, setConfirmManage] = useState(false);
+  // The value the user is about to switch upgrades to; null while no question is open.
+  const [confirmUpgrade, setConfirmUpgrade] = useState<boolean | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const update = useMutation({
-    mutationFn: (body: { defaultProfileId: number; manageFiles: boolean }) =>
-      unwrap(api.PUT("/library/roots/{id}", { params: { path: { id: root.id } }, body })),
+    mutationFn: (body: {
+      defaultProfileId: number;
+      manageFiles: boolean;
+      upgradeFound?: boolean;
+    }) => unwrap(api.PUT("/library/roots/{id}", { params: { path: { id: root.id } }, body })),
     onSuccess: invalidate,
   });
   const remove = useMutation({
@@ -86,6 +91,7 @@ function RootCard({ root, index }: { root: RootFolder; index: number }) {
 
   const isTv = root.mediaType === "series";
   const noun = isTv ? "shows" : "movies";
+  const movieCount = `${root.titles} ${root.titles === 1 ? "movie" : "movies"}`;
   const stats = [
     isTv ? `${root.titles} series` : `${root.titles} movies`,
     `${root.files} files`,
@@ -222,6 +228,25 @@ function RootCard({ root, index }: { root: RootFolder; index: number }) {
             }
           />
         </div>
+        {!isTv && (
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <label htmlFor={`upgrade-${root.id}`} className="text-sm font-medium">
+                Upgrade movies found here
+              </label>
+              <p className="text-sm text-muted-foreground">
+                {root.upgradeFound
+                  ? "Reelkeeper looks for better copies of the movies in this folder, as their quality profile says."
+                  : "Off: Reelkeeper keeps the files in this folder as they are and only downloads movies that are missing. You can turn upgrades on for one movie on its page."}
+              </p>
+            </div>
+            <Switch
+              id={`upgrade-${root.id}`}
+              checked={root.upgradeFound}
+              onCheckedChange={setConfirmUpgrade}
+            />
+          </div>
+        )}
         <div className="flex justify-end">
           <Button variant="ghost" size="sm" onClick={() => setConfirmRemove(true)}>
             <Trash2 /> Remove folder
@@ -248,6 +273,38 @@ function RootCard({ root, index }: { root: RootFolder; index: number }) {
               }}
             >
               Yes, Reelkeeper manages it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmUpgrade !== null} onOpenChange={(o) => !o && setConfirmUpgrade(null)}>
+        <DialogContent>
+          <DialogTitle>
+            {confirmUpgrade
+              ? `Look for better copies of ${movieCount}?`
+              : `Stop upgrading ${movieCount}?`}
+          </DialogTitle>
+          <DialogDescription>
+            {confirmUpgrade
+              ? `Reelkeeper will turn upgrades on for every movie in ${root.path}, including ones it downloaded, and look for better copies at its usual pace.`
+              : `Reelkeeper keeps every file in ${root.path} as it is and stops looking for better copies of them. Missing movies are still downloaded. You can turn upgrades back on for one movie on its page.`}
+          </DialogDescription>
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button variant="ghost">Cancel</Button>
+            </DialogClose>
+            <Button
+              onClick={() => {
+                update.mutate({
+                  defaultProfileId: root.defaultProfileId,
+                  manageFiles: root.manageFiles,
+                  upgradeFound: confirmUpgrade === true,
+                });
+                setConfirmUpgrade(null);
+              }}
+            >
+              {confirmUpgrade ? "Yes, look for better copies" : "Yes, keep the files"}
             </Button>
           </div>
         </DialogContent>
@@ -292,6 +349,8 @@ function AddRootDialog({
   const [path, setPath] = useState("");
   const [browse, setBrowse] = useState("/");
   const [mediaType, setMediaType] = useState<"movie" | "series">("movie");
+  // Movies only. Off, so adding a big library doesn't queue an upgrade search for every movie.
+  const [upgradeFound, setUpgradeFound] = useState(false);
   const isTv = mediaType === "series";
   // Only profiles that can hold this kind of media; default to the first of them.
   const fitting = (profiles.data ?? []).filter((p) => p.appliesTo !== (isTv ? "movie" : "series"));
@@ -306,7 +365,13 @@ function AddRootDialog({
     mutationFn: () =>
       unwrap(
         api.POST("/library/roots", {
-          body: { path, mediaType, defaultProfileId: profileId },
+          // A TV folder has no upgrade setting; the server ignores it there.
+          body: {
+            path,
+            mediaType,
+            defaultProfileId: profileId,
+            ...(isTv ? {} : { upgradeFound }),
+          },
         }),
       ),
     onSuccess: () => {
@@ -314,6 +379,7 @@ function AddRootDialog({
       qc.invalidateQueries({ queryKey: ["system", "tasks"] });
       onOpenChange(false);
       setPath("");
+      setUpgradeFound(false);
       add.reset();
     },
   });
@@ -425,6 +491,21 @@ function AddRootDialog({
               ))}
             </select>
           </Field>
+          {!isTv && (
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <label htmlFor="root-upgrade" className="text-sm font-medium">
+                  Upgrade movies already in this folder
+                </label>
+                <p className="text-sm text-muted-foreground">
+                  Off: Reelkeeper catalogs the movies it finds and keeps their files as they are.
+                  Movies it downloads later are still upgraded as their quality profile says. You
+                  can turn this on later.
+                </p>
+              </div>
+              <Switch id="root-upgrade" checked={upgradeFound} onCheckedChange={setUpgradeFound} />
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <DialogClose asChild>
               <Button type="button" variant="ghost">

@@ -75,12 +75,12 @@ func newFakeLib() *fakeLib {
 	root := library.RootFolder{ID: 1, Path: "/media/movies", MediaType: library.Movie, DefaultProfileID: 1}
 	return &fakeLib{monitor: map[int64]bool{}, tags: map[int64][]int64{}, pms: []library.ProfileMovie{
 		{Title: library.Title{ID: 1, TMDBID: 603, Title: "The Matrix", Year: 1999}, Root: root,
-			Version: library.Version{ID: 1, TitleID: 1, ProfileID: 1, RootFolderID: 1, Folder: "The Matrix (1999)", Monitored: true},
+			Version: library.Version{ID: 1, TitleID: 1, ProfileID: 1, RootFolderID: 1, Folder: "The Matrix (1999)", Monitored: true, Upgrades: true},
 			Files:   []library.MediaFile{{Path: "The Matrix (1999)/The Matrix (1999) Bluray-1080p.mkv", Quality: "WEBDL-1080p"}}},
 		{Title: library.Title{ID: 2, TMDBID: 604, Title: "The Matrix Reloaded", Year: 2003}, Root: root,
-			Version: library.Version{ID: 2, TitleID: 2, ProfileID: 1, RootFolderID: 1, Monitored: true}},
+			Version: library.Version{ID: 2, TitleID: 2, ProfileID: 1, RootFolderID: 1, Monitored: true, Upgrades: true}},
 		{Title: library.Title{ID: 3, TMDBID: 999, Title: "Only Here", Year: 2020}, Root: root,
-			Version: library.Version{ID: 3, TitleID: 3, ProfileID: 1, RootFolderID: 1, Monitored: true}},
+			Version: library.Version{ID: 3, TitleID: 3, ProfileID: 1, RootFolderID: 1, Monitored: true, Upgrades: true}},
 	}}
 }
 
@@ -100,8 +100,8 @@ func (f *fakeLib) EnsureVersion(_ context.Context, tmdbID int, profileID, rootID
 	f.ensured = append(f.ensured, tmdbID)
 	id := int64(3 + len(f.ensured))
 	f.pms = append(f.pms, library.ProfileMovie{Title: library.Title{ID: id, TMDBID: tmdbID},
-		Version: library.Version{ID: id, TitleID: id, ProfileID: profileID, RootFolderID: rootID, Folder: folder, Monitored: monitored}})
-	return &library.Version{ID: id, TitleID: id, Monitored: monitored, Folder: folder}, true, nil
+		Version: library.Version{ID: id, TitleID: id, ProfileID: profileID, RootFolderID: rootID, Folder: folder, Monitored: monitored, Upgrades: true}})
+	return &library.Version{ID: id, TitleID: id, Monitored: monitored, Upgrades: true, Folder: folder}, true, nil
 }
 func (f *fakeLib) SetMonitored(_ context.Context, _, versionID int64, m bool) error {
 	f.monitor[versionID] = m
@@ -140,7 +140,7 @@ func titles(t *testing.T, db *store.Store) {
 		if _, err := db.DB.NewInsert().Model(ti).Exec(ctx); err != nil {
 			t.Fatal(err)
 		}
-		v := &library.Version{TitleID: ti.ID, ProfileID: 1, RootFolderID: root.ID, CreatedAt: now}
+		v := &library.Version{TitleID: ti.ID, ProfileID: 1, RootFolderID: root.ID, Upgrades: true, CreatedAt: now}
 		if _, err := db.DB.NewInsert().Model(v).Exec(ctx); err != nil {
 			t.Fatal(err)
 		}

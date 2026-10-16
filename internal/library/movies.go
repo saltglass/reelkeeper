@@ -246,7 +246,7 @@ func (s *Service) AddMovie(ctx context.Context, tmdbID int, profileID, rootID in
 	if n > 0 {
 		return nil, ErrInUse
 	}
-	v := &Version{TitleID: t.ID, ProfileID: profileID, RootFolderID: root.ID, Folder: s.folderName(ctx, t, profileID), Monitored: monitored, CreatedAt: s.now().UTC()}
+	v := &Version{TitleID: t.ID, ProfileID: profileID, RootFolderID: root.ID, Folder: s.folderName(ctx, t, profileID), Monitored: monitored, Upgrades: true, CreatedAt: s.now().UTC()}
 	if _, err := s.db.DB.NewInsert().Model(v).Exec(ctx); err != nil {
 		return nil, err
 	}
@@ -360,6 +360,21 @@ func (s *Service) RefreshStale(ctx context.Context, maxAge time.Duration, limit 
 // SetMonitored turns monitoring of a version on or off.
 func (s *Service) SetMonitored(ctx context.Context, titleID, versionID int64, monitored bool) error {
 	res, err := s.db.DB.NewUpdate().Model((*Version)(nil)).Set("monitored = ?", monitored).
+		Where("id = ? AND title_id = ?", versionID, titleID).Exec(ctx)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	s.onChange()
+	return nil
+}
+
+// SetUpgrades turns upgrades of a movie version on or off. Off, Reelkeeper
+// keeps the file it has (a missing file is still downloaded again).
+func (s *Service) SetUpgrades(ctx context.Context, titleID, versionID int64, upgrades bool) error {
+	res, err := s.db.DB.NewUpdate().Model((*Version)(nil)).Set("upgrades = ?", upgrades).
 		Where("id = ? AND title_id = ?", versionID, titleID).Exec(ctx)
 	if err != nil {
 		return err

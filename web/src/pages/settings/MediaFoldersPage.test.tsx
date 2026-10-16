@@ -19,6 +19,7 @@ const root = {
   mediaType: "movie",
   defaultProfileId: 1,
   manageFiles: false,
+  upgradeFound: false,
   titles: 222,
   files: 240,
   missing: 0,
@@ -27,7 +28,7 @@ const root = {
   freeSpace: 1024 ** 4,
 };
 
-function open(roots: unknown[] = [root]) {
+function open(roots: unknown[] = [root], extra: Parameters<typeof renderApp>[1] = {}) {
   const saved: unknown[] = [];
   const added: unknown[] = [];
   const view = renderApp("/settings/media", {
@@ -91,6 +92,7 @@ function open(roots: unknown[] = [root]) {
       saved.push(body);
       return json(body);
     },
+    ...extra,
   });
   return { ...view, saved, added };
 }
@@ -172,6 +174,125 @@ describe("media folders page", () => {
     await waitFor(() =>
       expect(added).toEqual([{ path: "/media/shows", mediaType: "series", defaultProfileId: 1 }]),
     );
+  });
+
+  describe("upgrades", () => {
+    const upgradeSwitch = "Upgrade movies found here";
+
+    it("hides the switch for TV folders, and in the add dialog once TV is chosen", async () => {
+      open([
+        root,
+        {
+          ...root,
+          id: 2,
+          path: "/media/shows",
+          mediaType: "series",
+          titles: 40,
+          upgradeFound: true,
+        },
+      ]);
+      expect(await screen.findByText("/media/shows")).toBeInTheDocument();
+      // One card has it (the movie folder), the TV folder's card doesn't.
+      expect(screen.getAllByRole("switch", { name: upgradeSwitch })).toHaveLength(1);
+
+      await userEvent.click(screen.getByRole("button", { name: /Add a media folder/ }));
+      const dialog = await screen.findByRole("dialog");
+      const addSwitch = "Upgrade movies already in this folder";
+      expect(within(dialog).getByRole("switch", { name: addSwitch })).not.toBeChecked();
+      await userEvent.selectOptions(within(dialog).getByLabelText("What's in it"), "TV shows");
+      expect(within(dialog).queryByRole("switch", { name: addSwitch })).not.toBeInTheDocument();
+    });
+
+    it("adds a movie folder with upgrades off unless the switch is turned on", async () => {
+      const { added } = open();
+      const addFolder = async (path: string, turnOn: boolean) => {
+        await userEvent.click(await screen.findByRole("button", { name: /Add a media folder/ }));
+        const dialog = await screen.findByRole("dialog");
+        await userEvent.type(within(dialog).getByLabelText("Folder"), path);
+        if (turnOn) {
+          await userEvent.click(
+            within(dialog).getByRole("switch", { name: "Upgrade movies already in this folder" }),
+          );
+        }
+        await userEvent.click(within(dialog).getByRole("button", { name: "Add and scan" }));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      };
+      await addFolder("/media/a", false);
+      await addFolder("/media/b", true);
+      expect(added).toEqual([
+        { path: "/media/a", mediaType: "movie", defaultProfileId: 1, upgradeFound: false },
+        { path: "/media/b", mediaType: "movie", defaultProfileId: 1, upgradeFound: true },
+      ]);
+    });
+
+    it("asks first, with the movie count, and sends upgradeFound only then", async () => {
+      const puts: unknown[] = [];
+      open([root], {
+        "PUT /library/roots/1": async (req) => {
+          const body = await req.json();
+          puts.push(body);
+          return json({ ...root, ...body });
+        },
+      });
+      await userEvent.click(await screen.findByRole("switch", { name: upgradeSwitch }));
+      let dialog = await screen.findByRole("dialog");
+      expect(within(dialog).getByText("Look for better copies of 222 movies?")).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(
+          "Reelkeeper will turn upgrades on for every movie in /media/movies, including ones it downloaded, and look for better copies at its usual pace.",
+        ),
+      ).toBeInTheDocument();
+      // Cancelling changes nothing.
+      await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(puts).toEqual([]);
+      expect(screen.getByRole("switch", { name: upgradeSwitch })).not.toBeChecked();
+
+      await userEvent.click(screen.getByRole("switch", { name: upgradeSwitch }));
+      dialog = await screen.findByRole("dialog");
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Yes, look for better copies" }),
+      );
+      await waitFor(() =>
+        expect(puts).toEqual([{ defaultProfileId: 1, manageFiles: false, upgradeFound: true }]),
+      );
+    });
+
+    it("confirms turning upgrades off, with a singular count", async () => {
+      const puts: unknown[] = [];
+      open([{ ...root, titles: 1, upgradeFound: true }], {
+        "PUT /library/roots/1": async (req) => {
+          const body = await req.json();
+          puts.push(body);
+          return json({ ...root, ...body });
+        },
+      });
+      await userEvent.click(await screen.findByRole("switch", { name: upgradeSwitch }));
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).getByText("Stop upgrading 1 movie?")).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(/keeps every file in \/media\/movies as it is/),
+      ).toBeInTheDocument();
+      await userEvent.click(within(dialog).getByRole("button", { name: "Yes, keep the files" }));
+      await waitFor(() =>
+        expect(puts).toEqual([{ defaultProfileId: 1, manageFiles: false, upgradeFound: false }]),
+      );
+    });
+
+    it("leaves upgradeFound out when only the profile changes", async () => {
+      const puts: unknown[] = [];
+      open([root], {
+        "PUT /library/roots/1": async (req) => {
+          puts.push(await req.json());
+          return json(root);
+        },
+      });
+      await userEvent.selectOptions(
+        await screen.findByLabelText("Movies here are the version"),
+        "Remux",
+      );
+      await waitFor(() => expect(puts).toEqual([{ defaultProfileId: 2, manageFiles: false }]));
+    });
   });
 
   it("edits the TV templates, previews episodes, flags problems and saves", async () => {

@@ -127,6 +127,9 @@ type RootInput struct {
 	MediaType        string
 	DefaultProfileID int64
 	ManageFiles      bool
+	// UpgradeFound (movie folders): whether movies found here are upgraded.
+	// Series folders store true and ignore it.
+	UpgradeFound bool
 }
 
 // AddRootFolder validates and adds a root folder.
@@ -175,7 +178,8 @@ func (s *Service) AddRootFolder(ctx context.Context, in RootInput) (*RootFolder,
 	if errs != nil {
 		return nil, errs
 	}
-	r := &RootFolder{Path: p, MediaType: in.MediaType, DefaultProfileID: in.DefaultProfileID, ManageFiles: in.ManageFiles, CreatedAt: s.now().UTC()}
+	r := &RootFolder{Path: p, MediaType: in.MediaType, DefaultProfileID: in.DefaultProfileID, ManageFiles: in.ManageFiles,
+		UpgradeFound: in.MediaType == Series || in.UpgradeFound, CreatedAt: s.now().UTC()}
 	if _, err := s.db.DB.NewInsert().Model(r).Exec(ctx); err != nil {
 		return nil, err
 	}
@@ -183,8 +187,12 @@ func (s *Service) AddRootFolder(ctx context.Context, in RootInput) (*RootFolder,
 	return r, nil
 }
 
-// UpdateRootFolder changes a root folder's profile or file management.
-func (s *Service) UpdateRootFolder(ctx context.Context, id int64, profileID int64, manageFiles bool) (*RootFolder, error) {
+// UpdateRootFolder changes a root folder's profile or file management, and,
+// for a movie folder, whether its movies are upgraded (upgradeFound nil:
+// unchanged). Changing that sets Upgrades on every movie version in the
+// folder, including ones Reelkeeper downloaded. It starts no searches: the
+// scheduled pass picks the movies up at its usual pace.
+func (s *Service) UpdateRootFolder(ctx context.Context, id int64, profileID int64, manageFiles bool, upgradeFound *bool) (*RootFolder, error) {
 	r, err := s.RootFolder(ctx, id)
 	if err != nil {
 		return nil, err
@@ -208,10 +216,23 @@ func (s *Service) UpdateRootFolder(ctx context.Context, id int64, profileID int6
 		s.logger.Warn("root folder file management changed", "path", r.Path, "manage_files", manageFiles)
 	}
 	r.DefaultProfileID, r.ManageFiles = profileID, manageFiles
-	var moved int64
+	// A series folder ignores the setting (it stays true).
+	upgradeChanged := upgradeFound != nil && r.MediaType == Movie && *upgradeFound != r.UpgradeFound
+	if upgradeChanged {
+		r.UpgradeFound = *upgradeFound
+	}
+	var moved, upgraded int64
 	err = s.db.DB.RunInTx(ctx, nil, func(ctx context.Context, tx bunTx) error {
-		if _, err := tx.NewUpdate().Model(r).Column("default_profile_id", "manage_files").WherePK().Exec(ctx); err != nil {
+		if _, err := tx.NewUpdate().Model(r).Column("default_profile_id", "manage_files", "upgrade_found").WherePK().Exec(ctx); err != nil {
 			return err
+		}
+		if upgradeChanged {
+			res, err := tx.NewUpdate().Model((*Version)(nil)).Set("upgrades = ?", r.UpgradeFound).
+				Where("root_folder_id = ?", r.ID).Exec(ctx)
+			if err != nil {
+				return err
+			}
+			upgraded, _ = res.RowsAffected()
 		}
 		if profileID == oldProfile {
 			return nil
@@ -231,8 +252,13 @@ func (s *Service) UpdateRootFolder(ctx context.Context, id int64, profileID int6
 	if err != nil {
 		return nil, err
 	}
-	if profileID != oldProfile {
-		s.logger.Info("root folder profile changed", "path", r.Path, "from", oldProfile, "to", profileID, "versions_moved", moved)
+	if upgradeChanged {
+		s.logger.Info("root folder upgrades changed", "path", r.Path, "upgrade_found", r.UpgradeFound, "versions_changed", upgraded)
+	}
+	if profileID != oldProfile || upgradeChanged {
+		if profileID != oldProfile {
+			s.logger.Info("root folder profile changed", "path", r.Path, "from", oldProfile, "to", profileID, "versions_moved", moved)
+		}
 		s.onChange()
 	}
 	return r, nil
