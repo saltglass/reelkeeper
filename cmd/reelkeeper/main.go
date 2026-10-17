@@ -143,6 +143,19 @@ func serve(stderr io.Writer) int {
 		broker.Publish(events.Event{Type: events.SettingsChanged, Data: map[string]string{"group": group}})
 	})
 
+	// The built-in download client's engine runs while it is the download
+	// client, or the one a move is leaving; it follows the settings.
+	syncBuiltin := func() { app.builtin.Apply(app.settings.DownloadClient(), app.settings.DownloadMove()) }
+	syncBuiltin()
+	// Closed on every way out, after the tasks that use it have stopped, and
+	// before the database closes: it saves its records and closes its files.
+	defer app.builtin.Close()
+	app.settings.OnChange(func(group string) {
+		if group == settings.GroupDownloadClient || group == settings.GroupDownloadMove {
+			syncBuiltin()
+		}
+	})
+
 	if v := os.Getenv("REELKEEPER_RESET_AUTH"); v == "1" || strings.EqualFold(v, "true") {
 		if err := app.settings.EnableLocalLogin(ctx); err != nil {
 			logger.Error("REELKEEPER_RESET_AUTH: can't turn password sign-in back on", "error", err)
@@ -321,6 +334,8 @@ type appServices struct {
 	grab      *grab.Service
 	downloads *download.Service
 	notify    *notify.Service
+	// builtin runs the built-in download client's engine (nil unless serving).
+	builtin *download.BuiltinHost
 }
 
 // openApp opens the database, loads the secret key and settings, and
@@ -376,6 +391,12 @@ func openApp(ctx context.Context, cfg config.Config, logger *slog.Logger, servin
 	dl := download.NewService(db, st.DownloadClient, idx, lib, hist, logger)
 	dl.SetSecrets(box)
 	dl.SetMoves(st)
+	// The built-in client's engine runs only while serving (serve starts it).
+	var builtinHost *download.BuiltinHost
+	if serving {
+		builtinHost = download.NewBuiltinHost(cfg.DataDir, logger)
+		dl.SetBuiltin(builtinHost)
+	}
 	gr.SetDownloads(dl, dl)
 	dl.SetWantedTitles(gr.WantedTitleIDs)
 	nt := notify.New(st.Notifications, logger)
@@ -383,7 +404,7 @@ func openApp(ctx context.Context, cfg config.Config, logger *slog.Logger, servin
 	gr.SetNotifier(nt.Notify)
 	idx.SetNotifier(nt.Notify)
 	return &appServices{box: box, notify: nt, db: db, settings: st, auth: auth.New(db, st, logger), library: lib, indexers: idx,
-		history: hist, grab: gr, downloads: dl}, nil
+		history: hist, grab: gr, downloads: dl, builtin: builtinHost}, nil
 }
 
 func resetAuth(stdout, stderr io.Writer) int {

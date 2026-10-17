@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -601,7 +603,7 @@ func TestDownloadClientType(t *testing.T) {
 			t.Errorf("type left out: %+v, %v", got, err)
 		}
 		_, err := svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{Type: "rtorrent", URL: "http://192.168.1.20:8112", Username: "a"})
-		if errs := fieldErrors(t, err); errs["type"] != "Choose qBittorrent, Transmission or Deluge." {
+		if errs := fieldErrors(t, err); errs["type"] != "Choose qBittorrent, Transmission, Deluge or Built-in." {
 			t.Errorf("bad type: %v", errs)
 		}
 
@@ -643,6 +645,145 @@ func TestDownloadClientType(t *testing.T) {
 		}
 		if got := newService(t, db, testKey).DownloadClient(); got.Type != settings.ClientTransmission {
 			t.Errorf("type after clearing and restarting: %+v", got)
+		}
+	})
+}
+
+func ptr[T any](v T) *T { return &v }
+
+// The built-in client has no address or login; it is set up by its folder.
+func TestDownloadClientBuiltin(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		svc := newService(t, db, testKey)
+		folder := t.TempDir()
+		pw := "left-over"
+
+		// A first save: the defaults, and nothing of another client's address or login.
+		got, err := svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{
+			Type: settings.ClientBuiltin, URL: "http://leftover:1", Username: "x", Password: &pw, Folder: folder + "/",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := settings.DownloadClient{
+			Type: settings.ClientBuiltin, Folder: folder, ListenPort: 6881, MaxActiveDownloads: 3, MaxActiveSeeds: 25,
+		}
+		if got != want || !got.Configured() || got.ClientName() != "Built-in" || got.ClientType() != settings.ClientBuiltin {
+			t.Fatalf("saved = %+v, want %+v", got, want)
+		}
+		if reread := newService(t, db, testKey).DownloadClient(); reread != want {
+			t.Errorf("after a restart = %+v", reread)
+		}
+
+		// Values left out are kept; the ones given are stored and read back.
+		got, err = svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{
+			Folder: folder, ListenPort: ptr(51413), MaxActiveSeeds: ptr(0), DownloadLimitKBs: ptr(500),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		want.ListenPort, want.MaxActiveSeeds, want.DownloadLimitKBs = 51413, 0, 500
+		if got != want {
+			t.Errorf("after changes = %+v, want %+v", got, want)
+		}
+		got, err = svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{Folder: folder, UploadLimitKBs: ptr(80)})
+		if err != nil || got.ListenPort != 51413 || got.MaxActiveSeeds != 0 || got.DownloadLimitKBs != 500 || got.UploadLimitKBs != 80 {
+			t.Errorf("a later save forgot values: %+v, %v", got, err)
+		}
+		if reread := newService(t, db, testKey).DownloadClient(); reread != got {
+			t.Errorf("after a restart = %+v, want %+v", reread, got)
+		}
+
+		// Clearing the folder removes the client but remembers the kind, and starts over.
+		if got, err := svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{}); err != nil || got.Configured() || got.Type != settings.ClientBuiltin ||
+			got.ListenPort != 6881 || got.DownloadLimitKBs != 0 {
+			t.Errorf("cleared = %+v, %v", got, err)
+		}
+
+		// Switching to another client drops the built-in fields, and back picks the defaults.
+		if _, err := svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{Type: settings.ClientBuiltin, Folder: folder, ListenPort: ptr(7000), UploadLimitKBs: ptr(5)}); err != nil {
+			t.Fatal(err)
+		}
+		got, err = svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{Type: settings.ClientTransmission, URL: "http://tm:9091", Folder: "/dl"})
+		if err != nil || got.ListenPort != 0 || got.MaxActiveDownloads != 0 || got.UploadLimitKBs != 0 || got.Folder != "/dl" || got.URL == "" {
+			t.Errorf("transmission after the built-in client = %+v, %v", got, err)
+		}
+		got, err = svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{Type: settings.ClientBuiltin, Folder: folder})
+		if err != nil || got.ListenPort != 6881 || got.MaxActiveDownloads != 3 || got.MaxActiveSeeds != 25 || got.UploadLimitKBs != 0 || got.URL != "" {
+			t.Errorf("built-in again = %+v, %v", got, err)
+		}
+	})
+}
+
+func TestDownloadClientBuiltinValidation(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		svc := newService(t, db, testKey)
+		dir := t.TempDir()
+		file := filepath.Join(dir, "file")
+		if err := os.WriteFile(file, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		base := func() settings.DownloadClientUpdate {
+			return settings.DownloadClientUpdate{Type: settings.ClientBuiltin, Folder: dir}
+		}
+		for _, tc := range []struct {
+			name   string
+			change func(*settings.DownloadClientUpdate)
+			field  string
+			text   string
+		}{
+			{"a relative folder", func(u *settings.DownloadClientUpdate) { u.Folder = "downloads" }, "folder", "full path"},
+			{"a folder that isn't there", func(u *settings.DownloadClientUpdate) { u.Folder = dir + "/missing" }, "folder", "doesn't exist"},
+			{"a file for a folder", func(u *settings.DownloadClientUpdate) { u.Folder = file }, "folder", "isn't a folder"},
+			{"a port below 1024", func(u *settings.DownloadClientUpdate) { u.ListenPort = ptr(80) }, "listenPort", "1024 to 65535"},
+			{"a port above 65535", func(u *settings.DownloadClientUpdate) { u.ListenPort = ptr(70000) }, "listenPort", "1024 to 65535"},
+			{"no active downloads", func(u *settings.DownloadClientUpdate) { u.MaxActiveDownloads = ptr(0) }, "maxActiveDownloads", "1 to 50"},
+			{"too many active downloads", func(u *settings.DownloadClientUpdate) { u.MaxActiveDownloads = ptr(51) }, "maxActiveDownloads", "1 to 50"},
+			{"a negative seed limit", func(u *settings.DownloadClientUpdate) { u.MaxActiveSeeds = ptr(-1) }, "maxActiveSeeds", "0 (no limit) to 10000"},
+			{"too many active seeds", func(u *settings.DownloadClientUpdate) { u.MaxActiveSeeds = ptr(10001) }, "maxActiveSeeds", "0 (no limit) to 10000"},
+			{"a negative download limit", func(u *settings.DownloadClientUpdate) { u.DownloadLimitKBs = ptr(-5) }, "downloadLimitKBs", "KB/s"},
+			{"a negative upload limit", func(u *settings.DownloadClientUpdate) { u.UploadLimitKBs = ptr(-5) }, "uploadLimitKBs", "KB/s"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				u := base()
+				tc.change(&u)
+				_, err := svc.ApplyDownloadClient(u)
+				if errs := fieldErrors(t, err); !strings.Contains(errs[tc.field], tc.text) {
+					t.Errorf("errors = %v, want %s to contain %q", errs, tc.field, tc.text)
+				}
+				if _, err := svc.SaveDownloadClient(context.Background(), u); err == nil {
+					t.Error("saved")
+				}
+			})
+		}
+		// The limits that are fine.
+		u := base()
+		u.ListenPort, u.MaxActiveDownloads, u.MaxActiveSeeds = ptr(1024), ptr(50), ptr(10000)
+		if _, err := svc.ApplyDownloadClient(u); err != nil {
+			t.Errorf("edge values: %v", err)
+		}
+		// A folder Reelkeeper can look at but not write to.
+		if os.Getuid() != 0 {
+			ro := t.TempDir()
+			if err := os.Chmod(ro, 0o500); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(ro, 0o700) })
+			u := base()
+			u.Folder = ro
+			if _, err := svc.ApplyDownloadClient(u); !strings.Contains(fieldErrors(t, err)["folder"], "can't write to") {
+				t.Errorf("read-only folder: %v", err)
+			}
+		}
+		// The other clients are unaffected by the built-in settings sent along.
+		got, err := svc.ApplyDownloadClient(settings.DownloadClientUpdate{Type: settings.ClientQBittorrent, URL: "http://q:8080", Username: "a", ListenPort: ptr(80)})
+		if err != nil || got.ListenPort != 0 {
+			t.Errorf("qBittorrent with a built-in port: %+v, %v", got, err)
+		}
+		// A folder that doesn't need checking: the client being removed.
+		if got, err := svc.ApplyDownloadClient(settings.DownloadClientUpdate{Type: settings.ClientBuiltin}); err != nil || got.Configured() {
+			t.Errorf("no folder = %+v, %v", got, err)
 		}
 	})
 }

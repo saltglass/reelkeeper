@@ -144,6 +144,7 @@ func (e DashboardSummaryGrabsMode) Valid() bool {
 
 // Defines values for DownloadClientType.
 const (
+	Builtin      DownloadClientType = "builtin"
 	Deluge       DownloadClientType = "deluge"
 	Qbittorrent  DownloadClientType = "qbittorrent"
 	Transmission DownloadClientType = "transmission"
@@ -152,6 +153,8 @@ const (
 // Valid indicates whether the value is a known member of the DownloadClientType enum.
 func (e DownloadClientType) Valid() bool {
 	switch e {
+	case Builtin:
+		return true
 	case Deluge:
 		return true
 	case Qbittorrent:
@@ -1559,38 +1562,71 @@ type DeleteMovieResult struct {
 
 // DownloadClient defines model for DownloadClient.
 type DownloadClient struct {
-	// Folder Where the client saves Reelkeeper's downloads, as the client sees it. Empty: the client's default folder.
-	Folder      string `json:"folder"`
-	PasswordSet bool   `json:"passwordSet"`
+	// DownloadLimitKBs Built-in client only: download speed limit in KB/s; 0 is no limit.
+	DownloadLimitKBs int `json:"downloadLimitKBs"`
 
-	// Type Which download client it is. Settings saved before there was a choice read as `qbittorrent`.
+	// Folder Where the client saves Reelkeeper's downloads, as the client sees it. Empty: the client's default folder (for the built-in client, which has none: it isn't set up).
+	Folder string `json:"folder"`
+
+	// ListenPort Built-in client only (0 for the others): the TCP and UDP port peers connect to.
+	ListenPort int `json:"listenPort"`
+
+	// MaxActiveDownloads Built-in client only (0 for the others): how many unfinished torrents download at once; the others wait as Queued.
+	MaxActiveDownloads int `json:"maxActiveDownloads"`
+
+	// MaxActiveSeeds Built-in client only: how many finished torrents upload at once; 0 is no limit.
+	MaxActiveSeeds int  `json:"maxActiveSeeds"`
+	PasswordSet    bool `json:"passwordSet"`
+
+	// Type Which download client it is. Settings saved before there was a choice read as `qbittorrent`. `builtin` is Reelkeeper's own
+	// torrent client (experimental): it has no address or login, and counts as set up once it has a `folder`.
 	Type DownloadClientType `json:"type"`
 
-	// Url The client's address: qBittorrent's Web UI, Transmission's RPC address or Deluge's web UI. Empty: no download client.
+	// UploadLimitKBs Built-in client only: upload speed limit in KB/s; 0 is no limit.
+	UploadLimitKBs int `json:"uploadLimitKBs"`
+
+	// Url The client's address: qBittorrent's Web UI, Transmission's RPC address or Deluge's web UI. Empty: no download client. Always empty for the built-in client.
 	Url string `json:"url"`
 
 	// Username Always empty for Deluge
 	Username string `json:"username"`
 }
 
-// DownloadClientType Which download client it is. Settings saved before there was a choice read as `qbittorrent`.
+// DownloadClientType Which download client it is. Settings saved before there was a choice read as `qbittorrent`. `builtin` is Reelkeeper's own
+// torrent client (experimental): it has no address or login, and counts as set up once it has a `folder`.
 type DownloadClientType string
 
 // DownloadClientUpdate defines model for DownloadClientUpdate.
 type DownloadClientUpdate struct {
-	// Folder Download folder as the client sees it (an absolute path), or empty for the client's default.
+	// DownloadLimitKBs Built-in client only: KB/s, 0 for no limit. Leaving it out keeps the current value.
+	DownloadLimitKBs *int `json:"downloadLimitKBs,omitempty"`
+
+	// Folder Download folder as the client sees it (an absolute path), or empty for the client's default. Required by the built-in client (it must exist and be writable).
 	Folder *string `json:"folder,omitempty"`
 
 	// LeaveSeeding Only when `type` changes (left out means false). True leaves the torrents that are still seeding in the old client (Reelkeeper stops tracking them,
 	// as before 1.3); false moves them too. Torrents in Activity → Queue always move.
 	LeaveSeeding *bool `json:"leaveSeeding,omitempty"`
 
+	// ListenPort Built-in client only. Leaving it out keeps the current value (6881 at first).
+	ListenPort *int `json:"listenPort,omitempty"`
+
+	// MaxActiveDownloads Built-in client only. Leaving it out keeps the current value (3 at first).
+	MaxActiveDownloads *int `json:"maxActiveDownloads,omitempty"`
+
+	// MaxActiveSeeds Built-in client only; 0 is no limit. Leaving it out keeps the current value (25 at first).
+	MaxActiveSeeds *int `json:"maxActiveSeeds,omitempty"`
+
 	// Password Leave out to keep the stored password.
 	Password *string `json:"password,omitempty"`
 
-	// Type Which download client it is. Settings saved before there was a choice read as `qbittorrent`.
+	// Type Which download client it is. Settings saved before there was a choice read as `qbittorrent`. `builtin` is Reelkeeper's own
+	// torrent client (experimental): it has no address or login, and counts as set up once it has a `folder`.
 	Type *DownloadClientType `json:"type,omitempty"`
-	Url  string              `json:"url"`
+
+	// UploadLimitKBs Built-in client only: KB/s, 0 for no limit. Leaving it out keeps the current value.
+	UploadLimitKBs *int   `json:"uploadLimitKBs,omitempty"`
+	Url            string `json:"url"`
 
 	// Username Required for qBittorrent. Transmission's login is optional
 	Username string `json:"username"`

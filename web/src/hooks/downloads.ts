@@ -31,7 +31,16 @@ export const clientNames: Record<DownloadClientType, string> = {
   qbittorrent: "qBittorrent",
   transmission: "Transmission",
   deluge: "Deluge",
+  builtin: "Built-in",
 };
+
+/**
+ * Whether a download client is set up: the built-in client has no address, so
+ * it is set up once it has a download folder.
+ */
+export function isClientSet(c: Pick<DownloadClient, "type" | "url" | "folder">): boolean {
+  return c.type === "builtin" ? c.folder !== "" : c.url !== "";
+}
 
 /**
  * The configured download client's name for page text, such as "Transmission".
@@ -43,7 +52,7 @@ export const clientNames: Record<DownloadClientType, string> = {
  */
 export function useClientName(): string {
   const { data } = useQuery(downloadClientQuery);
-  return data?.url ? clientNames[data.type] : "the download client";
+  return data && isClientSet(data) ? clientNames[data.type] : "the download client";
 }
 
 /**

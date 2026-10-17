@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net"
 	"slices"
 	"strings"
 	"testing"
@@ -926,4 +928,102 @@ func TestDownloadClientTestUsesTheChosenType(t *testing.T) {
 	if got := a.settings.DownloadClient(); got.ClientName() != "Deluge" || got.Username != "" {
 		t.Errorf("saved: %+v", got)
 	}
+}
+
+// The built-in client has no address: it is set up by its folder, and the
+// connection test checks the folder and the port.
+func TestDownloadClientBuiltinAPI(t *testing.T) {
+	db := storetest.Open(t, store.SQLite)
+	a := newApp(t, db, "")
+	a.setup()
+	// No engine runs in this test; the client is only tested and saved.
+	a.downloads.SetBuiltin(download.NewBuiltinHost(t.TempDir(), slog.New(slog.DiscardHandler)))
+	folder := t.TempDir()
+
+	// The other clients show zeros for the built-in fields.
+	if r := a.do("GET", "/api/v1/settings/download-client", ""); r.status != 200 || r.body["listenPort"] != 0.0 || r.body["maxActiveSeeds"] != 0.0 || r.body["folder"] != "" {
+		t.Errorf("before: %d %s", r.status, r.raw)
+	}
+	port := freeTCPPort(t)
+	body := fmt.Sprintf(`{"type":"builtin","url":"","username":"","folder":%q,"listenPort":%d}`, folder, port)
+
+	// Test: nothing to connect to; it reports the engine's version.
+	r := a.do("POST", "/api/v1/settings/download-client/test", body)
+	if r.status != 200 || !strings.HasPrefix(fmt.Sprint(r.body["version"]), "Built-in (anacrolix/torrent v") {
+		t.Errorf("test: %d %s", r.status, r.raw)
+	}
+	if r := a.do("POST", "/api/v1/settings/download-client/test", `{"type":"builtin","url":"","username":""}`); r.status != 422 ||
+		r.body["message"] != "Enter the built-in client's download folder first." || !strings.Contains(r.raw, `"folder"`) {
+		t.Errorf("test without a folder: %d %s", r.status, r.raw)
+	}
+	if r := a.do("POST", "/api/v1/settings/download-client/test", fmt.Sprintf(`{"type":"builtin","url":"","username":"","folder":%q}`, folder+"/missing")); r.status != 422 || !strings.Contains(r.raw, "doesn't exist") {
+		t.Errorf("test with a missing folder: %d %s", r.status, r.raw)
+	}
+	busy, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer busy.Close()
+	if r := a.do("POST", "/api/v1/settings/download-client/test", fmt.Sprintf(`{"type":"builtin","url":"","username":"","folder":%q,"listenPort":%d}`, folder, busy.Addr().(*net.TCPAddr).Port)); r.status != 422 || !strings.Contains(r.raw, "can't listen on TCP port") {
+		t.Errorf("test with a busy port: %d %s", r.status, r.raw)
+	}
+	if a.settings.DownloadClient().Configured() {
+		t.Error("testing saved something")
+	}
+
+	// Save: defaults for what isn't given, nothing of a login.
+	r = a.do("PUT", "/api/v1/settings/download-client", body)
+	if r.status != 200 || r.body["type"] != "builtin" || r.body["url"] != "" || r.body["username"] != "" || r.body["passwordSet"] != false ||
+		r.body["folder"] != folder || r.body["listenPort"] != float64(port) || r.body["maxActiveDownloads"] != 3.0 || r.body["maxActiveSeeds"] != 25.0 ||
+		r.body["downloadLimitKBs"] != 0.0 || r.body["uploadLimitKBs"] != 0.0 {
+		t.Errorf("save: %d %s", r.status, r.raw)
+	}
+	// Grabbing can now be turned on: the built-in client counts as set up.
+	if r := a.do("PUT", "/api/v1/settings/grabbing", `{"mode":"on","queueLimit":0,"minSeeders":1}`); r.status != 200 {
+		t.Errorf("grabbing on: %d %s", r.status, r.raw)
+	}
+	// Other values change on their own and the rest are kept.
+	r = a.do("PUT", "/api/v1/settings/download-client", fmt.Sprintf(`{"type":"builtin","url":"","username":"","folder":%q,"maxActiveDownloads":5,"downloadLimitKBs":900}`, folder))
+	if r.status != 200 || r.body["maxActiveDownloads"] != 5.0 || r.body["downloadLimitKBs"] != 900.0 || r.body["listenPort"] != float64(port) || r.body["maxActiveSeeds"] != 25.0 {
+		t.Errorf("change: %d %s", r.status, r.raw)
+	}
+	// Bad values are field errors.
+	for field, bad := range map[string]string{
+		"listenPort":         `"listenPort":22`,
+		"maxActiveDownloads": `"maxActiveDownloads":0`,
+		"maxActiveSeeds":     `"maxActiveSeeds":-1`,
+		"downloadLimitKBs":   `"downloadLimitKBs":-1`,
+		"uploadLimitKBs":     `"uploadLimitKBs":-1`,
+		"folder":             `"folder":"relative"`,
+	} {
+		put := fmt.Sprintf(`{"type":"builtin","url":"","username":"","folder":%q,%s}`, folder, bad)
+		if field == "folder" {
+			put = `{"type":"builtin","url":"","username":"",` + bad + `}`
+		}
+		if r := a.do("PUT", "/api/v1/settings/download-client", put); r.status != 422 || !strings.Contains(r.raw, `"`+field+`"`) {
+			t.Errorf("%s: %d %s", field, r.status, r.raw)
+		}
+	}
+	// Removing it (an empty folder) drops grabbing back to a dry run.
+	r = a.do("PUT", "/api/v1/settings/download-client", `{"type":"builtin","url":"","username":"","folder":""}`)
+	if r.status != 200 || r.body["folder"] != "" || r.body["type"] != "builtin" {
+		t.Errorf("remove: %d %s", r.status, r.raw)
+	}
+	if r := a.do("GET", "/api/v1/settings/grabbing", ""); r.body["mode"] != "dryrun" {
+		t.Errorf("grabbing after removing the client: %s", r.raw)
+	}
+	// Switching to another client and back is just a change of type.
+	if r := a.do("PUT", "/api/v1/settings/download-client", `{"type":"transmission","url":"http://tm:9091","username":""}`); r.status != 200 || r.body["listenPort"] != 0.0 {
+		t.Errorf("to Transmission: %d %s", r.status, r.raw)
+	}
+}
+
+func freeTCPPort(t *testing.T) int {
+	t.Helper()
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port
 }

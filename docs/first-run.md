@@ -126,8 +126,10 @@ over.
 ## 6. Download client (Settings → Download client)
 
 Choose your download client at the top of the card: **qBittorrent**,
-**Transmission** (see [Using Transmission](#using-transmission) below) or
-**Deluge** (see [Using Deluge](#using-deluge)). Then,
+**Transmission** (see [Using Transmission](#using-transmission) below),
+**Deluge** (see [Using Deluge](#using-deluge)) or Reelkeeper's own
+**Built-in** client (experimental; see [Using the built-in
+client](#using-the-built-in-client)). Then,
 for qBittorrent, enter the Web UI address (with the port, such as
 `http://qbittorrent:8080`), the username and the password, and press Test.
 It should answer "Connected to qBittorrent" with the version number.
@@ -242,8 +244,41 @@ Reelkeeper does works the same.
   shows as "Queued", and the seeding goal counts from when the download
   finished, so a seed waiting its turn doesn't hold cleanup up.
 
-**Switching between qBittorrent, Transmission and Deluge.** Choose the other
-client, enter its address and login, and press Save. If Reelkeeper has
+### Using the built-in client
+
+Choose **Built-in** (it carries an *Experimental* badge) to let Reelkeeper
+download torrents itself, with no other program. Everything else Reelkeeper
+does works the same. It is new: it works, but for torrents you care about, an
+external client is still the safer choice. A VPN option is planned.
+
+- **No address and no login.** It is set up by its **Download folder**, a path
+  inside the Reelkeeper container that exists and can be written to (Test and
+  Save check). Press Test to check the folder and that the port can be
+  opened; there is nothing to connect to.
+- **Listen port** (6881). Peers connect here. Publish the port from the
+  container, TCP and UDP (`6881:6881/tcp` and `6881:6881/udp`), or Reelkeeper
+  can still download but finds fewer peers. It never asks your router to open
+  it. See [The built-in download client](install.md#the-built-in-download-client).
+- **Max active downloads** (3) and **Max active seeding torrents** (25, 0 for no
+  limit). Torrents beyond them wait in order and show as *Queued* (downloads)
+  or keep their "seeding" state without uploading (finished ones waiting for a
+  slot). Move to top moves a torrent to the front of either line.
+- **Speed limits** (KB/s, 0 for none) are under *Show advanced* and apply at
+  once.
+- It remembers its torrents in the data folder (`builtin/`), which backups do
+  not include, and picks them up again after a restart without checking the
+  finished ones again.
+- It uses the DHT and peer exchange only for public torrents. For a torrent
+  from a tracker that asks for it (a *private* torrent), it talks only to the
+  peers the tracker gives it.
+- Reelkeeper reads what the trackers say, so cleanup's "unregistered torrent"
+  rule works with it as with the others.
+- Switching to or from it moves the torrents like any other switch, below.
+  Torrents left in the built-in client stop seeding when you switch away (it
+  stops with the setting), so the dialog does not offer to leave them there.
+
+**Switching between qBittorrent, Transmission, Deluge and the built-in client.** Choose the other
+client, enter its address and login (or, for the built-in client, its folder), and press Save. If Reelkeeper has
 torrents, it asks first: "Move 12 torrents to Transmission? 3 are still downloading. Files
 already downloaded are checked, not downloaded again; nothing is deleted."
 **Move them** is the default; Cancel changes nothing.

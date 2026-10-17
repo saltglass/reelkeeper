@@ -19,6 +19,8 @@ function torrents(n: number) {
  * (Settings → Download Client). Everything in the Queue always moves; the
  * seeding ones may be left behind, so they can finish seeding in the old
  * client (a private tracker may count it against you if they stop early).
+ * Not when the old client is the built-in one: it stops once the client is
+ * switched, so nothing left in it would go on seeding.
  */
 export function MoveTorrentsDialog({
   open,
@@ -74,7 +76,7 @@ export function MoveTorrentsDialog({
             </DialogDescription>
           </>
         )}
-        {preview.seeding > 0 && (
+        {preview.seeding > 0 && from !== "builtin" && (
           <label className="flex items-start gap-2 text-sm">
             <input
               type="checkbox"

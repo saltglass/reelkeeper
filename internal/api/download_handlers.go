@@ -16,15 +16,23 @@ import (
 )
 
 func toDownloadClient(d settings.DownloadClient) gen.DownloadClient {
-	return gen.DownloadClient{Type: gen.DownloadClientType(d.ClientType()), Url: d.URL, Username: d.Username, PasswordSet: d.Password != "", Folder: d.Folder}
+	return gen.DownloadClient{
+		Type: gen.DownloadClientType(d.ClientType()), Url: d.URL, Username: d.Username, PasswordSet: d.Password != "", Folder: d.Folder,
+		ListenPort: d.ListenPort, MaxActiveDownloads: d.MaxActiveDownloads, MaxActiveSeeds: d.MaxActiveSeeds,
+		DownloadLimitKBs: d.DownloadLimitKBs, UploadLimitKBs: d.UploadLimitKBs,
+	}
 }
 
 // updateFrom is what the request asks for. A request without a type keeps
 // the current one.
-func updateFrom(typ *gen.DownloadClientType, url, username string, password, folder *string) settings.DownloadClientUpdate {
-	u := settings.DownloadClientUpdate{URL: url, Username: username, Password: password, Folder: derefStr(folder)}
-	if typ != nil {
-		u.Type = string(*typ)
+func updateFrom(b gen.DownloadClientUpdate) settings.DownloadClientUpdate {
+	u := settings.DownloadClientUpdate{
+		URL: b.Url, Username: b.Username, Password: b.Password, Folder: derefStr(b.Folder),
+		ListenPort: b.ListenPort, MaxActiveDownloads: b.MaxActiveDownloads, MaxActiveSeeds: b.MaxActiveSeeds,
+		DownloadLimitKBs: b.DownloadLimitKBs, UploadLimitKBs: b.UploadLimitKBs,
+	}
+	if b.Type != nil {
+		u.Type = string(*b.Type)
 	}
 	return u
 }
@@ -37,7 +45,8 @@ func (h *Handlers) GetDownloadClient(w http.ResponseWriter, _ *http.Request) {
 
 // PutDownloadClient saves the download client connection.
 //
-// Changing the client's type (qBittorrent, Transmission or Deluge) moves
+// Changing the client's type (qBittorrent, Transmission, Deluge or the
+// built-in client) moves
 // Reelkeeper's torrents to the new client: everything in the Queue, and the
 // seeding ones unless the user chose to leave them (leaveSeeding). The move
 // is a task (download.Service.RunMove); the old client's connection is kept
@@ -50,7 +59,7 @@ func (h *Handlers) PutDownloadClient(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &body) {
 		return
 	}
-	update := updateFrom(body.Type, body.Url, body.Username, body.Password, body.Folder)
+	update := updateFrom(body)
 	old := h.Settings.DownloadClient()
 	next, err := h.Settings.ApplyDownloadClient(update)
 	if err != nil {
@@ -135,9 +144,13 @@ func (h *Handlers) TestDownloadClient(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &body) {
 		return
 	}
-	cfg, err := h.Settings.ApplyDownloadClient(updateFrom(body.Type, body.Url, body.Username, body.Password, body.Folder))
+	cfg, err := h.Settings.ApplyDownloadClient(updateFrom(body))
 	if err != nil {
 		h.writeServiceError(w, r, err)
+		return
+	}
+	if !cfg.Configured() && cfg.ClientType() == settings.ClientBuiltin {
+		writeError(w, http.StatusUnprocessableEntity, "invalid", "Enter the built-in client's download folder first.", map[string]string{"folder": "Enter a full path inside Reelkeeper's container, like /downloads."})
 		return
 	}
 	if !cfg.Configured() {

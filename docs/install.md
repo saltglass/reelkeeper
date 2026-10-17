@@ -14,11 +14,12 @@ Either way, finish with [First-time setup](first-run.md).
 Before you start you need:
 
 - Docker with Compose v2.
-- qBittorrent (with its Web UI turned on), Transmission 4.0 or newer, or
-  Deluge 2.1 or newer (with its web UI running and the Label plugin turned
-  on), running somewhere Reelkeeper can reach. Reelkeeper does not include a
-  download client. qBittorrent Enhanced Edition works too (tested with
-  5.2.4.10).
+- A download client: qBittorrent (with its Web UI turned on), Transmission
+  4.0 or newer, or Deluge 2.1 or newer (with its web UI running and the Label
+  plugin turned on), running somewhere Reelkeeper can reach.
+  qBittorrent Enhanced Edition works too (tested with 5.2.4.10). Or none of
+  those: Reelkeeper has an experimental [built-in client](#the-built-in-download-client)
+  that downloads torrents itself.
 - A free [TMDB](https://www.themoviedb.org) account and API key. Reelkeeper
   uses it to identify movies and shows.
 
@@ -50,6 +51,11 @@ qBittorrent runs in a container too, give both containers the same
 Imports always **copy** the file and leave the original alone, so the torrent
 keeps seeding. Your download folder and your media folder do not need to be on
 the same disk.
+
+With the [built-in client](#the-built-in-download-client) there is no other
+program to agree with: its downloads are inside the Reelkeeper container, so
+Reelkeeper can always open them. You still mount the download folder from your
+server, so the files survive the container.
 
 ## Option 1: SQLite
 
@@ -190,6 +196,61 @@ downloaded files Reelkeeper keeps outside the database (see
 [The data folder](#the-data-folder)), and it is the default place for
 [backups](backups.md).
 
+## The built-in download client
+
+Instead of running qBittorrent, Transmission or Deluge, you can let Reelkeeper
+download torrents itself. It is **experimental**: it works, but it is new, so
+for anything you care about, an external client is still the safer choice. In
+Settings → Download Client, choose **Built-in** and give it a download folder.
+You can switch between it and the other clients at any time; Reelkeeper moves
+the torrents it is working on and nothing is downloaded again.
+
+What to set up in Compose:
+
+```yaml
+    ports:
+      - "7676:7676"
+      - "6881:6881/tcp"
+      - "6881:6881/udp"
+    volumes:
+      - ./config:/config
+      - /data/downloads:/data/downloads
+      - /data/media:/data/media
+```
+
+- **The port.** Peers connect to the built-in client on its *listen port*
+  (6881 unless you change it in the settings). Publish it, TCP **and** UDP, as
+  above. Without that Reelkeeper can still download, but it finds fewer peers
+  and can upload less. It never asks your router to open a port for you (no
+  UPnP or NAT-PMP): if you want the port reachable from outside your home, you
+  forward it on the router yourself.
+- **The download folder** is a path inside the container, such as
+  `/data/downloads/reelkeeper`. It must exist and be writable by the `user:`
+  you run Reelkeeper as; Reelkeeper checks when you save and when you press
+  Test. Imports read the files from there, so they must be mounted (see the
+  top of this page) and not a folder only the container can see.
+- **The data folder** gets a `builtin/` folder of its own: the list of
+  torrents (`state.db`), which pieces are good, and a copy of each `.torrent`
+  file. [Backups](backups.md) do not include it, just as they do not include
+  an external client's torrent list. If you lose it, the files are still in
+  your download folder, but the torrents are gone from the client.
+- **How many at once.** Max active downloads (3) is how many unfinished
+  torrents download together; the rest wait in the Queue in order, and *Move
+  to top* puts one first. Max active seeding torrents (25, 0 for no limit)
+  does the same for finished ones. Speed limits are under *Show advanced*.
+- **Private trackers.** The built-in client uses the DHT and peer exchange
+  only for public torrents; a private torrent only talks to the peers its
+  tracker gives it. It identifies itself as anacrolix/torrent, which some
+  private trackers do not allow: check yours before using it for private
+  torrents.
+- **Cleanup works the same.** Reelkeeper's cleanup and seeding goals use the
+  built-in client like any other. There are no ratio limits inside it: a
+  torrent stops seeding when cleanup says so, or when it is beyond the
+  seeding cap. Torrents waiting for a seeding slot are not uploading and do
+  not gain seeding time.
+- A VPN option for the built-in client is planned; for now its traffic leaves
+  from your server directly.
+
 ## The settings (environment variables)
 
 These are the only settings that live outside the app. They are needed before
@@ -237,6 +298,9 @@ set to). It contains:
 - `definitions/`: the tracker definitions Reelkeeper downloads for the
   Indexers page. It can be rebuilt, so it does not need backing up.
 - `backups/`: where [backups](backups.md) go, unless you choose another folder.
+- `builtin/`: only if you use the [built-in download client](#the-built-in-download-client).
+  Its torrent list and piece records. Not part of a backup; keep it if you
+  want the client to remember its torrents.
 
 Always mount `/config` from your server (`./config:/config` above). Without a
 mount, everything is lost when the container is replaced.

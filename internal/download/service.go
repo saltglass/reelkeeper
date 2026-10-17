@@ -158,6 +158,9 @@ type Service struct {
 	// NewClient builds the client for the current settings (tests swap
 	// in a fake).
 	NewClient func(settings.DownloadClient) Client
+	// builtin runs the built-in client's engine (SetBuiltin); nil when the
+	// server doesn't have one.
+	builtin *BuiltinHost
 
 	// Cleanup (see cleanup.go); set with SetCleanup.
 	cleanupCfg  func() settings.Cleanup
@@ -213,20 +216,34 @@ func (s *Service) movieName(d *Download) string { return d.ReleaseTitle }
 
 // NewService returns the downloads service.
 func NewService(db *store.Store, cfg func() settings.DownloadClient, idx Fetcher, lib Importer, history *grab.History, logger *slog.Logger) *Service {
-	return &Service{
+	s := &Service{
 		db: db, settings: cfg, idx: idx, lib: lib, history: history, logger: logger, now: time.Now,
 		vis: visibility{missingSince: map[int64]time.Time{}}, exists: onDisk, freeSpace: library.FreeSpace,
-		NewClient: newClient, rename: os.Rename, moveTiming: defaultMoveTiming,
+		rename: os.Rename, moveTiming: defaultMoveTiming,
 	}
+	s.NewClient = func(c settings.DownloadClient) Client {
+		if c.ClientType() == settings.ClientBuiltin {
+			return &Builtin{cfg: c, host: s.builtin}
+		}
+		return newClient(c)
+	}
+	return s
 }
 
-// newClient builds the client the settings choose.
+// SetBuiltin connects the host of the built-in client's engine, which the
+// server starts and stops as the settings change.
+func (s *Service) SetBuiltin(h *BuiltinHost) { s.builtin = h }
+
+// newClient builds the client the settings choose. (The built-in client needs
+// the server's engine, which Service.NewClient adds.)
 func newClient(c settings.DownloadClient) Client {
 	switch c.ClientType() {
 	case settings.ClientTransmission:
 		return &Transmission{URL: c.URL, Username: c.Username, Password: c.Password}
 	case settings.ClientDeluge:
 		return &Deluge{URL: c.URL, Password: c.Password}
+	case settings.ClientBuiltin:
+		return &Builtin{cfg: c}
 	}
 	return &QBittorrent{URL: c.URL, Username: c.Username, Password: c.Password}
 }
@@ -264,9 +281,12 @@ func (s *Service) Test(ctx context.Context, cfg settings.DownloadClient) (string
 		return "", err
 	}
 	// Listing Reelkeeper's category proves the session works for more than
-	// the login.
-	if _, err := c.Torrents(ctx, settings.MovieCategory); err != nil {
-		return "", err
+	// the login. The built-in client has no session, and may not be running
+	// yet (it is tested before it is saved).
+	if cfg.ClientType() != settings.ClientBuiltin {
+		if _, err := c.Torrents(ctx, settings.MovieCategory); err != nil {
+			return "", err
+		}
 	}
 	return v, nil
 }

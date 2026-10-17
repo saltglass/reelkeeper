@@ -735,3 +735,194 @@ describe("choosing the download client", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
+
+describe("the built-in client", () => {
+  const empty = { type: "qbittorrent", url: "", username: "", passwordSet: false, folder: "" };
+  const own = {
+    type: "builtin",
+    url: "",
+    username: "",
+    passwordSet: false,
+    folder: "/downloads",
+    listenPort: 51413,
+    maxActiveDownloads: 4,
+    maxActiveSeeds: 0,
+    downloadLimitKBs: 750,
+    uploadLimitKBs: 0,
+  };
+  const choice = () => within(screen.getByRole("group", { name: "Download client" }));
+  const builtinButton = async () => {
+    await screen.findByRole("group", { name: "Download client" });
+    return choice().getByRole("button", { name: /^Built-in/ });
+  };
+
+  it("is a fourth choice, marked Experimental", async () => {
+    open("dryrun", {}, empty);
+    const button = await builtinButton();
+    expect(within(button).getByText("Experimental")).toBeInTheDocument();
+    // The others have no badge.
+    expect(
+      within(choice().getByRole("button", { name: "Deluge" })).queryByText("Experimental"),
+    ).not.toBeInTheDocument();
+    expect(button).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("hides the address and login, and shows the folder, port and queue sizes", async () => {
+    open("dryrun", {}, empty);
+    await userEvent.click(await builtinButton());
+    expect(screen.queryByLabelText("Web UI address")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Username")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Reelkeeper downloads torrents itself, with no separate app. Experimental: it works, but it's new. A VPN option comes next.",
+      ),
+    ).toBeInTheDocument();
+    // The starting values.
+    expect(screen.getByLabelText("Download folder")).toHaveValue("");
+    expect(screen.getByLabelText("Listen port")).toHaveValue(6881);
+    expect(screen.getByLabelText("Max active downloads")).toHaveValue(3);
+    expect(screen.getByLabelText("Max active seeding torrents")).toHaveValue(25);
+    expect(screen.getByText(/Publish it from the container/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/without it, Reelkeeper can still download but finds fewer peers/),
+    ).toBeInTheDocument();
+    // The speed limits are behind "Show advanced".
+    expect(screen.queryByLabelText("Download speed limit (KB/s)")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show advanced" }));
+    expect(screen.getByLabelText("Download speed limit (KB/s)")).toHaveValue(0);
+    expect(screen.getByLabelText("Upload speed limit (KB/s)")).toHaveValue(0);
+    await userEvent.click(screen.getByRole("button", { name: "Hide advanced" }));
+    expect(screen.queryByLabelText("Upload speed limit (KB/s)")).not.toBeInTheDocument();
+    // Back to another client: its address and login return.
+    await userEvent.click(choice().getByRole("button", { name: "qBittorrent" }));
+    expect(screen.getByLabelText("Web UI address")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Listen port")).not.toBeInTheDocument();
+  });
+
+  it("tests and saves with the folder, port and limits, and no address or login", async () => {
+    const tests: unknown[] = [];
+    const puts: unknown[] = [];
+    open(
+      "dryrun",
+      {
+        "POST /settings/download-client/test": async (req) => {
+          tests.push(await req.json());
+          return json({ version: "Built-in (anacrolix/torrent v1.61.0)" });
+        },
+        "PUT /settings/download-client": async (req) => {
+          const body = await req.json();
+          puts.push(body);
+          return json({ ...own, ...body, passwordSet: false });
+        },
+      },
+      empty,
+    );
+    await userEvent.click(await builtinButton());
+    // Nothing to test until there is a folder.
+    expect(screen.getByRole("button", { name: "Test" })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Download folder"), "/downloads");
+    await userEvent.clear(screen.getByLabelText("Listen port"));
+    await userEvent.type(screen.getByLabelText("Listen port"), "51413");
+    await userEvent.clear(screen.getByLabelText("Max active seeding torrents"));
+    await userEvent.type(screen.getByLabelText("Max active seeding torrents"), "10");
+    await userEvent.click(screen.getByRole("button", { name: "Show advanced" }));
+    await userEvent.clear(screen.getByLabelText("Download speed limit (KB/s)"));
+    await userEvent.type(screen.getByLabelText("Download speed limit (KB/s)"), "750");
+
+    await userEvent.click(screen.getByRole("button", { name: "Test" }));
+    expect(
+      await screen.findByText(
+        /The folder and port are fine\. Built-in \(anacrolix\/torrent v1\.61\.0\)/,
+      ),
+    ).toBeInTheDocument();
+    const want = {
+      type: "builtin",
+      url: "",
+      username: "",
+      folder: "/downloads",
+      listenPort: 51413,
+      maxActiveDownloads: 3,
+      maxActiveSeeds: 10,
+      downloadLimitKBs: 750,
+      uploadLimitKBs: 0,
+    };
+    expect(tests[0]).toEqual(want);
+
+    await userEvent.click(saveButton(0));
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
+    // No move dialog: there was no download client before.
+    expect(puts[0]).toEqual(want);
+    // Saved, the built-in client counts as set up: grabbing can be turned On.
+    expect((await screen.findAllByRole("radio", { name: /^On/ }))[0]).toBeEnabled();
+  });
+
+  it("loads what was saved and shows the server's field errors", async () => {
+    open(
+      "dryrun",
+      {
+        "PUT /settings/download-client": json(
+          {
+            code: "invalid",
+            message: "Check the highlighted fields.",
+            fields: {
+              folder: "/nope doesn't exist inside Reelkeeper's container.",
+              listenPort: "Enter a port from 1024 to 65535.",
+              uploadLimitKBs: "Enter a speed in KB/s, or 0 for no limit.",
+            },
+          },
+          422,
+        ),
+        "POST /settings/download-client/test": json(
+          { code: "download_client", message: "The folder can't be written to." },
+          422,
+        ),
+      },
+      own,
+    );
+    expect(await screen.findByLabelText("Download folder")).toHaveValue("/downloads");
+    expect(screen.getByLabelText("Listen port")).toHaveValue(51413);
+    expect(screen.getByLabelText("Max active downloads")).toHaveValue(4);
+    expect(screen.getByLabelText("Max active seeding torrents")).toHaveValue(0);
+    expect(
+      within(screen.getByRole("group", { name: "Download client" })).getByRole("button", {
+        name: /^Built-in/,
+      }),
+    ).toHaveAttribute("aria-pressed", "true");
+    // An error under the speed limits opens them.
+    await userEvent.type(screen.getByLabelText("Download folder"), "x");
+    await userEvent.click(saveButton(0));
+    expect(await screen.findByText("Enter a port from 1024 to 65535.")).toBeInTheDocument();
+    expect(screen.getByText(/doesn't exist inside Reelkeeper's container/)).toBeInTheDocument();
+    expect(screen.getByText("Enter a speed in KB/s, or 0 for no limit.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Upload speed limit (KB/s)")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Test" }));
+    expect(await screen.findByText("The folder can't be written to.")).toBeInTheDocument();
+  });
+
+  it("asks before moving torrents away from it, without offering to leave seeding ones in it", async () => {
+    open(
+      "dryrun",
+      {
+        "GET /settings/download-client/move-preview": () =>
+          json({ total: 2, downloading: 1, seeding: 1, cannotMove: [] }),
+        "PUT /settings/download-client": async (req) =>
+          json({ ...(await req.json()), passwordSet: false, folder: "" }),
+      },
+      own,
+    );
+    await screen.findByLabelText("Listen port");
+    await userEvent.click(choice().getByRole("button", { name: "Transmission" }));
+    expect(
+      await screen.findByText(/Saving moves Reelkeeper's torrents from Built-in to Transmission/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/stop when it is switched off/)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("RPC address"), "http://tm:9091");
+    await userEvent.click(saveButton(0));
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(dialog.getByText("Move 2 torrents to Transmission?")).toBeInTheDocument();
+    // The built-in client stops when it is switched off, so there is no
+    // finishing to do there: its seeding torrents always move.
+    expect(dialog.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+});

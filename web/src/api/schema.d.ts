@@ -1377,9 +1377,9 @@ export interface paths {
         get: operations["getDownloadClient"];
         /**
          * Save the download client connection
-         * @description Leaving `password` out keeps the stored one, and leaving `type` out keeps the current type. An empty `url` removes the download client.
+         * @description Leaving `password` out keeps the stored one, and leaving `type` out keeps the current type. An empty `url` removes the download client (for the built-in client, an empty `folder` does).
          *
-         *     Changing `type` moves Reelkeeper's torrents to the new client (the "Move torrents" task, System → Tasks): everything in Activity → Queue
+         *     Changing `type` (to or from `builtin` too) moves Reelkeeper's torrents to the new client (the "Move torrents" task, System → Tasks): everything in Activity → Queue
          *     always moves, and so do torrents still seeding unless `leaveSeeding` is true, in which case those stay in the old client and
          *     Reelkeeper stops tracking them. The new client checks the files already on disk, so nothing is downloaded again, and nothing is deleted.
          *     `GET /settings/download-client/move-preview` says what would move. Grabbing, imports and cleanup wait until the move is done.
@@ -1427,7 +1427,9 @@ export interface paths {
         put?: never;
         /**
          * Try a download client connection without saving it
-         * @description Leaving `password` out uses the stored one.
+         * @description Leaving `password` out uses the stored one. For the built-in client there is nothing to connect to: the test checks that `folder`
+         *     exists and can be written to, and that the port can be opened (unless the built-in client is already listening on it), and
+         *     `version` is the engine's version.
          */
         post: operations["testDownloadClient"];
         delete?: never;
@@ -2632,19 +2634,30 @@ export interface components {
             total: number;
         };
         /**
-         * @description Which download client it is. Settings saved before there was a choice read as `qbittorrent`.
+         * @description Which download client it is. Settings saved before there was a choice read as `qbittorrent`. `builtin` is Reelkeeper's own
+         *     torrent client (experimental): it has no address or login, and counts as set up once it has a `folder`.
          * @enum {string}
          */
-        DownloadClientType: "qbittorrent" | "transmission" | "deluge";
+        DownloadClientType: "qbittorrent" | "transmission" | "deluge" | "builtin";
         DownloadClient: {
             type: components["schemas"]["DownloadClientType"];
-            /** @description The client's address: qBittorrent's Web UI, Transmission's RPC address or Deluge's web UI. Empty: no download client. */
+            /** @description The client's address: qBittorrent's Web UI, Transmission's RPC address or Deluge's web UI. Empty: no download client. Always empty for the built-in client. */
             url: string;
             /** @description Always empty for Deluge */
             username: string;
             passwordSet: boolean;
-            /** @description Where the client saves Reelkeeper's downloads, as the client sees it. Empty: the client's default folder. */
+            /** @description Where the client saves Reelkeeper's downloads, as the client sees it. Empty: the client's default folder (for the built-in client, which has none: it isn't set up). */
             folder: string;
+            /** @description Built-in client only (0 for the others): the TCP and UDP port peers connect to. */
+            listenPort: number;
+            /** @description Built-in client only (0 for the others): how many unfinished torrents download at once; the others wait as Queued. */
+            maxActiveDownloads: number;
+            /** @description Built-in client only: how many finished torrents upload at once; 0 is no limit. */
+            maxActiveSeeds: number;
+            /** @description Built-in client only: download speed limit in KB/s; 0 is no limit. */
+            downloadLimitKBs: number;
+            /** @description Built-in client only: upload speed limit in KB/s; 0 is no limit. */
+            uploadLimitKBs: number;
         };
         DownloadClientUpdate: {
             type?: components["schemas"]["DownloadClientType"];
@@ -2656,8 +2669,18 @@ export interface components {
              * @description Leave out to keep the stored password.
              */
             password?: string;
-            /** @description Download folder as the client sees it (an absolute path), or empty for the client's default. */
+            /** @description Download folder as the client sees it (an absolute path), or empty for the client's default. Required by the built-in client (it must exist and be writable). */
             folder?: string;
+            /** @description Built-in client only. Leaving it out keeps the current value (6881 at first). */
+            listenPort?: number;
+            /** @description Built-in client only. Leaving it out keeps the current value (3 at first). */
+            maxActiveDownloads?: number;
+            /** @description Built-in client only; 0 is no limit. Leaving it out keeps the current value (25 at first). */
+            maxActiveSeeds?: number;
+            /** @description Built-in client only: KB/s, 0 for no limit. Leaving it out keeps the current value. */
+            downloadLimitKBs?: number;
+            /** @description Built-in client only: KB/s, 0 for no limit. Leaving it out keeps the current value. */
+            uploadLimitKBs?: number;
             /**
              * @description Only when `type` changes (left out means false). True leaves the torrents that are still seeding in the old client (Reelkeeper stops tracking them,
              *     as before 1.3); false moves them too. Torrents in Activity → Queue always move.

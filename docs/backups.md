@@ -15,6 +15,13 @@ A backup does **not** contain:
 
 - **Your media files and downloads.** Those are on your disks; back them up
   the way you already do.
+- **The built-in download client's torrent list.** If you use Reelkeeper's
+  [built-in client](install.md#the-built-in-download-client), its torrents,
+  and which pieces of them it has, are kept in the `builtin` folder inside the
+  data folder, not in the database. Like the list inside qBittorrent, they are
+  not in a backup (the downloaded files themselves are on your disk, as
+  above). Back that folder up too if you want the client to remember its
+  torrents after a disaster; a restore leaves it alone.
 - **The secret key** (`REELKEEPER_SECRET_KEY`). Stored passwords and keys
   (indexer logins, qBittorrent, email, Emby, your single sign-on secret and
   API key) are in the backup but sealed with that key, so they can only be read

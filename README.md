@@ -98,6 +98,9 @@ does the same job, and uses the fact that everything lives together:
 - **qBittorrent, Transmission 4.0+ or Deluge 2.1+.** Reelkeeper only ever
   touches torrents in its own categories (labels in Transmission and
   Deluge).
+- **Or its own built-in client (experimental)**: Reelkeeper downloads the
+  torrents itself, with no other app to run. Queueing, speed limits and the
+  same cleanup and Queue controls as the others; a VPN option is planned.
 - Activity → Queue with Pause, Resume, Move to top and Remove.
 - **Switch clients without losing anything.** Changing the download client
   moves Reelkeeper's torrents to the new one, even half-finished ones: the
@@ -172,7 +175,8 @@ Make up the secret key with `openssl rand -hex 32` and keep it safe: it
 encrypts the passwords Reelkeeper stores. Then `docker compose up -d` and
 open `http://<your-server>:7676`.
 
-You also need a torrent client (qBittorrent, Transmission or Deluge) and a
+You also need a torrent client (qBittorrent, Transmission or Deluge, or the
+experimental built-in one) and a
 free [TMDB](https://www.themoviedb.org) API key. The
 [installation guide](docs/install.md) covers PostgreSQL, folders and paths,
 and every setting.

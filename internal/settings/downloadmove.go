@@ -47,22 +47,26 @@ func (s *Service) SaveDownloadMove(ctx context.Context, m DownloadMove) error {
 		return err
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if err := s.put(ctx, GroupDownloadMove, storedDownloadMove{DownloadMove: m, PasswordSealed: sealed}); err != nil {
+		s.mu.Unlock()
 		return err
 	}
 	s.downloadMove = m
+	s.mu.Unlock()
+	s.notify(GroupDownloadMove)
 	return nil
 }
 
 // ClearDownloadMove ends the move: the old client's connection is forgotten.
 func (s *Service) ClearDownloadMove(ctx context.Context) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if err := s.put(ctx, GroupDownloadMove, storedDownloadMove{}); err != nil {
+		s.mu.Unlock()
 		return err
 	}
 	s.downloadMove = DownloadMove{}
+	s.mu.Unlock()
+	s.notify(GroupDownloadMove)
 	return nil
 }
 

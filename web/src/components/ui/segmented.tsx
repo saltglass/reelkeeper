@@ -1,8 +1,10 @@
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 /**
  * A row of exactly-one-of choices with an indicator that slides to the chosen
- * one. Each choice is a button with aria-pressed, in a labelled group.
+ * one. Each choice is a button with aria-pressed, in a labelled group. A choice
+ * may carry a small badge ("Experimental").
  */
 export function Segmented<T extends string>({
   label,
@@ -13,7 +15,7 @@ export function Segmented<T extends string>({
 }: {
   /** What the group chooses; read out by screen readers. */
   label: string;
-  options: { value: T; label: string }[];
+  options: { value: T; label: string; badge?: string }[];
   value: T;
   onChange: (value: T) => void;
   className?: string;
@@ -47,11 +49,16 @@ export function Segmented<T extends string>({
           aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "relative z-[1] min-h-9 cursor-pointer rounded-[7px] px-4 text-sm font-medium transition-colors duration-[calc(200ms*var(--m))]",
+            "relative z-[1] min-h-9 cursor-pointer rounded-[7px] px-1 text-[13px] sm:px-4 sm:text-sm font-medium transition-colors duration-[calc(200ms*var(--m))]",
             o.value === value ? "text-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >
           {o.label}
+          {o.badge && (
+            <Badge variant="warning" className="ml-2 hidden px-1.5 py-0 text-[11px] sm:inline-flex">
+              {o.badge}
+            </Badge>
+          )}
         </button>
       ))}
     </div>

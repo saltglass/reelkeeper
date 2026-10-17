@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { downloadClientQuery } from "@/hooks/downloads";
+import { downloadClientQuery, isClientSet } from "@/hooks/downloads";
 import { useDraft } from "@/hooks/draft";
 import { type GrabbingSettings, grabbingQuery, useSaveGrabbing } from "@/hooks/grab";
 import { cn } from "@/lib/utils";
@@ -111,7 +111,7 @@ function ModeGroup({
 function GrabbingCard() {
   const { data, error } = useQuery(grabbingQuery);
   const client = useQuery(downloadClientQuery);
-  const clientSaved = Boolean(client.data?.url);
+  const clientSaved = Boolean(client.data && isClientSet(client.data));
   const save = useSaveGrabbing();
   const { draft: form, setDraft: setForm, dirty, reset, commit } = useDraft(data, sameGrabbing);
 

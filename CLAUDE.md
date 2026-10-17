@@ -44,7 +44,8 @@ all mediocre" app.
   such as TRAWL.
 - Release parsing; simple quality profiles, with custom formats under Advanced
   (TRaSH Guides compatible)
-- qBittorrent as the download client (Transmission and Deluge followed in 1.x)
+- qBittorrent as the download client (Transmission and Deluge followed in 1.x,
+  and an experimental built-in client, with no separate app, in 1.2)
 - Import pipeline, renaming, scanning of existing libraries
 - Download cleanup engine (**must-have**)
 - Radarr/Sonarr-compatible API, so Seerr and the Dashboard work unchanged
@@ -132,7 +133,10 @@ together.
 - `just dev-stack` / `just dev-stack-down`: local docker compose (Colima)
   with Postgres, qBittorrent, Transmission, Deluge and Seerr for integration
   testing (peer discovery permanently off; never on the internet)
-- `just test-clients`: the real-client tests against the dev stack (~40 min)
+- `just test-clients`: the real-client tests against the dev stack (~40 min),
+  including moves between a real Transmission and the built-in client (that
+  one runs a throwaway Transmission with no network, in the repo's git-ignored
+  `tmp/` folder)
 - Single Go test: `go test ./internal/parser -run TestName`
 - Single frontend test: `cd web && npx vitest run src/pages/LoginPage.test.tsx`
 
@@ -159,7 +163,14 @@ together.
 - `internal/grab/`: automatic search, RSS sync and the scheduled pass;
   History
 - `internal/download/`: the qBittorrent, Transmission and Deluge clients,
-  moving torrents between them, Reelkeeper's downloads table and queue, blocklist, and the "Check downloads" task that triggers imports
+  the adapter for the built-in client (`builtin.go`, with the host that runs
+  its engine), moving torrents between them, Reelkeeper's downloads table and
+  queue, blocklist, and the "Check downloads" task that triggers imports
+- `internal/download/builtin/`: the built-in torrent client's engine, on
+  anacrolix/torrent (MPL-2.0): lifecycle, queueing, limits, its records in
+  `<data folder>/builtin/` and the `Network` every socket comes from.
+  Knows nothing about Reelkeeper's database, downloads or categories beyond
+  a label.
 - Importing itself is `library.ImportMovie` (`internal/library/import.go`),
   next to the scanner whose file handling it shares; there's no separate
   importer package.
@@ -472,6 +483,21 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
   default build is fine.
 - **RAM.** Aim for under 250 MB steady-state for a library of a few thousand
   titles.
+- **The built-in client's sockets only come from its `Network`**
+  (`internal/download/builtin/network.go`). Stage 2 will put a VPN with a kill
+  switch under it, so nothing in the engine may dial, listen or look up a name
+  any other way (no `net.Dial`, `http.DefaultClient`, `net.DefaultResolver`;
+  a test reads the source for them). anacrolix's own sockets, UPnP/NAT-PMP
+  port mapping, WebTorrent, web seeds and its automatic DHT announcing are
+  switched off in `clientConfig`, and a test pins each. Never add port
+  mapping: nobody's router may be asked to open a port.
+- **anacrolix/torrent ignores the private flag.** The engine itself keeps
+  private torrents off the DHT and peer exchange (`private.go`); a version bump
+  must keep `TestPrivateTorrentsNeverUseTheDHTOrPeerExchange` passing. Tracker
+  failure messages for cleanup's "unregistered" rule come from anacrolix's
+  log line "announced" (`trackers.go`), pinned by `TestTrackerMessages`.
+- **The built-in client's torrent list is not in backups.** It lives in
+  `<data folder>/builtin/` (see docs/backups.md).
 
 ## Open decisions
 

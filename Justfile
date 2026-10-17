@@ -74,7 +74,7 @@ dev-stack:
     @colima status >/dev/null 2>&1 || colima start
     docker compose -f dev/compose.yaml up -d --wait
 
-# Run the integration tests that use the dev stack's real qBittorrent, Transmission and Deluge (moving torrents between the first two, and more).
+# Run the integration tests that use the dev stack's real qBittorrent, Transmission and Deluge (moving torrents between them, and between a throwaway Transmission and the built-in client).
 # Needs REELKEEPER_TEST_QBIT_PASS set to the dev qBittorrent's Web UI password. No internet is used: see dev/compose.yaml.
 test-clients: dev-stack
     REELKEEPER_TEST_QBIT_URL=http://localhost:8081 REELKEEPER_TEST_QBIT_USER=${REELKEEPER_TEST_QBIT_USER:-admin} \
