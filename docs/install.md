@@ -239,6 +239,16 @@ What to set up in Compose:
   torrents download together; the rest wait in the Queue in order, and *Move
   to top* puts one first. Max active seeding torrents (25, 0 for no limit)
   does the same for finished ones. Speed limits are under *Show advanced*.
+- **Memory.** Each torrent the built-in client holds takes about **1 MB** of
+  memory (a typical movie or season torrent of 1,000–2,000 pieces), whether
+  it is seeding or waiting for a seeding slot, so the seeding limit hardly
+  changes it: how many torrents the client holds does. On top of what
+  Reelkeeper itself uses, 50 torrents add about 50 MB and 100 about 100 MB,
+  with short peaks about a quarter higher. Cleanup removing torrents once
+  their seeding goals are met keeps the number down, and a restart frees the
+  memory of torrents waiting for a slot until they get one. If you keep more
+  than about 100 torrents seeding, an external client such as qBittorrent
+  is the better fit. (Measured with `just load-builtin`.)
 - **Private trackers.** The built-in client uses the DHT and peer exchange
   only for public torrents; a private torrent only talks to the peers its
   tracker gives it. It identifies itself as anacrolix/torrent, which some
