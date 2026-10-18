@@ -234,8 +234,8 @@ export function ProfileSimpleEditor({ options, value: v, onChange, errors, forMo
               ))}
             </select>
             <p className="text-sm text-muted-foreground">
-              Once a file is this good, Reelkeeper stops looking. Only qualities you accept are
-              listed.
+              Once a file is this good, Reelkeeper stops looking, even if a release it would rank
+              higher comes out later. Only qualities you accept are listed.
             </p>
           </div>
         )}
@@ -381,7 +381,8 @@ export function ProfileSimpleEditor({ options, value: v, onChange, errors, forMo
           >
             <p className="text-sm text-muted-foreground">
               Prefer ranks matching releases higher, Avoid ranks them lower, Require rejects
-              releases without it, and Block rejects releases with it.
+              releases without it, and Block rejects releases with it. Prefer and Avoid only choose
+              between the releases a search finds; they never start another download by themselves.
             </p>
             <div className="divide-y">
               {feats.map((f) => {

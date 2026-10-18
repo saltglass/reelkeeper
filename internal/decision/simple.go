@@ -340,6 +340,13 @@ func (s Simple) Compile() (Profile, error) {
 		// only ever lower a release's rank.
 		MinScore:       BlockScore + 1,
 		MinUpgradeStep: 1,
+		// Upgrades stop once the file reaches "upgrade until": prefer and
+		// avoid choose between the releases a search finds, but never cause
+		// another download by themselves (Dan, 2026-10-18: no movie upgraded
+		// over and over). Only a file with a blocked format scores this low,
+		// and it is still replaced. Advanced can set a higher score to keep
+		// chasing better releases, as in Radarr.
+		UpgradeUntilScore: BlockScore + 1,
 	}
 
 	// Quality ladder: qualities the simple editor never offers come first,

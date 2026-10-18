@@ -100,9 +100,12 @@ type WantedItem struct {
 	Target  string
 	// Upgrades whose quality already reaches "upgrade until": the file's
 	// custom-format score, the score the profile upgrades until, and the
-	// scored formats the file matches. Score is nil for the others.
+	// scored formats the file matches. Score is nil for the others, and
+	// TargetScore when the profile has no score target (one made in the
+	// simple editor stops at the quality; only a blocked format is left to
+	// replace, and Formats names it).
 	Score       *int
-	TargetScore int
+	TargetScore *int
 	Formats     []decision.FormatMatch
 	// Episode groups.
 	Season   *int
@@ -180,7 +183,10 @@ func (s *Service) Wanted(ctx context.Context, full bool) (*WantedList, error) {
 			it.Quality, it.Target = w.have.Quality.Name, w.profile.UpgradeUntil
 			if w.profile.QualityReached(w.have.Quality) {
 				score, formats := w.profile.FileScore(w.have, w.movie)
-				it.Score, it.TargetScore = &score, w.profile.UpgradeUntilScore
+				it.Score = &score
+				if target := w.profile.UpgradeUntilScore; target > decision.BlockScore+1 {
+					it.TargetScore = &target
+				}
 				for _, f := range formats {
 					if f.Score != 0 {
 						it.Formats = append(it.Formats, f)

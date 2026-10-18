@@ -51,7 +51,7 @@ func toWantedItem(it grab.WantedItem) gen.WantedItem {
 		for i, f := range it.Formats {
 			formats[i] = gen.TestReleaseFormat{Name: f.Name, Score: f.Score}
 		}
-		out.Score, out.TargetScore, out.Formats = it.Score, &it.TargetScore, &formats
+		out.Score, out.TargetScore, out.Formats = it.Score, it.TargetScore, &formats
 	}
 	if it.Kind == grab.WantedEpisodes {
 		eps := make([]gen.WantedEpisode, len(it.Episodes))

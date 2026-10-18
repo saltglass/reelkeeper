@@ -3706,7 +3706,7 @@ type WantedItem struct {
 	// Target Upgrades: the profile's "upgrade until" quality.
 	Target *string `json:"target,omitempty"`
 
-	// TargetScore With `score`, the profile's "upgrade until" score.
+	// TargetScore With `score`, the profile's "upgrade until" score. Absent when the profile has none (a simple profile stops at the quality, so only a file with a blocked format is listed, and `formats` names it).
 	TargetScore *int   `json:"targetScore,omitempty"`
 	Title       string `json:"title"`
 	TitleId     int64  `json:"titleId"`

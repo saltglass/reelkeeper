@@ -224,6 +224,12 @@ math.
   - Release groups to prefer or block
   - HDR/Dolby Vision, codec and audio features, each set to
     **require / prefer / avoid / block** rather than numbers
+- **Upgrades stop at the quality** (Dan, 2026-10-18: no movie upgraded over
+  and over). A simple profile's `UpgradeUntilScore` is `BlockScore + 1`, so a
+  file at "upgrade until" is finished whatever its score; prefer/avoid only
+  pick between the releases one search finds. Only a file with a blocked
+  format, or a PROPER/REPACK (when "prefer propers" is on), still replaces it.
+  Advanced profiles can set a real score target to chase, as in Radarr.
 - **Under the hood**, the simple settings compile to qualities plus
   custom-format scores. "Advanced" shows and edits the raw custom formats and
   scores, and imports or exports TRaSH Guides JSON. Switching to Advanced must

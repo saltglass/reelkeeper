@@ -2,6 +2,7 @@ package grab
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -60,11 +61,37 @@ func titles(items []WantedItem) []string {
 	return out
 }
 
+// With a simple profile (the fixture's is the HD preset), a file at the
+// profile's "upgrade until" quality isn't wanted, even with avoided features:
+// no movie is searched for, and downloaded, again and again. A file with a
+// blocked format is still wanted, with no score target to show.
+func TestWantedStopsAtTheQualityWithASimpleProfile(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		f := newFixture(t, db)
+		file := func(name string) {
+			f.lib.versions[0].Files = []library.MediaFile{{VersionID: f.lib.versions[0].Version.ID, Path: "Heat/" + name,
+				Size: 8 << 30, Resolution: 1080, Source: "BluRay"}}
+		}
+		for _, name := range []string{"Heat.1995.1080p.BluRay.x264.mkv", "Heat.1995.1080p.BluRay.x265-GRP.mkv"} {
+			file(name)
+			if l := wantedOf(t, f); l.has("Heat") {
+				t.Errorf("%s is wanted as an upgrade: %+v", name, l.Upgrades)
+			}
+		}
+		file("Heat.1995.3D.1080p.BluRay.x264-GRP.mkv")
+		up := wantedOf(t, f).item(t, "Heat")
+		if up.Score == nil || up.TargetScore != nil || !slices.ContainsFunc(up.Formats, func(m decision.FormatMatch) bool { return m.Score <= decision.BlockScore }) {
+			t.Errorf("a blocked file = %+v", up)
+		}
+	})
+}
+
 // Missing movies, movies below their profile's target, and movies that
 // need nothing: only the first two are wanted, and unreleased ones aren't.
 func TestWantedMissingAndUpgrades(t *testing.T) {
 	storetest.Each(t, func(t *testing.T, db *store.Store) {
-		f := newFixture(t, db) // Heat has a WEB-DL file, Ronin has none
+		f := newFixture(t, db)                        // Heat has a WEB-DL file, Ronin has none
+		untilScore := f.lib.profile.UpgradeUntilScore // put back after each change
 		l := wantedOf(t, f)
 		if got := titles(l.Missing); len(got) != 1 || got[0] != "Ronin" {
 			t.Errorf("missing = %v", got)
@@ -101,7 +128,7 @@ func TestWantedMissingAndUpgrades(t *testing.T) {
 		f.lib.profile.Scores = map[string]int{"GRP": 50}
 		f.lib.profile.UpgradeUntilScore = 100
 		up = wantedOf(t, f).item(t, "Heat")
-		if up.Score == nil || *up.Score != 50 || up.TargetScore != 100 || up.Quality != "Bluray-1080p" ||
+		if up.Score == nil || *up.Score != 50 || up.TargetScore == nil || *up.TargetScore != 100 || up.Quality != "Bluray-1080p" ||
 			len(up.Formats) != 1 || up.Formats[0].Name != "GRP" { // x264 scores 0, so it isn't listed
 			t.Errorf("score-only upgrade = %+v", up)
 		}
@@ -109,7 +136,7 @@ func TestWantedMissingAndUpgrades(t *testing.T) {
 		if l := wantedOf(t, f); l.has("Heat") {
 			t.Errorf("Heat at its target score is wanted: %+v", l.Upgrades)
 		}
-		f.lib.profile.Formats, f.lib.profile.Scores, f.lib.profile.UpgradeUntilScore = nil, nil, 0
+		f.lib.profile.Formats, f.lib.profile.Scores, f.lib.profile.UpgradeUntilScore = nil, nil, untilScore
 
 		// Better than anything the profile allows: left alone, not listed as
 		// an "upgrade" to a lower quality (2026-10-13).
@@ -119,7 +146,7 @@ func TestWantedMissingAndUpgrades(t *testing.T) {
 		if l := wantedOf(t, f); l.has("Heat") {
 			t.Errorf("a 2160p file under an HD profile is wanted: %+v", l.Upgrades)
 		}
-		f.lib.profile.UpgradeUntilScore = 0
+		f.lib.profile.UpgradeUntilScore = untilScore
 
 		// So does a profile with upgrades off.
 		f.lib.versions[0].Files = []library.MediaFile{{VersionID: f.lib.versions[0].Version.ID, Path: "Heat/Heat.1995.1080p.WEB-DL.H.264-GRP.mkv",

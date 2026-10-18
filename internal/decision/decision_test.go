@@ -248,6 +248,84 @@ func TestUpgrades(t *testing.T) {
 	}
 }
 
+// A profile made in the simple editor stops upgrading once the file reaches
+// "upgrade until", whatever its score: avoided features (no release group,
+// x265) don't keep a movie being downloaded again and again. Only a file with
+// a blocked format is still replaced. Advanced can still chase a score.
+func TestUpgradesStopAtTheQuality(t *testing.T) {
+	p := mustProfile(t, preset(t, "hd"))
+	q := func(n string) Quality { x, _ := QualityByName(n); return x }
+	noGroupBD := &Existing{Name: "Heat.1995.1080p.BluRay.x264", Quality: q("Bluray-1080p")}
+	x265BD := &Existing{Name: "Heat.1995.1080p.BluRay.x265-GRP", Quality: q("Bluray-1080p")}
+	blockedBD := &Existing{Name: "Heat.1995.3D.1080p.BluRay.x264-GRP", Quality: q("Bluray-1080p")}
+	groupWeb := &Existing{Name: "Heat.1995.1080p.WEB-DL.H.264-GRP", Quality: q("WEBDL-1080p")}
+	noGroupWeb := &Existing{Name: "Heat.1995.1080p.WEB-DL.H.264", Quality: q("WEBDL-1080p")}
+
+	// The files really do score below 0, so they'd have been chased before.
+	for _, f := range []*Existing{noGroupBD, x265BD, noGroupWeb} {
+		if s, _ := p.FileScore(f, heat); s >= 0 {
+			t.Fatalf("%s scores %d; the test needs an avoided feature", f.Name, s)
+		}
+	}
+	if s, _ := p.FileScore(blockedBD, heat); s > BlockScore {
+		t.Fatalf("%s scores %d; the test needs a blocked feature", blockedBD.Name, s)
+	}
+
+	cutoff := []struct {
+		have *Existing
+		met  bool
+	}{{noGroupBD, true}, {x265BD, true}, {blockedBD, false}, {groupWeb, false}, {noGroupWeb, false}}
+	for _, tt := range cutoff {
+		if got := p.CutoffMet(tt.have, heat); got != tt.met {
+			t.Errorf("CutoffMet(%s) = %v, want %v", tt.have.Name, got, tt.met)
+		}
+	}
+
+	cases := []struct {
+		name string
+		have *Existing
+		c    string
+		ok   bool
+		why  string
+	}{
+		{"no group, a clean copy appears", noGroupBD, "Heat.1995.1080p.BluRay.x264-GRP", false, "already reaches"},
+		{"no group, an x265 copy appears", noGroupBD, "Heat.1995.1080p.BluRay.x265-GRP", false, "already reaches"},
+		{"x265, a clean copy appears", x265BD, "Heat.1995.1080p.BluRay.x264-GRP", false, "already reaches"},
+		{"blocked format is still replaced", blockedBD, "Heat.1995.1080p.BluRay.x264-GRP", true, ""},
+		{"one quality upgrade, even to an avoided copy", groupWeb, "Heat.1995.1080p.BluRay.x264", true, ""},
+		{"below the quality, score alone doesn't count", noGroupWeb, "Heat.1995.1080p.WEB-DL.H.264-GRP", false, "isn't better"},
+		{"proper still replaces", noGroupBD, "Heat.1995.PROPER.1080p.BluRay.x264", true, ""},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			d := Decide(p, heat, Candidate{Name: tt.c}, tt.have)
+			if d.Accepted != tt.ok || d.Upgrade != tt.ok {
+				t.Fatalf("accepted = %v, upgrade = %v, reasons %q", d.Accepted, d.Upgrade, d.Rejections)
+			}
+			if tt.why != "" && !strings.Contains(strings.Join(d.Rejections, " "), tt.why) {
+				t.Errorf("reasons %q don't mention %q", d.Rejections, tt.why)
+			}
+		})
+	}
+
+	// With "prefer propers" off, a PROPER doesn't replace it either.
+	noPropers := preset(t, "hd")
+	noPropers.PreferPropers = false
+	if d := Decide(mustProfile(t, noPropers), heat, Candidate{Name: "Heat.1995.PROPER.1080p.BluRay.x264"}, noGroupBD); d.Accepted {
+		t.Error("propers off: a PROPER replaced a file that reached \"upgrade until\"")
+	}
+
+	// Advanced: a profile that sets an "upgrade until" score keeps chasing it.
+	adv := *p
+	adv.UpgradeUntilScore = 0
+	if adv.CutoffMet(noGroupBD, heat) {
+		t.Error("advanced, score 0: a file scoring below 0 met the cutoff")
+	}
+	if d := Decide(&adv, heat, Candidate{Name: "Heat.1995.1080p.BluRay.x264-GRP"}, noGroupBD); !d.Accepted || !d.Upgrade {
+		t.Errorf("advanced, score 0: the clean copy wasn't an upgrade: %q", d.Rejections)
+	}
+}
+
 // A file better than every quality the profile allows is left alone;
 // one the profile doesn't allow but could beat is replaced.
 func TestCutoffAboveTheProfile(t *testing.T) {

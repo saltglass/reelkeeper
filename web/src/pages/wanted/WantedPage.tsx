@@ -444,9 +444,13 @@ function WantedRow({
             <p className="mt-1 text-sm">
               <span className="font-medium">{it.quality}</span>, format score{" "}
               <span className="font-medium">{it.score}</span>
-              <span aria-hidden="true"> → </span>
-              <span className="sr-only"> to </span>
-              <span className="font-medium">{it.targetScore}</span>
+              {it.targetScore !== undefined && (
+                <>
+                  <span aria-hidden="true"> → </span>
+                  <span className="sr-only"> to </span>
+                  <span className="font-medium">{it.targetScore}</span>
+                </>
+              )}
             </p>
             <p className="mt-0.5 text-xs break-words text-muted-foreground">
               {it.formats?.length

@@ -3509,7 +3509,7 @@ export interface components {
             target?: string;
             /** @description Upgrades whose quality already reaches "upgrade until": the file's custom-format score. Absent for the others. */
             score?: number;
-            /** @description With `score`, the profile's "upgrade until" score. */
+            /** @description With `score`, the profile's "upgrade until" score. Absent when the profile has none (a simple profile stops at the quality, so only a file with a blocked format is listed, and `formats` names it). */
             targetScore?: number;
             /** @description With `score`, the scored custom formats the file matches. */
             formats?: components["schemas"]["TestReleaseFormat"][];

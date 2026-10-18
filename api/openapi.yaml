@@ -4256,7 +4256,10 @@ components:
             custom-format score. Absent for the others.
         targetScore:
           type: integer
-          description: With `score`, the profile's "upgrade until" score.
+          description: >-
+            With `score`, the profile's "upgrade until" score. Absent when the
+            profile has none (a simple profile stops at the quality, so only a
+            file with a blocked format is listed, and `formats` names it).
         formats:
           type: array
           description: With `score`, the scored custom formats the file matches.

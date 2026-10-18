@@ -152,7 +152,13 @@ func (p *Profile) notAnUpgrade(d Decision, m Movie, have *Existing) string {
 	if haveRank == len(p.Items) {
 		return fmt.Sprintf("The current file (%s) is already better than anything this profile grabs.", haveName)
 	}
-	if haveRank >= cutoff && haveScore >= p.UpgradeUntilScore {
+	// A PROPER/REPACK fixes a broken copy of the same quality, so it counts
+	// even once upgrades have stopped (as in Radarr).
+	proper := d.rank == haveRank && d.Revision > max(have.Revision, 1) && p.PreferPropers
+	if haveRank >= cutoff && haveScore >= p.UpgradeUntilScore && !proper {
+		if p.UpgradeUntilScore <= BlockScore+1 { // no score target (simple editor)
+			return fmt.Sprintf("The current file (%s) already reaches \"upgrade until\" (%s).", haveName, p.UpgradeUntil)
+		}
 		return fmt.Sprintf("The current file (%s) already reaches \"upgrade until\" (%s, score %d).",
 			haveName, p.UpgradeUntil, p.UpgradeUntilScore)
 	}
