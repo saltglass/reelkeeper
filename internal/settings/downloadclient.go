@@ -337,12 +337,6 @@ func applyVPN(next *DownloadClient, u DownloadClientUpdate, errs *validation.Err
 				errs.Add("vpnConfig", err.Error())
 				return
 			}
-			// Without a folder the built-in client isn't set up, and saving
-			// would quietly drop the config along with everything else.
-			if next.ClientType() == ClientBuiltin && next.Folder == "" {
-				errs.Add("folder", "Enter the download folder first: the built-in client isn't set up without one, so the VPN can't be saved.")
-				return
-			}
 			next.VPNConfig, next.VPNUnreadable, next.VPNHeld = text, false, false
 		}
 	}
@@ -424,16 +418,24 @@ func (s *Service) SaveDownloadClient(ctx context.Context, u DownloadClientUpdate
 		return DownloadClient{}, err
 	}
 	if !next.Configured() {
-		next = DownloadClient{Type: next.Type}
+		reset := DownloadClient{Type: next.Type}
 		if next.Type == ClientBuiltin {
-			next = next.withBuiltinDefaults()
+			reset = reset.withBuiltinDefaults()
+			// The VPN outlives the folder. Clearing the folder must not be a
+			// way round the confirmation that removing the VPN needs, or round
+			// the hold that follows it, and a VPN entered before the folder is
+			// kept for when the folder is filled in.
+			reset.VPNConfig, reset.VPNUnreadable, reset.ForwardedPort, reset.VPNHeld = next.VPNConfig, next.VPNUnreadable, next.ForwardedPort, next.VPNHeld
 		}
+		next = reset
 	}
 	s.mu.Lock()
 	if u.Password != nil || !next.Configured() || next.Type != s.downloadClient.ClientType() {
 		delete(s.sealedKeep, downloadClientPassword)
 	}
-	if u.VPNConfig != nil || !next.Configured() || next.Type != s.downloadClient.ClientType() {
+	// A VPN that can't be read is kept (sealed as it was) until it is
+	// replaced or removed, or the client type changes.
+	if u.VPNConfig != nil || next.Type != s.downloadClient.ClientType() {
 		delete(s.sealedKeep, downloadClientVPN)
 	}
 	err = s.storeDownloadClient(ctx, next)

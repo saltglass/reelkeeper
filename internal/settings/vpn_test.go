@@ -237,21 +237,71 @@ func TestMovingAwayFromTheBuiltinClientDropsItsVPN(t *testing.T) {
 	})
 }
 
-// A VPN config saved before the folder is filled in used to vanish: with no
-// folder the client counts as not set up, and the save reset it.
-func TestAVPNWithoutAFolderIsRefusedNotDropped(t *testing.T) {
+// With no folder the built-in client counts as not set up, and a save resets
+// its settings. The VPN used to go with them: a config entered before the
+// folder vanished, and clearing the folder removed a VPN without the
+// confirmation and the hold.
+func TestTheVPNOutlivesAnEmptyFolder(t *testing.T) {
 	storetest.Each(t, func(t *testing.T, db *store.Store) {
 		ctx := context.Background()
 		svc := newService(t, db, testKey)
+		folder := t.TempDir()
 		text := vpnText("nf")
-		_, err := svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{Type: settings.ClientBuiltin, VPNConfig: &text})
-		if fe := fieldErrors(t, err); !strings.Contains(fe["folder"], "download folder first") {
+		// Entered before the folder: kept, and still there once the folder is.
+		c, err := svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{Type: settings.ClientBuiltin, VPNConfig: &text, ForwardedPort: ptr(40000)})
+		if err != nil || c.Configured() || c.VPNConfig != text || c.ForwardedPort != 40000 {
+			t.Fatalf("without a folder = %+v %v", c, err)
+		}
+		if c := newService(t, db, testKey).DownloadClient(); c.VPNConfig != text {
+			t.Fatalf("after a restart = %+v", c)
+		}
+		if c, err := svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{Folder: folder}); err != nil || c.VPNConfig != text || c.ForwardedPort != 40000 {
+			t.Fatalf("with the folder = %+v %v", c, err)
+		}
+		// Clearing the folder leaves the VPN alone (no confirmation asked,
+		// none needed), and the other settings go back to their defaults.
+		if c, err := svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{UploadLimitKBs: ptr(9)}); err != nil || c.Configured() || c.VPNConfig != text || c.VPNHeld || c.UploadLimitKBs != 0 {
+			t.Fatalf("folder cleared = %+v %v", c, err)
+		}
+		if c := newService(t, db, testKey).DownloadClient(); c.VPNConfig != text {
+			t.Errorf("folder cleared, after a restart = %+v", c)
+		}
+		// Removing the VPN with no folder still needs the confirmation, and the
+		// hold it brings is saved.
+		none := ""
+		_, err = svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{VPNConfig: &none})
+		if fe := fieldErrors(t, err); fe["confirmUnprotected"] == "" {
 			t.Fatalf("errors = %v", fe)
 		}
+		if c, err := svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{VPNConfig: &none, ConfirmUnprotected: true}); err != nil || c.HasVPN() || !c.VPNHeld {
+			t.Fatalf("removed without a folder = %+v %v", c, err)
+		}
+		again := newService(t, db, testKey)
+		if c, err := again.SaveDownloadClient(ctx, settings.DownloadClientUpdate{Folder: folder}); err != nil || c.HasVPN() || !c.VPNHeld {
+			t.Errorf("folder back after removing = %+v %v", c, err)
+		}
+	})
+}
+
+// A VPN that can't be read (the secret key changed) survives the folder being
+// cleared: restoring the key brings it back.
+func TestAnUnreadableVPNOutlivesAnEmptyFolder(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
 		folder := t.TempDir()
-		c, err := svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{Type: settings.ClientBuiltin, Folder: folder, VPNConfig: &text})
-		if err != nil || !c.HasVPN() {
-			t.Fatalf("with a folder: %+v, %v", c, err)
+		text := vpnText("uf")
+		if _, err := newService(t, db, testKey).SaveDownloadClient(ctx, settings.DownloadClientUpdate{Type: settings.ClientBuiltin, Folder: folder, VPNConfig: &text}); err != nil {
+			t.Fatal(err)
+		}
+		other := newService(t, db, "another-secret-key-0123456789")
+		if c, err := other.SaveDownloadClient(ctx, settings.DownloadClientUpdate{}); err != nil || c.Configured() || !c.VPNUnreadable || !c.HasVPN() {
+			t.Fatalf("folder cleared = %+v %v", c, err)
+		}
+		if c := newService(t, db, "another-secret-key-0123456789").DownloadClient(); !c.VPNUnreadable {
+			t.Errorf("with the wrong key, after a restart = %+v", c)
+		}
+		if c := newService(t, db, testKey).DownloadClient(); c.VPNConfig != text {
+			t.Errorf("restoring the key = %+v", c)
 		}
 	})
 }
