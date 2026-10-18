@@ -129,6 +129,11 @@ type Engine struct {
 	// is added a second time (see stopRunning), so before one is started again
 	// the client is made anew.
 	stale map[string]bool
+	// deleting holds the hashes of removed torrents whose files are still being
+	// deleted (Remove does that after letting go of mu); deletions counts them,
+	// so that Close waits for them before closing the piece records.
+	deleting  map[string]bool
+	deletions sync.WaitGroup
 
 	trk  *trackerLog
 	priv privateSet
@@ -150,6 +155,9 @@ type Engine struct {
 
 	// announceDHT does a DHT announce for a torrent (tests replace it).
 	announceDHT func(t *torrent.Torrent)
+	// beforeDelete runs as a removed torrent's files start being deleted
+	// (tests use it to hold the deleting up).
+	beforeDelete func(hash string)
 }
 
 // Open starts the engine: it opens its records, starts listening and brings
@@ -177,7 +185,7 @@ func Open(cfg Config) (*Engine, error) {
 		netw: cfg.Network, logger: cfg.Logger.With("component", "builtin"), cfg: cfg,
 		dir:  filepath.Join(cfg.DataDir, "builtin"),
 		ents: map[string]*entry{}, wake: make(chan struct{}, 1), stop: make(chan struct{}), done: make(chan struct{}),
-		trk: newTrackerLog(), held: cfg.Hold, stale: map[string]bool{},
+		trk: newTrackerLog(), held: cfg.Hold, stale: map[string]bool{}, deleting: map[string]bool{},
 		up:   rate.NewLimiter(limitOf(cfg.UploadLimitKBs), burstOf(cfg.UploadLimitKBs)),
 		down: rate.NewLimiter(limitOf(cfg.DownloadLimitKBs), burstOf(cfg.DownloadLimitKBs)),
 	}
@@ -461,6 +469,7 @@ func (e *Engine) Close(ctx context.Context) error {
 	go func() {
 		defer close(finished)
 		e.closeNetwork()
+		e.deletions.Wait() // they still write to the piece records
 		e.closeStorage()
 	}()
 	select {

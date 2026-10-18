@@ -252,9 +252,7 @@ func TestFilesGoneMeansMissingFilesAndComingBackClearsIt(t *testing.T) {
 	if err := os.Remove(file); err != nil {
 		t.Fatal(err)
 	}
-	e.mu.Lock()
-	e.checkFilesLocked()
-	e.mu.Unlock()
+	e.sweepFiles()
 	st := status(t, e, hash)
 	if st.State != rktorrent.MissingFiles || isRunning(e, hash) {
 		t.Fatalf("with a file gone: %+v", st)
@@ -262,12 +260,67 @@ func TestFilesGoneMeansMissingFilesAndComingBackClearsIt(t *testing.T) {
 	if err := os.WriteFile(file, saved, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	e.mu.Lock()
-	e.checkFilesLocked()
-	e.mu.Unlock()
+	e.sweepFiles()
 	if st := status(t, e, hash); !sharing(st.State) {
 		t.Fatalf("with the file back: %s", st.State)
 	}
+}
+
+// The sweep looks at files without the engine's lock, so a torrent can be
+// moved, checked or removed meanwhile. An answer about where its files used to
+// be must then be dropped, not mark it missing.
+func TestAFileSweepThatRacesAChangeIsDropped(t *testing.T) {
+	c := makeContent(t, "Raced.2020", contentOpts{})
+	e, _ := openEngine(t, &loopbackNet{}, engineOpts{})
+	hash, _ := e.Add(AddRequest{Torrent: c.torrent, Category: cat, SavePath: c.parent})
+	waitFor(t, e, hash, "being finished", 20*time.Second, func(s Status) bool { return s.Progress >= 1 })
+	file := filepath.Join(c.root, "movie.mkv")
+	saved, _ := os.ReadFile(file)
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	changes := map[string]func(en *entry) (undo func()){
+		"moved": func(en *entry) func() {
+			was := en.rec.SavePath
+			en.rec.SavePath = t.TempDir()
+			return func() { en.rec.SavePath = was }
+		},
+		"being checked": func(en *entry) func() {
+			en.verifying = true
+			return func() { en.verifying = false }
+		},
+		"being moved": func(en *entry) func() {
+			en.busy = "moving"
+			return func() { en.busy = "" }
+		},
+		"removed and added again": func(en *entry) func() {
+			again := *en
+			e.ents[hash] = &again
+			return func() { e.ents[hash] = en }
+		},
+	}
+	for name, change := range changes {
+		e.mu.Lock()
+		checks := e.fileChecksLocked()
+		e.mu.Unlock()
+		lookForFiles(checks)
+		e.mu.Lock()
+		en := e.ents[hash]
+		undo := change(en)
+		e.applyFileChecksLocked(checks)
+		missing := e.ents[hash].missing
+		undo()
+		e.mu.Unlock()
+		if missing {
+			t.Errorf("%s while the files were looked at: marked missing anyway", name)
+		}
+	}
+	// With nothing changed, the same answer counts.
+	e.sweepFiles()
+	if st := status(t, e, hash); st.State != rktorrent.MissingFiles {
+		t.Errorf("nothing changed: %s", st.State)
+	}
+	_ = os.WriteFile(file, saved, 0o644)
 }
 
 func TestRecheckFindsDamageAndStaysOffTheNetwork(t *testing.T) {

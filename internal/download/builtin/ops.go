@@ -78,6 +78,10 @@ func (e *Engine) Add(req AddRequest) (string, error) {
 	if e.shut {
 		return "", errClosed
 	}
+	if e.deleting[r.Hash] {
+		// Its old files are still being deleted, from the same folder.
+		return "", errors.New("the built-in client is still deleting this torrent's old files; try again in a moment")
+	}
 	if have, ok := e.ents[r.Hash]; ok {
 		if have.rec.Category != req.Category {
 			return "", fmt.Errorf("the built-in client already has this torrent, outside the category %q, so Reelkeeper leaves it alone", req.Category)
@@ -296,9 +300,26 @@ func (e *Engine) MoveCategory(from, to string, hashes []string) error {
 // Remove drops torrents from the engine, and deletes their files too when
 // deleteFiles is set. Files are only ever deleted inside the torrent's own
 // folder, and only the ones the torrent lists.
+//
+// Deleting big files on a network share, and forgetting every piece, can take
+// seconds, so that happens after the lock is let go: the torrents are no longer
+// listed by then, and adding one of them again waits until it is done.
 func (e *Engine) Remove(category string, hashes []string, deleteFiles bool) error {
+	var toDelete []*entry
+	defer func() {
+		for _, en := range toDelete {
+			e.deleteFiles(en)
+			e.mu.Lock()
+			delete(e.deleting, en.rec.Hash)
+			e.mu.Unlock()
+			e.deletions.Done()
+		}
+	}()
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.shut {
+		return errClosed
+	}
 	ens, err := e.ours(category, hashes)
 	if err != nil {
 		return err
@@ -322,7 +343,9 @@ func (e *Engine) Remove(category string, hashes []string, deleteFiles bool) erro
 		e.priv.set(en.rec.Hash, false)
 		e.trk.forget(en.rec.Hash)
 		if deleteFiles {
-			e.deleteFiles(en)
+			e.deleting[en.rec.Hash] = true
+			e.deletions.Add(1)
+			toDelete = append(toDelete, en)
 		}
 		_ = os.Remove(e.torrentPath(en.rec.Hash))
 	}
@@ -332,6 +355,9 @@ func (e *Engine) Remove(category string, hashes []string, deleteFiles bool) erro
 // deleteFiles deletes the files a torrent lists from its folder, then the
 // folders that are left empty (up to, never including, the folder itself).
 func (e *Engine) deleteFiles(en *entry) {
+	if e.beforeDelete != nil {
+		e.beforeDelete(en.rec.Hash)
+	}
 	if en.info == nil || !filepath.IsAbs(en.rec.SavePath) || filepath.Dir(en.rec.SavePath) == en.rec.SavePath {
 		return
 	}

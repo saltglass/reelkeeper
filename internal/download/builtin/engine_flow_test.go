@@ -157,6 +157,63 @@ func TestRemoveDeletesOnlyTheTorrentsOwnFiles(t *testing.T) {
 	}
 }
 
+// Deleting a big torrent's files (and forgetting its pieces) can take seconds
+// on a network share. The rest of the engine must not wait for it, and the same
+// torrent can't be added back into the folder until the deleting is done.
+func TestDeletingFilesDoesNotHoldUpTheEngine(t *testing.T) {
+	c := makeContent(t, "Slow.Delete.2020", contentOpts{})
+	e, cfg := openEngine(t, &loopbackNet{}, engineOpts{})
+	copyTree(t, c.root, filepath.Join(cfg.Folder, c.name))
+	hash, err := e.Add(AddRequest{Torrent: c.torrent, Category: cat, Stopped: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	started, release := make(chan struct{}), make(chan struct{})
+	e.beforeDelete = func(string) {
+		close(started)
+		<-release
+	}
+	removed := make(chan error, 1)
+	go func() { removed <- e.Remove(cat, []string{hash}, true) }()
+	<-started
+
+	// While the files are being deleted, the engine answers at once.
+	listed := make(chan []Status, 1)
+	go func() {
+		all, _ := e.List(cat)
+		listed <- all
+	}()
+	select {
+	case all := <-listed:
+		if len(all) != 0 {
+			t.Errorf("still listed while its files are deleted: %+v", all)
+		}
+	case <-time.After(5 * time.Second):
+		close(release)
+		t.Fatal("the engine waited for the files to be deleted")
+	}
+	if _, err := e.Add(AddRequest{Torrent: c.torrent, Category: cat, Stopped: true}); err == nil || !strings.Contains(err.Error(), "still deleting") {
+		t.Errorf("adding it back while deleting: %v", err)
+	}
+	select {
+	case err := <-removed:
+		t.Fatalf("Remove returned before the files were deleted: %v", err)
+	default:
+	}
+
+	close(release)
+	if err := <-removed; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(cfg.Folder, c.name, "movie.mkv")); err == nil {
+		t.Error("the torrent's file wasn't deleted")
+	}
+	e.beforeDelete = nil
+	if _, err := e.Add(AddRequest{Torrent: c.torrent, Category: cat, Stopped: true}); err != nil {
+		t.Errorf("adding it back once deleted: %v", err)
+	}
+}
+
 func TestOnlyReelkeepersCategoryIsTouched(t *testing.T) {
 	c := makeContent(t, "Category.Test.2020", contentOpts{})
 	e, _ := openEngine(t, &loopbackNet{}, engineOpts{})

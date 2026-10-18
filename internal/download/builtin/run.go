@@ -32,9 +32,17 @@ func (e *Engine) run() {
 		case <-tick.C:
 		case <-e.wake:
 		}
+		now := time.Now()
 		e.mu.Lock()
-		e.step(time.Now())
+		e.step(now)
+		sweep := now.Sub(e.sweep) >= sweepEvery
+		if sweep {
+			e.sweep = now
+		}
 		e.mu.Unlock()
+		if sweep {
+			e.sweepFiles()
+		}
 	}
 }
 
@@ -45,10 +53,6 @@ func (e *Engine) step(now time.Time) {
 	if dt := now.Sub(e.last); dt >= e.settings().Tick/2 {
 		e.sample(now, dt)
 		e.last = now
-	}
-	if now.Sub(e.sweep) >= sweepEvery {
-		e.sweep = now
-		e.checkFilesLocked()
 	}
 	e.reconcile(now)
 	e.announceDHTs(now)

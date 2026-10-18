@@ -299,12 +299,9 @@ func inside(folder, name string) (string, bool) {
 
 // filesPresent reports whether every file of a finished torrent is on disk at
 // its full size, and names the first that isn't.
-func (e *Engine) filesPresent(en *entry) (bool, string) {
-	if en.info == nil {
-		return true, ""
-	}
-	for _, f := range fileList(en.info) {
-		p, ok := inside(en.rec.SavePath, f.Name)
+func filesPresent(info *metainfo.Info, folder string) (bool, string) {
+	for _, f := range fileList(info) {
+		p, ok := inside(folder, f.Name)
 		if !ok {
 			return false, f.Name
 		}
@@ -316,21 +313,74 @@ func (e *Engine) filesPresent(en *entry) (bool, string) {
 	return true, ""
 }
 
-// checkFilesLocked looks for finished torrents whose files have gone (or have
-// come back).
-func (e *Engine) checkFilesLocked() {
+// fileCheck is one finished torrent's files being looked for. Looking takes a
+// moment per file on a network share, so the regular sweep (sweepFiles) does
+// it without holding the engine's lock: what to check is noted under the lock,
+// the files are looked at, and the answers are applied under the lock again.
+type fileCheck struct {
+	en     *entry
+	info   *metainfo.Info
+	folder string
+	ok     bool
+	name   string // the first file that isn't there
+}
+
+// fileChecksLocked notes which torrents' files to look for: finished ones
+// whose files aren't being checked or moved.
+func (e *Engine) fileChecksLocked() []fileCheck {
+	var out []fileCheck
 	for _, en := range e.ents {
 		if en.rec.Completed == nil || en.verifying || en.busy != "" || en.info == nil {
 			continue
 		}
-		ok, name := e.filesPresent(en)
+		out = append(out, fileCheck{en: en, info: en.info, folder: en.rec.SavePath})
+	}
+	return out
+}
+
+func lookForFiles(checks []fileCheck) {
+	for i := range checks {
+		c := &checks[i]
+		c.ok, c.name = filesPresent(c.info, c.folder)
+	}
+}
+
+// applyFileChecksLocked marks torrents whose files have gone as missing (and
+// clears it when they come back). An answer is dropped when the torrent was
+// removed, moved or started being checked while its files were looked at.
+func (e *Engine) applyFileChecksLocked(checks []fileCheck) {
+	for _, c := range checks {
+		en := c.en
+		if e.ents[en.rec.Hash] != en || en.verifying || en.busy != "" || en.rec.SavePath != c.folder {
+			continue
+		}
 		switch {
-		case !ok && !en.missing:
+		case !c.ok && !en.missing:
 			en.missing = true
-			e.logger.Warn("a finished torrent's files have gone", "torrent", en.rec.Name, "file", name)
+			e.logger.Warn("a finished torrent's files have gone", "torrent", en.rec.Name, "file", c.name)
 			e.stopRunning(en)
-		case ok && en.missing:
+		case c.ok && en.missing:
 			en.missing = false
 		}
 	}
+}
+
+// checkFilesLocked looks for finished torrents whose files have gone (or have
+// come back), all under the lock (at startup, before anything else runs).
+func (e *Engine) checkFilesLocked() {
+	checks := e.fileChecksLocked()
+	lookForFiles(checks)
+	e.applyFileChecksLocked(checks)
+}
+
+// sweepFiles is checkFilesLocked without holding the lock while files are
+// looked at, so the Queue and the rest of the engine don't wait for a slow disk.
+func (e *Engine) sweepFiles() {
+	e.mu.Lock()
+	checks := e.fileChecksLocked()
+	e.mu.Unlock()
+	lookForFiles(checks)
+	e.mu.Lock()
+	e.applyFileChecksLocked(checks)
+	e.mu.Unlock()
 }
