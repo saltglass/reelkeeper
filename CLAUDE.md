@@ -137,6 +137,9 @@ together.
   including moves between a real Transmission and the built-in client (that
   one runs a throwaway Transmission with no network, in the repo's git-ignored
   `tmp/` folder)
+- `just load-builtin`: the built-in client's memory with up to 5,000 made-up
+  seeding torrents (~1 hour, loopback only; `LOAD_REAL=1` for real-sized
+  ones); results in `tmp/load-builtin/`
 - Single Go test: `go test ./internal/parser -run TestName`
 - Single frontend test: `cd web && npx vitest run src/pages/LoginPage.test.tsx`
 
@@ -489,7 +492,11 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
 - **x86-64-v2.** Images must run on CPUs without AVX2 (common in VMs). Go's
   default build is fine.
 - **RAM.** Aim for under 250 MB steady-state for a library of a few thousand
-  titles.
+  titles. The built-in client adds about 1 MB per torrent it holds, parked
+  or seeding (anacrolix's per-piece records; `just load-builtin`,
+  2026-10-18), so about 100 torrents puts a ~176 MB instance a little over.
+  Dan accepted that and chose to document it rather than cap parked
+  torrents: 100 is the realistic top end, and an external client suits more.
 - **The built-in client's sockets only come from its `Network`**
   (`internal/download/builtin/network.go`, or `vpn.go` in VPN mode), so nothing
   in the engine may dial, listen or look up a name any other way (no

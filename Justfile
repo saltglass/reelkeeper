@@ -91,6 +91,12 @@ backup-lab:
     @colima status >/dev/null 2>&1 || colima start
     dev/backup-lab/run.sh
 
+# Measure the built-in client's memory with thousands of made-up seeding torrents (about 1.5 hours; loopback only, nothing leaves the computer).
+# Results in tmp/load-builtin/. LOAD_RUNS="n:seeds[:peers],..." and LOAD_SETTLE=2m pick fewer or shorter runs; LOAD_REAL=1 makes the torrents real-sized
+# (5-40 GB, about 1,600 pieces each), the case to compare with a real library. See internal/download/builtin/load_test.go.
+load-builtin:
+    LOAD_OUT={{justfile_directory()}}/tmp/load-builtin go test -tags loadtest ./internal/download/builtin -run '^TestLoadBuiltin$' -count=1 -v -timeout 0
+
 # Remove the backup lab's containers, network and volumes
 backup-lab-down:
     docker compose -f dev/backup-lab/compose.yaml down -v --remove-orphans
