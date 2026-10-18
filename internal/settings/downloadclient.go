@@ -337,6 +337,12 @@ func applyVPN(next *DownloadClient, u DownloadClientUpdate, errs *validation.Err
 				errs.Add("vpnConfig", err.Error())
 				return
 			}
+			// Without a folder the built-in client isn't set up, and saving
+			// would quietly drop the config along with everything else.
+			if next.ClientType() == ClientBuiltin && next.Folder == "" {
+				errs.Add("folder", "Enter the download folder first: the built-in client isn't set up without one, so the VPN can't be saved.")
+				return
+			}
 			next.VPNConfig, next.VPNUnreadable, next.VPNHeld = text, false, false
 		}
 	}

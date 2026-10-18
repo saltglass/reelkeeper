@@ -236,3 +236,22 @@ func TestMovingAwayFromTheBuiltinClientDropsItsVPN(t *testing.T) {
 		}
 	})
 }
+
+// A VPN config saved before the folder is filled in used to vanish: with no
+// folder the client counts as not set up, and the save reset it.
+func TestAVPNWithoutAFolderIsRefusedNotDropped(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		svc := newService(t, db, testKey)
+		text := vpnText("nf")
+		_, err := svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{Type: settings.ClientBuiltin, VPNConfig: &text})
+		if fe := fieldErrors(t, err); !strings.Contains(fe["folder"], "download folder first") {
+			t.Fatalf("errors = %v", fe)
+		}
+		folder := t.TempDir()
+		c, err := svc.SaveDownloadClient(ctx, settings.DownloadClientUpdate{Type: settings.ClientBuiltin, Folder: folder, VPNConfig: &text})
+		if err != nil || !c.HasVPN() {
+			t.Fatalf("with a folder: %+v, %v", c, err)
+		}
+	})
+}
