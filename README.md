@@ -89,6 +89,10 @@ does the same job, and uses the fact that everything lives together:
   WEBRip, HDTV) with "upgrade until", size limits, languages, release groups
   to prefer or block, and HDR, codec and audio features you can require,
   prefer, avoid or block.
+- **Upgrades stop where you say.** Once a movie's file reaches your "upgrade
+  until" quality, Reelkeeper leaves it alone; prefer and avoid only choose
+  between the releases a search finds, they never start another download.
+  (A blocked format, or a proper or repack, can still replace it.)
 - **Advanced** shows the custom formats and scores behind those choices.
   Import and export TRaSH Guides JSON.
 - A "test a release name" box on every profile.
@@ -99,10 +103,15 @@ does the same job, and uses the fact that everything lives together:
   touches torrents in its own categories (labels in Transmission and
   Deluge).
 - **Or its own built-in client (experimental)**: Reelkeeper downloads the
-  torrents itself, with no other app to run. Queueing, speed limits and the
-  same cleanup and Queue controls as the others. It can send everything
-  through a WireGuard VPN you configure, with a kill switch that stops every
-  download if the VPN drops (also experimental).
+  torrents itself, with no other app to run. Limits on how many torrents
+  download and seed at once, optional speed caps, and the same cleanup and
+  Queue controls as the others. It never asks your router to open a port.
+- **A WireGuard VPN for the built-in client (experimental).** Drop in the
+  config file your VPN provider gave you, and everything the client does goes
+  through it, with no extra container privileges. Settings shows your real IP
+  next to the VPN's, and a kill switch stops every download the moment the
+  VPN drops (a banner on the Queue says so), starting again when it is back.
+  Without a VPN config, the client is plainly marked as unprotected.
 - Activity → Queue with Pause, Resume, Move to top and Remove.
 - **Switch clients without losing anything.** Changing the download client
   moves Reelkeeper's torrents to the new one, even half-finished ones: the
@@ -181,7 +190,7 @@ You also need a torrent client (qBittorrent, Transmission or Deluge, or the
 experimental built-in one) and a
 free [TMDB](https://www.themoviedb.org) API key. The
 [installation guide](docs/install.md) covers PostgreSQL, folders and paths,
-and every setting.
+and every setting, including the built-in client's port and its VPN.
 
 ## Documentation
 
