@@ -23,10 +23,19 @@ type entry struct {
 	info *metainfo.Info
 	// t is the anacrolix torrent, while the torrent is handed to the client
 	// (running); nil while it is queued, stopped or being checked. A torrent
-	// that isn't running uses no network at all.
+	// that isn't running has no connections and moves no data (one that was paused in
+	// place, see parked, still announces to its trackers now and then).
 	t       *torrent.Torrent
 	started time.Time
 	gone    chan struct{} // closed when the torrent stops running; ends its watcher
+	// parked is the torrent while it is paused in place (see parkRunning): still
+	// in the client, with no connections and no data moving either way. parkedMax
+	// is the connection limit to give it back when it runs again. baseDown and
+	// baseUp are what the client's counters already held when it last started
+	// running (a parked torrent's counters carry on from the run before).
+	parked           *torrent.Torrent
+	parkedMax        int
+	baseDown, baseUp int64
 
 	// have is the bytes verified so far.
 	have int64
@@ -205,7 +214,7 @@ func (en *entry) downloaded() int64 { return en.rec.Downloaded + en.liveDown }
 //   - Moving: its files are being moved to another folder.
 //   - Error and MissingFiles: its files can't be written, or have gone.
 //   - Paused / SeedingPaused: someone stopped it, unfinished or finished.
-//   - Queued: unfinished and waiting for a download slot.
+//   - Queued: unfinished and waiting for a download slot (or for the VPN).
 //   - Seeding: finished, whether it is uploading or waiting for one of the
 //     limited seeding slots (qBittorrent's "queuedUP" counts as seeding too).
 //   - SeedingStalled: finished and uploading, but nobody has been served
@@ -214,6 +223,10 @@ func (en *entry) downloaded() int64 { return en.rec.Downloaded + en.liveDown }
 //     StalledAfter (qBittorrent's "stalledDL").
 func (e *Engine) stateLocked(en *entry, now time.Time) rktorrent.State {
 	stalled := e.settings().StalledAfter
+	// While everything is held (the VPN is down), unfinished torrents wait:
+	// they read as Queued, not as stuck without details, so cleanup's
+	// "stuck" rules don't count a hold against them.
+	blocked := e.blockedLocked() && !en.running()
 	switch {
 	case en.verifying:
 		return rktorrent.Checking
@@ -228,6 +241,8 @@ func (e *Engine) stateLocked(en *entry, now time.Time) rktorrent.State {
 			return rktorrent.SeedingPaused
 		}
 		return rktorrent.Paused
+	case blocked && !en.done():
+		return rktorrent.Queued
 	case !en.rec.HaveInfo:
 		return rktorrent.Metadata
 	case en.done():

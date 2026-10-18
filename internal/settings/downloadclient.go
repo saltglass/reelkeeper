@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/saltglass/reelkeeper/internal/download/builtin"
 	"github.com/saltglass/reelkeeper/internal/secrets"
 	"github.com/saltglass/reelkeeper/internal/validation"
 )
@@ -88,7 +89,51 @@ type DownloadClient struct {
 	// limit.
 	DownloadLimitKBs int `json:"downloadLimitKBs"`
 	UploadLimitKBs   int `json:"uploadLimitKBs"`
+
+	// The built-in client's VPN (WireGuard). With a VPN config, everything the
+	// client does goes through the VPN and ListenPort is not used (the
+	// provider's forwarded port is, ForwardedPort); without one the client
+	// uses the computer's own network, which shows peers the real address.
+	//
+	// VPNConfig is the whole config file, stored encrypted (it holds the
+	// private key) and never sent to the browser.
+	VPNConfig string `json:"-"`
+	// VPNUnreadable: a VPN config is stored but couldn't be decrypted (the
+	// secret key changed). The client then stays held rather than treating the
+	// missing config as "no VPN": it must never fall back to unprotected.
+	VPNUnreadable bool `json:"-"`
+	// ForwardedPort is the port the VPN provider forwards to this client, so
+	// peers can connect to it; 0 means outgoing connections only.
+	ForwardedPort int `json:"forwardedPort"`
+	// VPNHeld: the VPN was removed, and downloads stay stopped until the person
+	// starts them without it (Service.ReleaseVPNHold). Saved so that a restart
+	// doesn't release it.
+	VPNHeld bool `json:"vpnHeld"`
 }
+
+// What the status page says when a stored VPN can't be used.
+const vpnUnreadableMessage = "The saved VPN config can't be read, probably because Reelkeeper's secret key changed. Upload the VPN config again."
+
+// VPNInfo describes the stored VPN config for the browser: what it contains
+// (never a secret), or why it can't be used. Both are empty without a VPN.
+func (d DownloadClient) VPNInfo() (summary *builtin.VPNSummary, problem string) {
+	switch {
+	case d.VPNUnreadable:
+		return nil, vpnUnreadableMessage
+	case d.VPNConfig == "":
+		return nil, ""
+	}
+	cfg, err := builtin.ParseWireGuard(d.VPNConfig)
+	if err != nil {
+		return nil, "The saved VPN config can't be used: " + err.Error()
+	}
+	sum := cfg.Summary()
+	return &sum, ""
+}
+
+// HasVPN reports whether a VPN is set up for the built-in client (even one
+// that can't be read right now).
+func (d DownloadClient) HasVPN() bool { return d.VPNConfig != "" || d.VPNUnreadable }
 
 // Configured reports whether a download client is set up. The built-in client
 // has no address, so it is set up once it has a folder.
@@ -119,7 +164,7 @@ func (d DownloadClient) ClientType() string {
 }
 
 // ClientName is what messages call the client: "qBittorrent",
-// "Transmission", "Deluge" or "Built-in".
+// "Transmission", "Deluge" or "the built-in client".
 func (d DownloadClient) ClientName() string { return ClientDisplayName(d.ClientType()) }
 
 // AddressPrompt asks for the client's address, in the client's own words.
@@ -135,7 +180,10 @@ func (d DownloadClient) AddressPrompt() string {
 	return "Enter qBittorrent's Web UI address, like http://192.168.1.20:8080."
 }
 
-// ClientDisplayName is the name of a client type, as people write it.
+// ClientDisplayName is the name of a client type as a sentence uses it. The
+// built-in client's is "the built-in client" (it begins no sentence in lower
+// case: the code that starts a sentence with a name capitalizes it, and the
+// web app labels its choices "Built-in" itself).
 func ClientDisplayName(clientType string) string {
 	switch clientType {
 	case ClientTransmission:
@@ -143,14 +191,15 @@ func ClientDisplayName(clientType string) string {
 	case ClientDeluge:
 		return "Deluge"
 	case ClientBuiltin:
-		return "Built-in"
+		return "the built-in client"
 	}
 	return "qBittorrent"
 }
 
 type storedDownloadClient struct {
 	DownloadClient
-	PasswordSealed string `json:"passwordSealed"`
+	PasswordSealed  string `json:"passwordSealed"`
+	VPNConfigSealed string `json:"vpnConfigSealed,omitempty"`
 }
 
 // DownloadClientUpdate is what the user can change. A nil password keeps
@@ -169,9 +218,18 @@ type DownloadClientUpdate struct {
 	MaxActiveSeeds     *int
 	DownloadLimitKBs   *int
 	UploadLimitKBs     *int
+	// The built-in client's VPN. A nil VPNConfig keeps the current one; a
+	// config replaces it; an empty one removes it, which needs
+	// ConfirmUnprotected because peers will then see the real address.
+	VPNConfig          *string
+	ForwardedPort      *int
+	ConfirmUnprotected bool
 }
 
-const downloadClientPassword = "downloadClient.password"
+const (
+	downloadClientPassword = "downloadClient.password"
+	downloadClientVPN      = "downloadClient.vpnConfig"
+)
 
 // DownloadClient returns the download client settings.
 func (s *Service) DownloadClient() DownloadClient {
@@ -224,9 +282,12 @@ func (s *Service) ApplyDownloadClient(u DownloadClientUpdate) (DownloadClient, e
 		setInt(&next.MaxActiveSeeds, u.MaxActiveSeeds)
 		setInt(&next.DownloadLimitKBs, u.DownloadLimitKBs)
 		setInt(&next.UploadLimitKBs, u.UploadLimitKBs)
+		setInt(&next.ForwardedPort, u.ForwardedPort)
+		applyVPN(&next, u, &errs)
 		validateBuiltin(next, &errs)
 	} else if known {
 		next.ListenPort, next.MaxActiveDownloads, next.MaxActiveSeeds, next.DownloadLimitKBs, next.UploadLimitKBs = 0, 0, 0, 0, 0
+		next.VPNConfig, next.VPNUnreadable, next.ForwardedPort, next.VPNHeld = "", false, 0, false
 	}
 	if next.URL != "" && errs == nil {
 		name := next.ClientName()
@@ -255,6 +316,39 @@ func setInt(dst *int, src *int) {
 	}
 }
 
+// applyVPN works out the VPN part of an update (see DownloadClientUpdate).
+func applyVPN(next *DownloadClient, u DownloadClientUpdate, errs *validation.Errors) {
+	if u.VPNConfig != nil {
+		text := *u.VPNConfig
+		switch {
+		case strings.TrimSpace(text) == "":
+			if next.HasVPN() {
+				if !u.ConfirmUnprotected {
+					errs.Add("confirmUnprotected", "Removing the VPN means peers will see your real IP address. Confirm that you want to download without a VPN.")
+					return
+				}
+				next.VPNConfig, next.VPNUnreadable, next.ForwardedPort = "", false, 0
+				// Downloads stay stopped until the person starts them without
+				// the VPN.
+				next.VPNHeld = true
+			}
+		default:
+			if _, err := builtin.ParseWireGuard(text); err != nil {
+				errs.Add("vpnConfig", err.Error())
+				return
+			}
+			next.VPNConfig, next.VPNUnreadable, next.VPNHeld = text, false, false
+		}
+	}
+	if !next.HasVPN() {
+		next.ForwardedPort = 0
+		return
+	}
+	if next.ForwardedPort < 0 || next.ForwardedPort > 65535 {
+		errs.Add("forwardedPort", "Enter the port your VPN provider forwards to you (1 to 65535), or 0 for none.")
+	}
+}
+
 // validateBuiltin checks the built-in client's settings. An empty folder is
 // allowed (it means the client isn't set up, like an empty address does for
 // the others); one that is given must be somewhere Reelkeeper can write.
@@ -266,7 +360,9 @@ func validateBuiltin(d DownloadClient, errs *validation.Errors) {
 			errs.Add("folder", err.Error())
 		}
 	}
-	if d.ListenPort < 1024 || d.ListenPort > 65535 {
+	// Behind a VPN the listen port isn't used (the provider's forwarded port
+	// is), so it isn't checked.
+	if !d.HasVPN() && (d.ListenPort < 1024 || d.ListenPort > 65535) {
 		errs.Add("listenPort", "Enter a port from 1024 to 65535.")
 	}
 	if d.MaxActiveDownloads < 1 || d.MaxActiveDownloads > MaxMaxActiveDownloads {
@@ -331,11 +427,52 @@ func (s *Service) SaveDownloadClient(ctx context.Context, u DownloadClientUpdate
 	if u.Password != nil || !next.Configured() || next.Type != s.downloadClient.ClientType() {
 		delete(s.sealedKeep, downloadClientPassword)
 	}
-	sealed, err := s.sealOrKeep(downloadClientPassword, next.Password)
-	if err == nil {
-		err = s.put(ctx, GroupDownloadClient, storedDownloadClient{DownloadClient: next, PasswordSealed: sealed})
+	if u.VPNConfig != nil || !next.Configured() || next.Type != s.downloadClient.ClientType() {
+		delete(s.sealedKeep, downloadClientVPN)
 	}
+	err = s.storeDownloadClient(ctx, next)
 	if err != nil {
+		s.mu.Unlock()
+		return DownloadClient{}, err
+	}
+	s.downloadClient = next
+	s.mu.Unlock()
+	s.notify(GroupDownloadClient)
+	return next, nil
+}
+
+// storeDownloadClient writes the settings, encrypting the password and the
+// VPN config. The caller holds the lock.
+func (s *Service) storeDownloadClient(ctx context.Context, next DownloadClient) error {
+	sealed, err := s.sealOrKeep(downloadClientPassword, next.Password)
+	if err != nil {
+		return err
+	}
+	vpn, err := s.sealOrKeep(downloadClientVPN, next.VPNConfig)
+	if err != nil {
+		return err
+	}
+	if next.VPNConfig == "" && s.sealedKeep[downloadClientVPN] == "" {
+		vpn = "" // nothing stored, nothing to keep
+	}
+	return s.put(ctx, GroupDownloadClient, storedDownloadClient{DownloadClient: next, PasswordSealed: sealed, VPNConfigSealed: vpn})
+}
+
+// ReleaseVPNHold lets the built-in client's downloads start again after the
+// VPN was removed ("Start without VPN"). It is refused while a VPN is set up.
+func (s *Service) ReleaseVPNHold(ctx context.Context) (DownloadClient, error) {
+	s.mu.Lock()
+	next := s.downloadClient
+	if next.HasVPN() {
+		s.mu.Unlock()
+		return DownloadClient{}, errors.New("a VPN is set up, so downloads aren't held; remove it first to download without one")
+	}
+	if !next.VPNHeld {
+		s.mu.Unlock()
+		return next, nil
+	}
+	next.VPNHeld = false
+	if err := s.storeDownloadClient(ctx, next); err != nil {
 		s.mu.Unlock()
 		return DownloadClient{}, err
 	}
@@ -360,6 +497,19 @@ func (s *Service) loadDownloadClient(ctx context.Context) error {
 			s.logger.Error("can't read a stored credential", "setting", downloadClientPassword, "error", err)
 		} else {
 			d.Password = pw
+		}
+	}
+	if stored.VPNConfigSealed != "" {
+		if cfg, err := s.box.Open(stored.VPNConfigSealed); err != nil {
+			if errors.Is(err, secrets.ErrUndecryptable) {
+				s.sealedKeep[downloadClientVPN] = stored.VPNConfigSealed
+			}
+			// The VPN is still set up, it just can't be read: it must not read
+			// as "no VPN".
+			d.VPNUnreadable = true
+			s.logger.Error("can't read a stored credential", "setting", downloadClientVPN, "error", err)
+		} else {
+			d.VPNConfig = cfg
 		}
 	}
 	s.downloadClient = d

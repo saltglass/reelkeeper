@@ -223,7 +223,8 @@ What to set up in Compose:
   above. Without that Reelkeeper can still download, but it finds fewer peers
   and can upload less. It never asks your router to open a port for you (no
   UPnP or NAT-PMP): if you want the port reachable from outside your home, you
-  forward it on the router yourself.
+  forward it on the router yourself. (With a [VPN](#a-vpn-for-the-built-in-client-wireguard)
+  this port is not used; see *Forwarded ports* there.)
 - **The download folder** is a path inside the container, such as
   `/data/downloads/reelkeeper`. It must exist and be writable by the `user:`
   you run Reelkeeper as; Reelkeeper checks when you save and when you press
@@ -248,8 +249,90 @@ What to set up in Compose:
   torrent stops seeding when cleanup says so, or when it is beyond the
   seeding cap. Torrents waiting for a seeding slot are not uploading and do
   not gain seeding time.
-- A VPN option for the built-in client is planned; for now its traffic leaves
-  from your server directly.
+- **A VPN is optional**, and is described next. Without one, the built-in
+  client's traffic leaves from your server directly and peers see its real IP
+  address; Settings → Download Client says so in red.
+
+### A VPN for the built-in client (WireGuard)
+
+The built-in client can send everything it does through a WireGuard VPN, with
+a **kill switch**: if the VPN drops, every download stops, so nothing leaks.
+
+**What you need.** A WireGuard config file from your VPN provider (Mullvad,
+Proton VPN, AirVPN and most others offer one: look for "WireGuard
+configuration" or "Generate config", and pick the WireGuard file, not
+OpenVPN). It is a small text file, usually called something like `wg0.conf`,
+that starts with `[Interface]`. It holds a private key, so keep it to yourself.
+In Settings → Download Client → *VPN (WireGuard)*, drop the file on the box,
+press **Upload file**, or press **Paste config** and paste its text. Reelkeeper
+checks it as soon as you give it, shows what it holds (the server, your
+tunnel address, the DNS servers, your *public* key, and any warnings), and
+keeps it when you press Save. The private key is stored encrypted, never shown
+again, and never sent back to your browser.
+
+**What the kill switch does.**
+
+- With a VPN, the built-in client has no other road to the internet: its
+  connections, name lookups and UDP traffic are all made inside the VPN. If
+  the VPN can't start, the built-in client doesn't start either; it never falls
+  back to your normal connection.
+- The VPN is *connecting* until the server answers, *connected* while the
+  server has answered in the last three minutes, and *down* after that (or if
+  the VPN fails). While it is connecting or down, every torrent is stopped and
+  every connection is closed. Nothing starts at launch until the VPN is
+  connected, and nothing is lost: when the VPN is back, exactly the torrents
+  that were running start again (the ones you paused stay paused). While they
+  are held, torrents show as *Queued*, and Activity → Queue says "VPN down:
+  the built-in client's downloads are stopped until it reconnects."
+- If the VPN has been down for ten minutes, Reelkeeper sends one notice (the
+  same channels as its other problems: the pop-up, email if you set it up, the
+  webhook), and one when it is back.
+- Removing the VPN asks first, because peers will then see your real IP. Its
+  downloads then stay stopped until you press **Start without VPN**, so a slip
+  of the mouse doesn't start downloading in the open. That hold survives a
+  restart.
+- If the stored VPN config can't be read any more (you changed
+  `REELKEEPER_SECRET_KEY`), the built-in client stays stopped; upload the file
+  again.
+
+**The addresses.** The status card shows the address peers see and, in muted
+text, your real one. To find them, Reelkeeper asks Cloudflare's
+`https://1.1.1.1/cdn-cgi/trace` page (a page that only says which address you
+visited from), once over your normal connection and once through the VPN.
+This happens **only while the Settings → Download Client page is open**; the
+answers are kept for five minutes, and **Check again** asks again (at most once
+in 30 seconds). Nothing else in Reelkeeper contacts Cloudflare for this. If both
+addresses are the same, the VPN isn't hiding anything: the card turns red,
+reads "Peers would see your real IP: the VPN isn't hiding it", and the client
+stops, the same as when the VPN is down (it starts again once a later check
+shows two different addresses). Because the check runs only while the page is
+open, that safeguard needs the page open; the kill switch for a dropped VPN
+does not.
+
+**Forwarded ports.** Without help, other peers can't connect *to* you through
+a VPN; Reelkeeper can still download and upload over the connections it
+makes. If your provider gives you a forwarded port (Proton VPN and AirVPN do),
+enter it as **Forwarded port**: peers can then connect to it, TCP and UDP. The
+*Listen port* above is not used while a VPN is set up, and you don't publish
+anything from the container for it.
+
+**No extra privileges.** The VPN runs entirely inside Reelkeeper (WireGuard in
+userspace, with its own small network stack). It needs no `NET_ADMIN`, no
+`/dev/net/tun`, no host networking and no changes to your container's network.
+The only thing that leaves the container is WireGuard's own encrypted UDP
+traffic to the VPN server. If the config names the server by name rather than
+by address, that name is looked up once through your normal DNS when the VPN
+starts (and again if the VPN drops and the server may have moved), because
+there is no tunnel yet to ask through; nothing else is ever looked up outside
+the VPN.
+
+A few things in a provider's file are ignored on purpose: `PostUp`, `PreUp`,
+`Table` and the like (Reelkeeper changes no routes and runs no commands), and
+if `AllowedIPs` doesn't cover everything it warns you, because Reelkeeper
+sends all of the built-in client's traffic through the VPN regardless. The
+`PersistentKeepalive` is set to 25 seconds when the file has none, which is
+what keeps the connection status current. One peer only, which is what VPN
+providers give you.
 
 ## The settings (environment variables)
 

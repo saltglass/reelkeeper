@@ -29,6 +29,10 @@ const (
 	KindDeleted = "deleted"
 	// KindRenamed: a movie's files were renamed.
 	KindRenamed = "renamed"
+	// KindClientRestored: the built-in client's VPN is back after a long
+	// outage (the "client-unreachable" notice said it was down). Not a
+	// problem, so it isn't emailed.
+	KindClientRestored = "client-restored"
 
 	// Problems, the only events that are emailed.
 

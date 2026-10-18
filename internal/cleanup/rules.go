@@ -329,6 +329,10 @@ func (t Torrent) clientName() string {
 	if t.ClientName == "" {
 		return "The download client"
 	}
+	// A name that isn't a proper name ("the built-in client") needs its capital.
+	if strings.HasPrefix(t.ClientName, "the ") {
+		return "T" + t.ClientName[1:]
+	}
 	return t.ClientName
 }
 

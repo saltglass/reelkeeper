@@ -32,7 +32,8 @@ import (
 
 // testNet is a builtin.Network that only reaches 127.0.0.1 and counts dials.
 type testNet struct {
-	dials, refused atomic.Int64
+	dials, refused         atomic.Int64
+	listens, packets, look atomic.Int64
 }
 
 func loopbackAddr(addr string) (string, error) {
@@ -60,6 +61,7 @@ func (n *testNet) Dial(ctx context.Context, network, addr string) (net.Conn, err
 }
 
 func (n *testNet) Listen(ctx context.Context, network, addr string) (net.Listener, error) {
+	n.listens.Add(1)
 	a, err := loopbackAddr(addr)
 	if err != nil {
 		n.refused.Add(1)
@@ -69,6 +71,7 @@ func (n *testNet) Listen(ctx context.Context, network, addr string) (net.Listene
 }
 
 func (n *testNet) ListenPacket(ctx context.Context, network, addr string) (net.PacketConn, error) {
+	n.packets.Add(1)
 	a, err := loopbackAddr(addr)
 	if err != nil {
 		n.refused.Add(1)
@@ -78,6 +81,7 @@ func (n *testNet) ListenPacket(ctx context.Context, network, addr string) (net.P
 }
 
 func (n *testNet) LookupHost(context.Context, string) ([]string, error) {
+	n.look.Add(1)
 	n.refused.Add(1)
 	return nil, errors.New("test network: no name lookups")
 }
@@ -250,7 +254,7 @@ func TestBuiltinBehavesLikeTheOtherClients(t *testing.T) {
 	f := newBFix(t)
 	c := f.c
 	mc, tv := settings.MovieCategory, settings.TVCategory
-	if c.Name() != "Built-in" || f.cfg.ClientName() != "Built-in" {
+	if c.Name() != "the built-in client" || f.cfg.ClientName() != "the built-in client" {
 		t.Errorf("names: %q / %q", c.Name(), f.cfg.ClientName())
 	}
 	if err := c.EnsureCategory(ctx, mc, ""); err != nil {
@@ -577,7 +581,7 @@ func TestServiceWithTheBuiltinClient(t *testing.T) {
 		if err != nil || cerr != nil || len(items) != 1 || items[0].Torrent == nil || items[0].Torrent.State != torrent.Metadata {
 			t.Fatalf("queue = %+v, %v, %v", items, cerr, err)
 		}
-		if name := f.svc.ClientName(); name != "Built-in" {
+		if name := f.svc.ClientName(); name != "the built-in client" {
 			t.Errorf("the client's name = %q", name)
 		}
 		// Pause, resume, move to top, through the service.
@@ -648,7 +652,7 @@ func freePort(t *testing.T) int {
 
 func TestNewClientBuildsTheBuiltinClient(t *testing.T) {
 	cfg := settings.DownloadClient{Type: settings.ClientBuiltin, Folder: "/downloads"}
-	if c, ok := newClient(cfg).(*Builtin); !ok || c.cfg.Folder != "/downloads" || c.Name() != "Built-in" {
+	if c, ok := newClient(cfg).(*Builtin); !ok || c.cfg.Folder != "/downloads" || c.Name() != "the built-in client" {
 		t.Errorf("newClient = %#v", newClient(cfg))
 	}
 	if !cfg.Configured() || (settings.DownloadClient{Type: settings.ClientBuiltin}).Configured() {

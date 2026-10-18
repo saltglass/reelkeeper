@@ -69,7 +69,7 @@ func (e *Engine) sample(now time.Time, dt time.Duration) {
 			continue
 		}
 		st := en.t.Stats()
-		read, wrote := st.BytesReadUsefulData.Int64(), st.BytesWrittenData.Int64()
+		read, wrote := st.BytesReadUsefulData.Int64()-en.baseDown, st.BytesWrittenData.Int64()-en.baseUp
 		dr, dw := read-en.prevDown, wrote-en.prevUp
 		en.prevDown, en.prevUp = read, wrote
 		en.liveDown, en.liveUp = read, wrote
@@ -118,8 +118,21 @@ func haveOf(t *torrent.Torrent, info *metainfo.Info, complete int) int64 {
 //   - Of the finished ones, the first MaxActiveSeeds in queue order run (all of
 //     them when the limit is 0).
 //   - Stopped torrents, ones being checked or moved, and ones with a problem
-//     don't run. A torrent that doesn't run uses no network at all.
+//     don't run. A torrent that doesn't run has no connections and moves no data
+//     (a paused one that was running is parked, see parkRunning).
+//   - While the engine is held, or its network's gate is closed (the VPN is
+//     down), none run.
 func (e *Engine) reconcile(now time.Time) {
+	if e.blockedLocked() {
+		// Held, or the VPN is down: nothing runs, and what was running stops.
+		// Nobody's paused flags are touched, so when this ends the queue rules
+		// below start exactly what ran before.
+		e.suspend()
+		return
+	}
+	if e.cl == nil && !e.resume(now) {
+		return
+	}
 	cfg := e.settings()
 	var want = map[*entry]bool{}
 	var downloads, seeds []*entry
@@ -145,14 +158,61 @@ func (e *Engine) reconcile(now time.Time) {
 	for i, en := range seeds {
 		want[en] = cfg.MaxActiveSeeds <= 0 || i < cfg.MaxActiveSeeds
 	}
+	// A torrent the client has dropped and is now to run again needs a client
+	// that has never seen it (see stopRunning).
+	for _, en := range e.ents {
+		if want[en] && !en.running() && en.parked == nil && e.stale[en.rec.Hash] {
+			e.suspend()
+			if !e.resume(now) {
+				return
+			}
+			break
+		}
+	}
 	for _, en := range e.ents {
 		switch {
 		case want[en] && !en.running():
 			e.startRunning(en, now)
 		case !want[en] && en.running():
-			e.stopRunning(en)
+			if en.verifying || en.busy != "" || en.problem != "" || en.missing {
+				e.stopRunning(en) // its files are being touched or are wrong
+			} else {
+				e.parkRunning(en) // waiting its turn, or paused: no need to start over
+			}
 		}
 	}
+}
+
+// suspend stops every torrent and closes the client and all its sockets, so
+// that while the engine is blocked it holds no connection and no open socket
+// of any kind.
+func (e *Engine) suspend() {
+	for _, en := range e.ents {
+		e.stopRunning(en)
+	}
+	if e.cl != nil {
+		e.logger.Info("the built-in client has stopped everything and closed its sockets")
+		e.closeNetwork()
+	}
+}
+
+// resumeRetry is how long the engine waits before trying again to make its
+// sockets after that failed.
+const resumeRetry = 5 * time.Second
+
+// resume makes the client and its sockets again after a block. It reports
+// whether the engine can now run torrents.
+func (e *Engine) resume(now time.Time) bool {
+	if now.Sub(e.resumeTried) < resumeRetry {
+		return false
+	}
+	e.resumeTried = now
+	if err := e.startClient(); err != nil {
+		e.logger.Warn("the built-in client can't start its network yet; it will try again", "error", err)
+		return false
+	}
+	e.logger.Info("the built-in client is running again")
+	return true
 }
 
 // storageFor is where a torrent's files go: plain files, under their own
@@ -174,6 +234,10 @@ func (keepOpen) Close() error { return nil }
 
 // startRunning hands a torrent to the client.
 func (e *Engine) startRunning(en *entry, now time.Time) {
+	if en.parked != nil {
+		e.unparkRunning(en, now)
+		return
+	}
 	spec := &torrent.TorrentSpec{
 		AddTorrentOpts: torrent.AddTorrentOpts{
 			InfoHash: metainfo.NewHashFromHex(en.rec.Hash),
@@ -201,6 +265,7 @@ func (e *Engine) startRunning(en *entry, now time.Time) {
 	en.t = t
 	en.started = now
 	en.gone = make(chan struct{})
+	en.baseDown, en.baseUp = 0, 0
 	en.prevDown, en.prevUp, en.liveDown, en.liveUp = 0, 0, 0, 0
 	en.downRate, en.upRate = 0, 0
 	en.lastRecv, en.lastSent = time.Time{}, time.Time{}
@@ -213,25 +278,88 @@ func (e *Engine) startRunning(en *entry, now time.Time) {
 	go e.watch(en, t, en.gone, names)
 }
 
-// stopRunning takes a torrent away from the client: its connections close,
-// it stops announcing, and what it moved this run is added to its record.
+// stopRunning takes a torrent out of the client for good (or until it is
+// added again): its connections close, it stops announcing (the client says
+// "stopped" to its trackers), and what it moved this run is added to its
+// record. Used when its files are about to be touched, it is removed, or the
+// client closes. Pausing and queueing use parkRunning instead.
+//
+// A torrent dropped this way is "stale": anacrolix/torrent 1.61 keeps its
+// tracker bookkeeping per (tracker, info hash) for the life of the client and
+// never forgets it, and hands every later announce result to the torrent that
+// was first added, which is gone. A torrent added again to the same client
+// would then never be told about the peers its trackers know, and tracker-only
+// (private) torrents would never get peers. So a stale torrent is only ever
+// started in a new client (reconcile).
 func (e *Engine) stopRunning(en *entry) {
+	if en.running() {
+		e.accountRun(en)
+		close(en.gone)
+		t := en.t
+		en.t, en.gone = nil, nil
+		en.dirty = true
+		t.Drop()
+		e.stale[en.rec.Hash] = true
+	}
+	if en.parked != nil {
+		en.parked.Drop()
+		en.parked = nil
+		e.stale[en.rec.Hash] = true
+	}
+}
+
+// accountRun notes what a running torrent has done, before it stops.
+func (e *Engine) accountRun(en *entry) {
+	st := en.t.Stats()
+	if en.info != nil {
+		en.have = haveOf(en.t, en.info, st.PiecesComplete)
+	}
+	en.rec.Uploaded += st.BytesWrittenData.Int64() - en.baseUp
+	en.rec.Downloaded += st.BytesReadUsefulData.Int64() - en.baseDown
+	en.liveUp, en.liveDown, en.prevUp, en.prevDown = 0, 0, 0, 0
+	en.downRate, en.upRate, en.peers, en.seeds = 0, 0, 0, 0
+}
+
+// parkRunning pauses a torrent where it is: it stays in the client, but its
+// connections are closed, it takes no new ones and moves no data either way. A
+// torrent that is paused, pushed back in the queue or rotated out of the
+// seeding slots is parked, not dropped, so that when it runs again its trackers
+// still reach it (see stopRunning). The one thing a parked torrent still does is
+// announce to its trackers now and then, as anacrolix gives no way to stop that
+// without dropping it.
+func (e *Engine) parkRunning(en *entry) {
 	if !en.running() {
 		return
 	}
 	t := en.t
-	st := t.Stats()
-	if en.info != nil {
-		en.have = haveOf(t, en.info, st.PiecesComplete)
-	}
-	en.rec.Uploaded += st.BytesWrittenData.Int64()
-	en.rec.Downloaded += st.BytesReadUsefulData.Int64()
-	en.liveUp, en.liveDown, en.prevUp, en.prevDown = 0, 0, 0, 0
-	en.downRate, en.upRate, en.peers, en.seeds = 0, 0, 0, 0
+	e.accountRun(en)
 	close(en.gone)
 	en.t, en.gone = nil, nil
 	en.dirty = true
-	t.Drop()
+	t.DisallowDataDownload()
+	t.DisallowDataUpload()
+	en.parkedMax = t.SetMaxEstablishedConns(0) // closes what is connected
+	en.parked = t
+}
+
+// unparkRunning runs a parked torrent again.
+func (e *Engine) unparkRunning(en *entry, now time.Time) {
+	t := en.parked
+	en.parked = nil
+	// Giving the connection limit back also dials the peers it already knew, at
+	// once (its trackers may not be asked for new ones for a while).
+	t.SetMaxEstablishedConns(en.parkedMax)
+	t.AllowDataDownload()
+	t.AllowDataUpload()
+	st := t.Stats()
+	en.baseDown, en.baseUp = st.BytesReadUsefulData.Int64(), st.BytesWrittenData.Int64()
+	en.t = t
+	en.started = now
+	en.gone = make(chan struct{})
+	en.prevDown, en.prevUp, en.liveDown, en.liveUp = 0, 0, 0, 0
+	en.downRate, en.upRate = 0, 0
+	en.lastRecv, en.lastSent = time.Time{}, time.Time{}
+	go e.watch(en, t, en.gone, nil)
 }
 
 // settleAll stops every running torrent, for shutdown.

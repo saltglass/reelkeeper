@@ -10,16 +10,37 @@ import (
 
 	"github.com/saltglass/reelkeeper/internal/api/gen"
 	"github.com/saltglass/reelkeeper/internal/download"
+	"github.com/saltglass/reelkeeper/internal/download/builtin"
 	"github.com/saltglass/reelkeeper/internal/grab"
 	"github.com/saltglass/reelkeeper/internal/library"
 	"github.com/saltglass/reelkeeper/internal/settings"
 )
 
 func toDownloadClient(d settings.DownloadClient) gen.DownloadClient {
-	return gen.DownloadClient{
+	out := gen.DownloadClient{
 		Type: gen.DownloadClientType(d.ClientType()), Url: d.URL, Username: d.Username, PasswordSet: d.Password != "", Folder: d.Folder,
 		ListenPort: d.ListenPort, MaxActiveDownloads: d.MaxActiveDownloads, MaxActiveSeeds: d.MaxActiveSeeds,
 		DownloadLimitKBs: d.DownloadLimitKBs, UploadLimitKBs: d.UploadLimitKBs,
+		ForwardedPort: d.ForwardedPort, HasVpn: d.HasVPN(), VpnHeld: d.VPNHeld,
+	}
+	// What the VPN config contains, never the config itself (it holds the
+	// private key).
+	sum, problem := d.VPNInfo()
+	if sum != nil {
+		v := toVpnSummary(*sum)
+		out.Vpn = &v
+	}
+	if problem != "" {
+		out.VpnProblem = &problem
+	}
+	return out
+}
+
+func toVpnSummary(s builtin.VPNSummary) gen.VpnSummary {
+	return gen.VpnSummary{
+		Endpoint: s.Endpoint, TunnelAddresses: nonNil(s.TunnelAddresses), Dns: nonNil(s.DNS), DnsDefault: s.DNSDefault,
+		PublicKey: s.PublicKey, Keepalive: s.Keepalive, Mtu: s.MTU, HasPresharedKey: s.HasPSK,
+		Warnings: nonNil(s.Warnings), Notes: nonNil(s.Notes),
 	}
 }
 
@@ -30,6 +51,8 @@ func updateFrom(b gen.DownloadClientUpdate) settings.DownloadClientUpdate {
 		URL: b.Url, Username: b.Username, Password: b.Password, Folder: derefStr(b.Folder),
 		ListenPort: b.ListenPort, MaxActiveDownloads: b.MaxActiveDownloads, MaxActiveSeeds: b.MaxActiveSeeds,
 		DownloadLimitKBs: b.DownloadLimitKBs, UploadLimitKBs: b.UploadLimitKBs,
+		VPNConfig: b.VpnConfig, ForwardedPort: b.ForwardedPort,
+		ConfirmUnprotected: b.ConfirmUnprotected != nil && *b.ConfirmUnprotected,
 	}
 	if b.Type != nil {
 		u.Type = string(*b.Type)
@@ -115,6 +138,81 @@ func (h *Handlers) PutDownloadClient(w http.ResponseWriter, r *http.Request) {
 				h.Logger.Warn("couldn't switch Grabbing back to a dry run", "err", err)
 			}
 		}
+	}
+	writeJSON(w, http.StatusOK, toDownloadClient(saved))
+}
+
+// CheckDownloadClientVpn reads a WireGuard config without saving it.
+func (h *Handlers) CheckDownloadClientVpn(w http.ResponseWriter, r *http.Request) {
+	var body gen.CheckDownloadClientVpnJSONRequestBody
+	if !decode(w, r, &body) {
+		return
+	}
+	cfg, err := builtin.ParseWireGuard(body.Config)
+	if err != nil {
+		var ce *builtin.ConfigError
+		if errors.As(err, &ce) {
+			writeError(w, http.StatusUnprocessableEntity, "invalid", "That isn't a WireGuard config Reelkeeper can use.", map[string]string{"config": ce.Error()})
+			return
+		}
+		h.writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toVpnSummary(cfg.Summary()))
+}
+
+// GetBuiltinStatus says where the built-in client's VPN is and which address
+// peers would see.
+func (h *Handlers) GetBuiltinStatus(w http.ResponseWriter, r *http.Request, params gen.GetBuiltinStatusParams) {
+	ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
+	defer cancel()
+	st, err := h.Downloads.BuiltinStatus(ctx, params.Refresh != nil && *params.Refresh)
+	if err != nil {
+		if errors.Is(err, download.ErrNotBuiltin) {
+			writeError(w, http.StatusNotFound, "not_found", "The built-in client isn't the download client.", nil)
+			return
+		}
+		h.writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toBuiltinStatus(st))
+}
+
+func toBuiltinStatus(s download.BuiltinStatus) gen.BuiltinStatus {
+	out := gen.BuiltinStatus{
+		State: gen.BuiltinStatusState(s.State), Message: s.Message, Endpoint: s.Endpoint,
+		TunnelAddresses: nonNil(s.TunnelAddresses), Dns: nonNil(s.DNS), DnsDefault: s.DNSDefault,
+		RxBytes: s.RxBytes, TxBytes: s.TxBytes, ForwardedPort: s.ForwardedPort, Leak: s.Leak,
+		PublicIPError: s.PublicIPError, VpnIPError: s.VPNIPError,
+	}
+	when := func(t time.Time) *time.Time {
+		if t.IsZero() {
+			return nil
+		}
+		u := t.UTC()
+		return &u
+	}
+	out.Since, out.LastHandshake, out.CheckedAt = when(s.Since), when(s.LastHandshake), when(s.CheckedAt)
+	if s.PublicIP != nil {
+		out.PublicIP = &gen.ObservedIp{Ip: s.PublicIP.IP, Country: s.PublicIP.Country}
+	}
+	if s.VPNIP != nil {
+		out.VpnIP = &gen.ObservedIp{Ip: s.VPNIP.IP, Country: s.VPNIP.Country}
+	}
+	return out
+}
+
+// StartBuiltinUnprotected lets the built-in client's downloads start without a
+// VPN, after the VPN was removed.
+func (h *Handlers) StartBuiltinUnprotected(w http.ResponseWriter, r *http.Request) {
+	if cur := h.Settings.DownloadClient(); cur.ClientType() != settings.ClientBuiltin {
+		writeError(w, http.StatusUnprocessableEntity, "invalid", "The built-in client isn't the download client.", nil)
+		return
+	}
+	saved, err := h.Settings.ReleaseVPNHold(r.Context())
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "invalid", capitalize(err.Error())+".", nil)
+		return
 	}
 	writeJSON(w, http.StatusOK, toDownloadClient(saved))
 }
@@ -237,6 +335,10 @@ func (h *Handlers) GetQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := gen.Queue{Items: make([]gen.QueueItem, 0, len(items)), ClientName: h.Downloads.ClientName()}
+	if st := h.Downloads.BuiltinState(); st != "" {
+		bs := gen.QueueBuiltinState(st)
+		out.BuiltinState = &bs
+	}
 	g := h.Settings.Grabbing()
 	out.Limit, out.Full = g.QueueLimit, grab.QueueFull(g, len(items))
 	if clientErr != nil {

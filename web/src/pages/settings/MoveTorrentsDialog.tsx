@@ -7,7 +7,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { clientNames, type DownloadClientType, type DownloadMovePreview } from "@/hooks/downloads";
+import { clientProse, type DownloadClientType, type DownloadMovePreview } from "@/hooks/downloads";
 
 /** "1 torrent", "3 torrents". */
 function torrents(n: number) {
@@ -43,8 +43,8 @@ export function MoveTorrentsDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const oldName = clientNames[from];
-  const newName = clientNames[to];
+  const oldName = clientProse[from];
+  const newName = clientProse[to];
   // What would be moved, less what can't be.
   const problems = preview.cannotMove.filter((p) => !(leaveSeeding && p.seeding));
   const downloading = preview.downloading - problems.filter((p) => !p.seeding).length;

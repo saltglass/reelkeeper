@@ -189,6 +189,16 @@ func (s *Service) MovePreview(ctx context.Context) (MovePreview, error) {
 	return p, nil
 }
 
+// sentenceName is a download client's name at the start of a sentence: the
+// built-in client's ("the built-in client") needs its capital, a name like
+// qBittorrent keeps its own spelling.
+func sentenceName(name string) string {
+	if strings.HasPrefix(name, "the ") {
+		return "T" + name[1:]
+	}
+	return name
+}
+
 func capitalizeFirst(s string) string {
 	if s == "" || s[0] < 'a' || s[0] > 'z' {
 		return s

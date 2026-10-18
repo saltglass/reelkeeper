@@ -96,10 +96,13 @@ func (e *Engine) announceDHTs(now time.Time) {
 
 // defaultAnnounceDHT asks the DHT for peers for a torrent and tells it about us.
 func (e *Engine) defaultAnnounceDHT(t *torrent.Torrent) {
-	if e.dht == nil {
+	e.netMu.RLock()
+	d := e.dht
+	e.netMu.RUnlock()
+	if d == nil {
 		return
 	}
-	_, stop, err := t.AnnounceToDht(torrent.AnacrolixDhtServerWrapper{Server: e.dht})
+	_, stop, err := t.AnnounceToDht(torrent.AnacrolixDhtServerWrapper{Server: d})
 	if err != nil {
 		e.logger.Debug("a DHT announce failed", "error", err)
 		return

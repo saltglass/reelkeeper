@@ -232,7 +232,40 @@ func NewService(db *store.Store, cfg func() settings.DownloadClient, idx Fetcher
 
 // SetBuiltin connects the host of the built-in client's engine, which the
 // server starts and stops as the settings change.
-func (s *Service) SetBuiltin(h *BuiltinHost) { s.builtin = h }
+func (s *Service) SetBuiltin(h *BuiltinHost) {
+	s.builtin = h
+	if h != nil {
+		// A VPN that stays down is told through the same channels as every
+		// other problem.
+		h.SetNotifier(func(ev notify.Event) { s.tell(context.Background(), ev) })
+	}
+}
+
+// builtinInUse is true while the built-in client is the download client.
+func (s *Service) builtinInUse() bool {
+	c := s.settings()
+	return s.builtin != nil && c.ClientType() == settings.ClientBuiltin && c.Configured()
+}
+
+// BuiltinState is the built-in client's protection state (BuiltinConnected,
+// BuiltinDown and so on), or "" when it isn't the download client. It looks up
+// nothing, so the Queue can ask on every refresh.
+func (s *Service) BuiltinState() string {
+	if !s.builtinInUse() {
+		return ""
+	}
+	return s.builtin.BuiltinState()
+}
+
+// BuiltinStatus describes the built-in client's protection for its status card:
+// the VPN, and the address the world sees (looked up only when due, or when
+// refresh asks and the last "Check again" was long enough ago).
+func (s *Service) BuiltinStatus(ctx context.Context, refresh bool) (BuiltinStatus, error) {
+	if !s.builtinInUse() {
+		return BuiltinStatus{}, ErrNotBuiltin
+	}
+	return s.builtin.Status(ctx, refresh)
+}
 
 // newClient builds the client the settings choose. (The built-in client needs
 // the server's engine, which Service.NewClient adds.)
@@ -695,7 +728,7 @@ func (s *Service) Check(ctx context.Context) (msg string, quiet bool, err error)
 		// told: a restart of the download client isn't worth an email.
 		s.clientFailures++
 		if s.clientFailures == 3 {
-			s.tell(ctx, notify.Event{Kind: notify.KindClientUnreachable, Title: c.Name(),
+			s.tell(ctx, notify.Event{Kind: notify.KindClientUnreachable, Title: sentenceName(c.Name()),
 				Message: "Reelkeeper can't reach " + c.Name() + ", so downloads aren't being checked or imported: " + err.Error()})
 		}
 		return "", false, err
@@ -977,7 +1010,7 @@ func (s *Service) RetryImport(ctx context.Context, id int64) error {
 	}
 	i := slices.IndexFunc(ts, func(t Torrent) bool { return t.Hash == d.Hash })
 	if i < 0 {
-		return errors.New(c.Name() + " no longer has this download")
+		return errors.New(sentenceName(c.Name()) + " no longer has this download")
 	}
 	if !s.importOne(ctx, d, ts[i]) {
 		return errors.New(d.Message)
@@ -1081,7 +1114,7 @@ func (s *Service) unfinished(ctx context.Context, id int64) (Client, *Download, 
 	}
 	i := slices.IndexFunc(ts, func(t Torrent) bool { return t.Hash == d.Hash })
 	if i < 0 {
-		return nil, nil, Torrent{}, errors.New(c.Name() + " no longer has this download")
+		return nil, nil, Torrent{}, errors.New(sentenceName(c.Name()) + " no longer has this download")
 	}
 	if ts[i].Done() {
 		return nil, nil, Torrent{}, errors.New("this download has already finished")

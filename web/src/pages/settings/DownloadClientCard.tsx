@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import {
   clientNames,
+  clientProse,
   type DownloadClient,
   type DownloadClientType,
   type DownloadClientUpdate,
@@ -22,6 +23,8 @@ import {
   useTestDownloadClient,
 } from "@/hooks/downloads";
 import { useDraft } from "@/hooks/draft";
+import { BuiltinStatusCard } from "./BuiltinStatusCard";
+import { BuiltinVpnSection } from "./BuiltinVpnSection";
 import { BusyLabel, IconTile } from "./BusyLabel";
 import { MoveTorrentsDialog } from "./MoveTorrentsDialog";
 import { SaveBar } from "./SaveBar";
@@ -38,6 +41,10 @@ type Form = {
   maxActiveSeeds: string;
   downloadLimitKBs: string;
   uploadLimitKBs: string;
+  /** The port the VPN provider forwards ("" for none). */
+  forwardedPort: string;
+  /** A VPN config given but not saved yet ("" for none). It is never loaded back: the server keeps it secret. */
+  vpnConfig: string;
 };
 
 const builtinKeys = [
@@ -46,6 +53,8 @@ const builtinKeys = [
   "maxActiveSeeds",
   "downloadLimitKBs",
   "uploadLimitKBs",
+  "forwardedPort",
+  "vpnConfig",
 ] as const;
 
 function sameForm(a: Form, b: Form) {
@@ -66,6 +75,8 @@ const builtinDefaults = {
   maxActiveSeeds: "25",
   downloadLimitKBs: "0",
   uploadLimitKBs: "0",
+  forwardedPort: "",
+  vpnConfig: "",
 };
 
 /** The form for a saved client; the built-in fields only mean something when it is the built-in client. */
@@ -82,6 +93,8 @@ function formFrom(c: DownloadClient): Form {
     maxActiveSeeds: own ? String(c.maxActiveSeeds) : builtinDefaults.maxActiveSeeds,
     downloadLimitKBs: own ? String(c.downloadLimitKBs) : builtinDefaults.downloadLimitKBs,
     uploadLimitKBs: own ? String(c.uploadLimitKBs) : builtinDefaults.uploadLimitKBs,
+    forwardedPort: own && c.forwardedPort > 0 ? String(c.forwardedPort) : "",
+    vpnConfig: "",
   };
 }
 
@@ -151,6 +164,9 @@ export function DownloadClientCard() {
   const address = addressText[form.type];
   // The client being left, if there is one: with none set up, nothing moves.
   const hadClient = isClientSet(data);
+  // A VPN is set up (saved, or given and waiting to be saved): the listen
+  // port isn't used then, the forwarded port is.
+  const withVpn = own && ((data.type === "builtin" && data.hasVpn) || form.vpnConfig !== "");
   // An omitted password means "keep the stored one".
   const body: DownloadClientUpdate = own
     ? {
@@ -163,6 +179,8 @@ export function DownloadClientCard() {
         maxActiveSeeds: toNumber(form.maxActiveSeeds),
         downloadLimitKBs: toNumber(form.downloadLimitKBs),
         uploadLimitKBs: toNumber(form.uploadLimitKBs),
+        ...(withVpn ? { forwardedPort: toNumber(form.forwardedPort) } : {}),
+        ...(form.vpnConfig ? { vpnConfig: form.vpnConfig } : {}),
       }
     : {
         type: form.type,
@@ -212,7 +230,7 @@ export function DownloadClientCard() {
             </CardTitle>
             <CardDescription>
               {own
-                ? "Reelkeeper downloads torrents itself, with no separate app. Experimental: it works, but it's new. A VPN option comes next."
+                ? "Reelkeeper downloads torrents itself, with no separate app. Experimental: it works, but it's new. You can add a WireGuard VPN: everything the client does then goes through it, and a kill switch stops every download if it drops."
                 : transmission
                   ? "Where Reelkeeper sends the releases it picks. Enter Transmission's RPC address (Transmission 4.0 or newer) and, if you've set one, its login."
                   : deluge
@@ -222,6 +240,9 @@ export function DownloadClientCard() {
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
+          {own && data.type === "builtin" && isClientSet(data) && (
+            <BuiltinStatusCard canStartWithoutVpn={!data.hasVpn} />
+          )}
           <Segmented
             label="Download client"
             options={typeOptions}
@@ -307,24 +328,36 @@ export function DownloadClientCard() {
             />
           </Field>
           {own && (
+            <BuiltinVpnSection
+              saved={data}
+              pending={form.vpnConfig}
+              onPending={(vpnConfig) => change({ ...form, vpnConfig })}
+              forwardedPort={form.forwardedPort}
+              onForwardedPort={(forwardedPort) => change({ ...form, forwardedPort })}
+              fieldErrors={err?.fields ?? {}}
+            />
+          )}
+          {own && (
             <>
               <div className="grid gap-5 sm:grid-cols-3">
-                <Field
-                  id="dc-port"
-                  label="Listen port"
-                  help={`Peers connect to this port. Publish it from the container (e.g. "6881:6881/tcp" and "/udp") so others can reach you; without it, Reelkeeper can still download but finds fewer peers.`}
-                  error={err?.fields.listenPort}
-                >
-                  <Input
+                {!withVpn && (
+                  <Field
                     id="dc-port"
-                    type="number"
-                    min="1024"
-                    max="65535"
-                    className="w-28"
-                    value={form.listenPort}
-                    onChange={(e) => change({ ...form, listenPort: e.target.value })}
-                  />
-                </Field>
+                    label="Listen port"
+                    help={`Peers connect to this port. Publish it from the container (e.g. "6881:6881/tcp" and "/udp") so others can reach you; without it, Reelkeeper can still download but finds fewer peers.`}
+                    error={err?.fields.listenPort}
+                  >
+                    <Input
+                      id="dc-port"
+                      type="number"
+                      min="1024"
+                      max="65535"
+                      className="w-28"
+                      value={form.listenPort}
+                      onChange={(e) => change({ ...form, listenPort: e.target.value })}
+                    />
+                  </Field>
+                )}
                 <Field
                   id="dc-active-downloads"
                   label="Max active downloads"
@@ -428,7 +461,7 @@ export function DownloadClientCard() {
             {test.data && (
               <Alert variant="success">
                 {own
-                  ? `The folder and port are fine. ${test.data.version}`
+                  ? `The folder ${withVpn ? "is" : "and port are"} fine. ${test.data.version}`
                   : `Connected to ${name} ${test.data.version}`}
               </Alert>
             )}
@@ -444,8 +477,9 @@ export function DownloadClientCard() {
           </div>
           {switching && hadClient && (
             <Alert variant="info">
-              Saving moves Reelkeeper's torrents from {clientNames[data.type]} to {name}: it checks
-              the files already on disk, so nothing is downloaded again, and nothing is deleted.
+              Saving moves Reelkeeper's torrents from {clientProse[data.type]} to{" "}
+              {clientProse[form.type]}: it checks the files already on disk, so nothing is
+              downloaded again, and nothing is deleted.
               {data.type === "builtin" &&
                 " Torrents left seeding in the built-in client stop when it is switched off."}
             </Alert>

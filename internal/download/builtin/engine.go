@@ -31,6 +31,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/anacrolix/dht/v2"
@@ -71,9 +72,12 @@ type Config struct {
 	DHT bool
 	PEX bool
 	// Network is where every socket comes from; empty means the computer's
-	// own (OSNetwork).
+	// own (OSNetwork). A Network that is also a Gate (the VPN) can stop the
+	// engine's torrents by itself.
 	Network Network
-	Logger  *slog.Logger
+	// Hold starts the engine with all its torrents held (see SetHold).
+	Hold   bool
+	Logger *slog.Logger
 
 	// StalledAfter is how long a torrent may receive (or send) nothing before
 	// it is reported stalled. Tick is how often the engine looks at its
@@ -95,7 +99,9 @@ const (
 
 // Engine is the running client. Use Open to make one.
 type Engine struct {
-	netw   Network
+	netw Network
+	// gate is the Network again, when it can say it is closed (the VPN).
+	gate   Gate
 	logger *slog.Logger
 	dir    string
 
@@ -106,10 +112,23 @@ type Engine struct {
 	// speed limits live.
 	up, down *rate.Limiter
 
+	// The client and its sockets. They exist while the engine may use the
+	// network and are closed while it is blocked (held, or the VPN is down):
+	// a new client is made when it may again, which also leaves behind
+	// everything the old one remembered about its peers and trackers.
 	tcp  net.Listener
 	utp  *utp.Socket
-	dht  *dht.Server
-	port int
+	port atomic.Int64
+	// netMu guards dht, which announcing goroutines read.
+	netMu sync.RWMutex
+	dht   *dht.Server
+	// resumeTried is when starting the client again was last tried.
+	resumeTried time.Time
+	// stale holds the hashes of torrents that were dropped from the client (not
+	// just paused in place). The client can't track such a torrent again once it
+	// is added a second time (see stopRunning), so before one is started again
+	// the client is made anew.
+	stale map[string]bool
 
 	trk  *trackerLog
 	priv privateSet
@@ -117,7 +136,9 @@ type Engine struct {
 	cfgMu sync.RWMutex
 	cfg   Config
 
-	mu    sync.Mutex
+	mu sync.Mutex
+	// held: every torrent is kept stopped, whatever its own state (SetHold).
+	held  bool
 	ents  map[string]*entry
 	wake  chan struct{}
 	stop  chan struct{}
@@ -156,7 +177,13 @@ func Open(cfg Config) (*Engine, error) {
 		netw: cfg.Network, logger: cfg.Logger.With("component", "builtin"), cfg: cfg,
 		dir:  filepath.Join(cfg.DataDir, "builtin"),
 		ents: map[string]*entry{}, wake: make(chan struct{}, 1), stop: make(chan struct{}), done: make(chan struct{}),
-		trk: newTrackerLog(),
+		trk: newTrackerLog(), held: cfg.Hold, stale: map[string]bool{},
+		up:   rate.NewLimiter(limitOf(cfg.UploadLimitKBs), burstOf(cfg.UploadLimitKBs)),
+		down: rate.NewLimiter(limitOf(cfg.DownloadLimitKBs), burstOf(cfg.DownloadLimitKBs)),
+	}
+	if g, ok := cfg.Network.(Gate); ok {
+		e.gate = g
+		g.OnChange(e.poke)
 	}
 	if err := os.MkdirAll(filepath.Join(e.dir, torrentsDir), 0o750); err != nil {
 		return nil, fmt.Errorf("can't create the built-in client's folder %s: %w", e.dir, err)
@@ -169,9 +196,13 @@ func Open(cfg Config) (*Engine, error) {
 		_ = e.st.close()
 		return nil, fmt.Errorf("can't open the built-in client's piece records: %w", err)
 	}
-	if err := e.startClient(); err != nil {
-		e.closeStorage()
-		return nil, err
+	// While blocked at the start (a VPN that hasn't connected yet), the engine
+	// makes no sockets at all; the first beat after the block ends makes them.
+	if !e.blockedLocked() {
+		if err := e.startClient(); err != nil {
+			e.closeStorage()
+			return nil, err
+		}
 	}
 	if err := e.load(); err != nil {
 		e.closeNetwork()
@@ -229,8 +260,6 @@ func (e *Engine) clientConfig() *torrent.ClientConfig {
 	// storage, so nothing is ever written anywhere else.
 	cfg.DefaultStorage = noDefaultStorage{}
 
-	e.up = rate.NewLimiter(limitOf(c.UploadLimitKBs), burstOf(c.UploadLimitKBs))
-	e.down = rate.NewLimiter(limitOf(c.DownloadLimitKBs), burstOf(c.DownloadLimitKBs))
 	cfg.UploadRateLimiter, cfg.DownloadRateLimiter = e.up, e.down
 
 	cfg.HTTPProxy = nil // never a proxy picked up from the environment
@@ -255,6 +284,7 @@ func (e *Engine) startClient() error {
 		return fmt.Errorf("can't start the built-in client: %w", err)
 	}
 	e.cl = cl
+	e.port.Store(0)
 	e.cfgMu.RLock()
 	c := e.cfg
 	e.cfgMu.RUnlock()
@@ -271,15 +301,15 @@ func (e *Engine) startClient() error {
 			e.closeNetwork()
 			return portError(c.ListenPort, "TCP", err)
 		}
-		e.port = e.tcp.Addr().(*net.TCPAddr).Port
-		if pc, err = e.netw.ListenPacket(ctx, "udp", net.JoinHostPort(host, strconv.Itoa(e.port))); err == nil {
+		e.port.Store(int64(e.tcp.Addr().(*net.TCPAddr).Port))
+		if pc, err = e.netw.ListenPacket(ctx, "udp", net.JoinHostPort(host, strconv.Itoa(e.Port()))); err == nil {
 			break
 		}
 		_ = e.tcp.Close()
 		e.tcp = nil
 		if c.ListenPort != 0 || attempt >= 9 {
 			e.closeNetwork()
-			return portError(e.port, "UDP", err)
+			return portError(e.Port(), "UDP", err)
 		}
 	}
 	if e.utp, err = utp.NewSocketFromPacketConn(pc); err != nil {
@@ -292,11 +322,15 @@ func (e *Engine) startClient() error {
 	cl.AddListener(e.utp)
 	cl.AddDialer(torrent.NetworkDialer{Network: "udp", Dialer: e.utp})
 	if c.DHT {
-		if e.dht, err = cl.NewAnacrolixDhtServer(e.utp); err != nil {
+		d, err := cl.NewAnacrolixDhtServer(e.utp)
+		if err != nil {
 			e.closeNetwork()
 			return fmt.Errorf("can't start the DHT: %w", err)
 		}
-		cl.AddDhtServer(torrent.AnacrolixDhtServerWrapper{Server: e.dht})
+		e.netMu.Lock()
+		e.dht = d
+		e.netMu.Unlock()
+		cl.AddDhtServer(torrent.AnacrolixDhtServerWrapper{Server: d})
 	}
 	e.announceDHT = e.defaultAnnounceDHT
 	return nil
@@ -320,8 +354,36 @@ func burstOf(kbs int) int {
 	return max(kbs*1024, 64<<10)
 }
 
+// SetHold keeps every torrent stopped (true) or lets the queue run them again
+// (false). It is not the same as pausing: nobody's own paused torrents are
+// changed, so when the hold ends exactly what was running starts again. The
+// built-in client holds its torrents while a VPN is removed and the person
+// hasn't yet agreed to download without one.
+func (e *Engine) SetHold(held bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.held == held {
+		return
+	}
+	e.held = held
+	e.reconcile(time.Now())
+}
+
+// Held reports whether SetHold is on.
+func (e *Engine) Held() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.held
+}
+
+// blockedLocked is true while nothing may run: held, or the network's gate
+// (the VPN) is closed.
+func (e *Engine) blockedLocked() bool {
+	return e.held || (e.gate != nil && !e.gate.Usable())
+}
+
 // Port is the port the engine listens on (useful when it was asked for 0).
-func (e *Engine) Port() int { return e.port }
+func (e *Engine) Port() int { return int(e.port.Load()) }
 
 // Configure applies the settings that can change while the engine runs:
 // the queue sizes, the speed limits and the default folder. A new listen
@@ -409,12 +471,18 @@ func (e *Engine) Close(ctx context.Context) error {
 	}
 }
 
+// closeNetwork closes the client and every socket it was given. The client
+// is made again by startClient.
 func (e *Engine) closeNetwork() {
 	if e.cl != nil {
 		e.cl.Close()
 	}
-	if e.dht != nil {
-		e.dht.Close()
+	e.netMu.Lock()
+	d := e.dht
+	e.dht = nil
+	e.netMu.Unlock()
+	if d != nil {
+		d.Close()
 	}
 	if e.utp != nil {
 		_ = e.utp.Close()
@@ -422,6 +490,10 @@ func (e *Engine) closeNetwork() {
 	if e.tcp != nil {
 		_ = e.tcp.Close()
 	}
+	e.cl, e.utp, e.tcp = nil, nil, nil
+	e.port.Store(0)
+	// A new client remembers nothing about any torrent.
+	e.stale = map[string]bool{}
 }
 
 func (e *Engine) closeStorage() {

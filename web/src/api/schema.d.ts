@@ -1416,6 +1416,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/download-client/vpn/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read a WireGuard config without saving it
+         * @description Reads a wg-quick style file (what a VPN provider gives you) and says what it contains, with no secret in the answer. Used
+         *     as soon as a file is dropped or pasted, so mistakes show before saving. It makes no connection. A file that can't be used
+         *     is refused with 422 and `fields.config` says why in plain English (a key is never part of the message).
+         */
+        post: operations["checkDownloadClientVpn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/download-client/builtin/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The built-in client's protection, and the address peers see
+         * @description Where the built-in client's VPN is (`unprotected`, `connecting`, `connected`, `down`, or `held`), and the address the world
+         *     sees, looked up over the computer's own network (`publicIP`) and, while the VPN is connected, through it (`vpnIP`). The
+         *     lookups ask Cloudflare's trace page and are only made when this endpoint is called (the page is open), kept for five minutes,
+         *     and `refresh=true` (the "Check again" button) repeats them at most once in 30 seconds. If both addresses are the same the
+         *     VPN isn't hiding anything: `leak` is true, the state is `down` and downloads are held. 404 when the built-in client isn't
+         *     the download client.
+         */
+        get: operations["getBuiltinStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/download-client/builtin/start-unprotected": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start the built-in client's downloads without a VPN
+         * @description After the VPN was removed, downloads stay stopped (`vpnHeld`) until this is called. Refused with 422 while a VPN is set up.
+         *     Peers will see the real IP address.
+         */
+        post: operations["startBuiltinUnprotected"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings/download-client/test": {
         parameters: {
             query?: never;
@@ -2648,7 +2716,7 @@ export interface components {
             passwordSet: boolean;
             /** @description Where the client saves Reelkeeper's downloads, as the client sees it. Empty: the client's default folder (for the built-in client, which has none: it isn't set up). */
             folder: string;
-            /** @description Built-in client only (0 for the others): the TCP and UDP port peers connect to. */
+            /** @description Built-in client only (0 for the others): the TCP and UDP port peers connect to. Not used while a VPN is set up (`forwardedPort` is). */
             listenPort: number;
             /** @description Built-in client only (0 for the others): how many unfinished torrents download at once; the others wait as Queued. */
             maxActiveDownloads: number;
@@ -2658,6 +2726,89 @@ export interface components {
             downloadLimitKBs: number;
             /** @description Built-in client only: upload speed limit in KB/s; 0 is no limit. */
             uploadLimitKBs: number;
+            /** @description Built-in client with a VPN only: the port the VPN provider forwards to it so peers can connect; 0 means outgoing connections only. */
+            forwardedPort: number;
+            /** @description Built-in client only: a WireGuard VPN is set up (its config is stored encrypted and never sent). True also when the stored config can't be read, see `vpnProblem`. */
+            hasVpn: boolean;
+            /** @description Built-in client only: the VPN was removed and downloads stay stopped until `POST /settings/download-client/builtin/start-unprotected`. */
+            vpnHeld: boolean;
+            /** @description What the stored VPN config contains, without any secret; null without a VPN. */
+            vpn: components["schemas"]["VpnSummary"] | null;
+            /** @description Set when a VPN is stored but can't be used (for example its encryption key changed). Downloads are held meanwhile. */
+            vpnProblem: string | null;
+        };
+        VpnSummary: {
+            /** @description The VPN server, as host:port. */
+            endpoint: string;
+            /** @description This computer's addresses inside the VPN, such as 10.2.0.2/32. */
+            tunnelAddresses: string[];
+            /** @description The DNS servers names are looked up with, through the VPN. */
+            dns: string[];
+            /** @description The config names no DNS server, so 1.1.1.1 is asked (through the VPN). */
+            dnsDefault: boolean;
+            /** @description This side's public key, worked out from the private key: what the VPN provider has on file. The private key is never shown. */
+            publicKey: string;
+            /** @description Seconds between keepalive packets (25 when the config doesn't say). */
+            keepalive: number;
+            mtu: number;
+            hasPresharedKey: boolean;
+            /** @description Things worth knowing that don't stop the config working, such as a config that only sends some traffic through the VPN (Reelkeeper sends all of the built-in client's traffic through it anyway). */
+            warnings: string[];
+            /** @description Settings in the file that were ignored or changed. */
+            notes: string[];
+        };
+        BuiltinStatus: {
+            /**
+             * @description `unprotected`: no VPN, peers see the real IP. `connecting`: the VPN is coming up, nothing runs yet. `connected`: the VPN is up.
+             *     `down`: the VPN dropped (no handshake for 3 minutes) or leaks; every torrent is stopped. `held`: the VPN was removed (or can't be used)
+             *     and downloads are stopped until the person starts them without one.
+             * @enum {string}
+             */
+            state: "unprotected" | "connecting" | "connected" | "down" | "held";
+            /** @description Plain-English detail for the state; empty when there is nothing to add. */
+            message: string;
+            /**
+             * Format: date-time
+             * @description When the VPN got into this state.
+             */
+            since: string | null;
+            /**
+             * Format: date-time
+             * @description When the VPN server last answered.
+             */
+            lastHandshake: string | null;
+            /** @description The VPN server, host:port; empty without a VPN. */
+            endpoint: string;
+            tunnelAddresses: string[];
+            dns: string[];
+            dnsDefault: boolean;
+            /**
+             * Format: int64
+             * @description Bytes received through the VPN since it started.
+             */
+            rxBytes: number;
+            /** Format: int64 */
+            txBytes: number;
+            forwardedPort: number;
+            /** @description The address the computer's own network shows the world (looked up directly). */
+            publicIP: components["schemas"]["ObservedIp"] | null;
+            /** @description Why that lookup failed; empty otherwise. */
+            publicIPError: string;
+            /** @description The address peers would see through the VPN; only looked up while it is connected. */
+            vpnIP: components["schemas"]["ObservedIp"] | null;
+            vpnIPError: string;
+            /** @description The VPN shows the same address as the computer, so it isn't hiding anything. Downloads are held. */
+            leak: boolean;
+            /**
+             * Format: date-time
+             * @description When the addresses were last looked up.
+             */
+            checkedAt: string | null;
+        };
+        ObservedIp: {
+            ip: string;
+            /** @description Two-letter country code, or empty. */
+            country: string;
         };
         DownloadClientUpdate: {
             type?: components["schemas"]["DownloadClientType"];
@@ -2682,8 +2833,23 @@ export interface components {
             /** @description Built-in client only: KB/s, 0 for no limit. Leaving it out keeps the current value. */
             uploadLimitKBs?: number;
             /**
+             * Format: password
+             * @description Built-in client only: the text of a WireGuard config. Leaving it out keeps the current one; a config replaces it (a config that
+             *     can't be used is refused with a plain-English `fields.vpnConfig`); an empty string removes the VPN, which also needs
+             *     `confirmUnprotected: true`. The config is stored encrypted and never sent back.
+             */
+            vpnConfig?: string;
+            /** @description Built-in client with a VPN only: the port the VPN provider forwards to it (0: none). Leaving it out keeps the current value. */
+            forwardedPort?: number;
+            /**
+             * @description Required (else 422 with `fields.confirmUnprotected`) to remove a VPN: peers will then see the real IP, and the built-in client's downloads stay
+             *     stopped (`vpnHeld`) until `POST /settings/download-client/builtin/start-unprotected`.
+             */
+            confirmUnprotected?: boolean;
+            /**
              * @description Only when `type` changes (left out means false). True leaves the torrents that are still seeding in the old client (Reelkeeper stops tracking them,
-             *     as before 1.3); false moves them too. Torrents in Activity → Queue always move.
+             *     as before 1.3); false moves them too. Torrents in Activity → Queue always move. Leaving them in the built-in client stops them
+             *     seeding, because that client stops when it is no longer the download client.
              */
             leaveSeeding?: boolean;
         };
@@ -3005,6 +3171,11 @@ export interface components {
         };
         Queue: {
             items: components["schemas"]["QueueItem"][];
+            /**
+             * @description The built-in client's VPN state (see `GET /settings/download-client/builtin/status`) while it is the download client; null for the other clients. `connecting`, `down` and `held` mean its downloads are stopped.
+             * @enum {string|null}
+             */
+            builtinState: "unprotected" | "connecting" | "connected" | "down" | "held" | null;
             /** @description The download client's name, such as qBittorrent, for the page's wording. "the download client" when none is set up. */
             clientName: string;
             /** @description The queue limit in Settings → Download Client (0 = no limit). */
@@ -6856,6 +7027,82 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    checkDownloadClientVpn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The text of the WireGuard config file. */
+                    config: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The config is usable. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VpnSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    getBuiltinStatus: {
+        parameters: {
+            query?: {
+                /** @description Look the addresses up again now (at most once in 30 seconds). */
+                refresh?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuiltinStatus"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    startBuiltinUnprotected: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The saved settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadClient"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
         };
     };
     testDownloadClient: {

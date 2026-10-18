@@ -30,6 +30,16 @@ var forbiddenSelectors = map[string][]string{
 	},
 	"http": {"DefaultClient", "DefaultTransport", "Get", "Head", "Post", "PostForm", "Client", "Transport", "ListenAndServe", "Serve"},
 	"tls":  {"Dial", "DialWithDialer", "Listen"},
+	// WireGuard's own pieces: the real UDP socket, and a TUN device on the
+	// computer (the VPN is userspace only, and needs no privileges).
+	"conn": {"NewDefaultBind", "NewStdNetBind", "NewStdNetBind6"},
+	"tun":  {"CreateTUN", "CreateTUNFromFile"},
+}
+
+// allowedHere are the few places a forbidden selector is on purpose: the VPN's
+// one operating system socket is WireGuard's UDP socket to the VPN server.
+var allowedHere = map[string]map[string]bool{
+	"vpn.go": {"conn.NewDefaultBind": true},
 }
 
 var forbiddenImports = []string{"net/http", "os/exec", "net/rpc", "net/smtp", "net/http/httputil"}
@@ -70,7 +80,7 @@ func TestNoEngineCodeBypassesTheNetwork(t *testing.T) {
 				return true
 			}
 			for _, name := range forbiddenSelectors[id.Name] {
-				if sel.Sel.Name == name {
+				if sel.Sel.Name == name && !allowedHere[f][id.Name+"."+name] {
 					t.Errorf("%s: %s.%s skips the Network", fset.Position(sel.Pos()), id.Name, name)
 				}
 			}
@@ -79,6 +89,21 @@ func TestNoEngineCodeBypassesTheNetwork(t *testing.T) {
 	}
 	if checked < 8 {
 		t.Errorf("only %d source files were looked at", checked)
+	}
+	// The computer's own network (OSNetwork) is the engine's default when it
+	// is given none, and the VPN's way to look up its server's name. Nowhere
+	// else may name it: in VPN mode there is no road back to it.
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") || f == "network.go" || f == "engine.go" || f == "vpn.go" {
+			continue
+		}
+		src, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(src), "OSNetwork") {
+			t.Errorf("%s names OSNetwork: VPN mode must have no way back to the computer's own network", f)
+		}
 	}
 	// The glob must not be silently empty if files move: network.go is where
 	// the exemption lives.

@@ -77,6 +77,9 @@ describe("queue page", () => {
     };
     for (const [state, label] of Object.entries(labels))
       expect(stateLabel(state as TorrentState, "Transmission")).toBe(label);
+    // The built-in client's name reads in a sentence, at its start too.
+    expect(stateLabel("queued", "the built-in client")).toBe("Queued in the built-in client");
+    expect(stateLabel("error", "the built-in client")).toBe("The built-in client reports an error");
     // Names like qBittorrent keep their capitals; the stand-in starts a sentence with one.
     expect(stateLabel("error", "qBittorrent")).toBe("qBittorrent reports an error");
     expect(stateLabel("error", "the download client")).toBe("The download client reports an error");
@@ -123,6 +126,54 @@ describe("queue page", () => {
     );
     // The sidebar says so too.
     expect(await screen.findByText("Full")).toBeInTheDocument();
+  });
+
+  it("words the page naturally for the built-in client", async () => {
+    open({
+      items: [item],
+      clientError: null,
+      clientName: "the built-in client",
+      builtinState: "connected",
+    });
+    expect(
+      await screen.findByText(/What Reelkeeper has sent to the built-in client and is waiting for/),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(
+      await screen.findByText("Remove from the built-in client and delete what was downloaded?"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Built-in/)).not.toBeInTheDocument();
+  });
+
+  it("warns while the built-in client's VPN has stopped its downloads", async () => {
+    const link = (alert: HTMLElement) =>
+      within(alert).getByRole("link", { name: "Settings → Download Client" });
+    for (const [state, text] of [
+      ["down", "VPN down: the built-in client's downloads are stopped until it reconnects."],
+      ["connecting", "VPN connecting: the built-in client's downloads start when it is connected."],
+      ["held", "The built-in client's downloads are stopped until you start them without the VPN."],
+    ] as const) {
+      const view = open({
+        items: [],
+        clientError: null,
+        clientName: "the built-in client",
+        builtinState: state,
+      });
+      const alert = await screen.findByText(text, { exact: false });
+      expect(alert).toHaveTextContent(text);
+      expect(link(alert)).toHaveAttribute("href", "/settings/download-client");
+      view.unmount();
+      vi.unstubAllGlobals();
+    }
+    // Nothing to say while it is connected, unprotected or another client is in use.
+    for (const builtinState of ["connected", "unprotected", null]) {
+      const view = open({ items: [], clientError: null, clientName: "x", builtinState });
+      await screen.findByText(/Nothing is downloading/);
+      expect(screen.queryByText(/downloads are stopped/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/VPN (down|connecting)/)).not.toBeInTheDocument();
+      view.unmount();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("shows no warning while the queue has room", async () => {

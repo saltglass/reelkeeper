@@ -181,7 +181,9 @@ func TestMissingFilesNamesTheClient(t *testing.T) {
 		for name, want := range map[string]string{
 			"Transmission": "Transmission reports an error or missing files for it.",
 			"qBittorrent":  "qBittorrent reports an error or missing files for it.",
-			"":             "The download client reports an error or missing files for it.",
+			// The built-in client's name isn't a proper name: it needs its capital here.
+			"the built-in client": "The built-in client reports an error or missing files for it.",
+			"":                    "The download client reports an error or missing files for it.",
 		} {
 			v, _ := run(t, cfg, repeat(Torrent{State: state, ClientName: name, Left: 9}, 3), time.Minute)
 			if v.Rule != "missing" || !strings.HasPrefix(v.Reason, want) {

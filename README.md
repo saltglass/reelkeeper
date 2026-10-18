@@ -100,7 +100,9 @@ does the same job, and uses the fact that everything lives together:
   Deluge).
 - **Or its own built-in client (experimental)**: Reelkeeper downloads the
   torrents itself, with no other app to run. Queueing, speed limits and the
-  same cleanup and Queue controls as the others; a VPN option is planned.
+  same cleanup and Queue controls as the others. It can send everything
+  through a WireGuard VPN you configure, with a kill switch that stops every
+  download if the VPN drops (also experimental).
 - Activity → Queue with Pause, Resume, Move to top and Remove.
 - **Switch clients without losing anything.** Changing the download client
   moves Reelkeeper's torrents to the new one, even half-finished ones: the

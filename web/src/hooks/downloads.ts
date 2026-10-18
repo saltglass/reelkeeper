@@ -11,6 +11,8 @@ export type TorrentState = components["schemas"]["TorrentState"];
 export type BlocklistItem = components["schemas"]["BlocklistItem"];
 export type Blocklist = components["schemas"]["Blocklist"];
 export type DownloadMovePreview = components["schemas"]["DownloadMovePreview"];
+export type BuiltinStatus = components["schemas"]["BuiltinStatus"];
+export type VpnSummary = components["schemas"]["VpnSummary"];
 
 /** What changing the download client would move (asked just before saving a change of type). */
 export const downloadMovePreviewQuery = queryOptions({
@@ -26,12 +28,22 @@ export const downloadClientQuery = queryOptions({
   queryFn: () => unwrap(api.GET("/settings/download-client")),
 });
 
-/** What each kind of download client is called. */
+/** What each kind of download client is called as a choice or a title. */
 export const clientNames: Record<DownloadClientType, string> = {
   qbittorrent: "qBittorrent",
   transmission: "Transmission",
   deluge: "Deluge",
   builtin: "Built-in",
+};
+
+/**
+ * What each kind of client is called inside a sentence: "Built-in" would read
+ * oddly ("sent to Built-in"), so the built-in client is "the built-in client".
+ * Use atSentenceStart where the name begins a sentence.
+ */
+export const clientProse: Record<DownloadClientType, string> = {
+  ...clientNames,
+  builtin: "the built-in client",
 };
 
 /**
@@ -52,7 +64,7 @@ export function isClientSet(c: Pick<DownloadClient, "type" | "url" | "folder">):
  */
 export function useClientName(): string {
   const { data } = useQuery(downloadClientQuery);
-  return data && isClientSet(data) ? clientNames[data.type] : "the download client";
+  return data && isClientSet(data) ? clientProse[data.type] : "the download client";
 }
 
 /**
@@ -70,12 +82,58 @@ export function useSaveDownloadClient() {
       unwrap(api.PUT("/settings/download-client", { body })),
     onSuccess: (data) => {
       qc.setQueryData(downloadClientQuery.queryKey, data);
+      // A new or removed VPN changes the status card.
+      qc.invalidateQueries({ queryKey: builtinStatusQuery.queryKey });
       // Removing the client also drops Grabbing out of "On".
       qc.invalidateQueries({ queryKey: grabbingQuery.queryKey });
       // A change of client starts moving torrents: the Queue and Tasks show it.
       qc.invalidateQueries({ queryKey: queueQuery.queryKey });
       qc.invalidateQueries({ queryKey: ["system", "tasks"] });
       qc.invalidateQueries({ queryKey: ["history"] });
+    },
+  });
+}
+
+/** The built-in client's VPN and the address peers see; fetched every 10 seconds while the tab is visible. */
+export const builtinStatusQuery = queryOptions({
+  queryKey: ["settings", "download-client", "builtin-status"],
+  queryFn: () => unwrap(api.GET("/settings/download-client/builtin/status")),
+  refetchInterval: 10_000,
+  // A status that fails (the client isn't the built-in one any more) isn't retried in a loop.
+  retry: false,
+});
+
+/** "Check again": looks the addresses up afresh (the server allows it once in 30 seconds). */
+export function useCheckAgain() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      unwrap(
+        api.GET("/settings/download-client/builtin/status", {
+          params: { query: { refresh: true } },
+        }),
+      ),
+    onSuccess: (data) => qc.setQueryData(builtinStatusQuery.queryKey, data),
+  });
+}
+
+/** Reads a WireGuard config on the server without saving it. */
+export function useCheckVpnConfig() {
+  return useMutation({
+    mutationFn: (config: string) =>
+      unwrap(api.POST("/settings/download-client/vpn/check", { body: { config } })),
+  });
+}
+
+/** "Start without VPN": lets the built-in client's downloads go on after the VPN was removed. */
+export function useStartWithoutVpn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(api.POST("/settings/download-client/builtin/start-unprotected")),
+    onSuccess: (data) => {
+      qc.setQueryData(downloadClientQuery.queryKey, data);
+      qc.invalidateQueries({ queryKey: builtinStatusQuery.queryKey });
+      qc.invalidateQueries({ queryKey: queueQuery.queryKey });
     },
   });
 }

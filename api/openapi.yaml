@@ -1869,6 +1869,73 @@ paths:
               schema: { $ref: "#/components/schemas/DownloadMovePreview" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /settings/download-client/vpn/check:
+    post:
+      tags: [settings]
+      operationId: checkDownloadClientVpn
+      summary: Read a WireGuard config without saving it
+      description: |
+        Reads a wg-quick style file (what a VPN provider gives you) and says what it contains, with no secret in the answer. Used
+        as soon as a file is dropped or pasted, so mistakes show before saving. It makes no connection. A file that can't be used
+        is refused with 422 and `fields.config` says why in plain English (a key is never part of the message).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [config]
+              properties:
+                config: { type: string, description: The text of the WireGuard config file. }
+      responses:
+        "200":
+          description: The config is usable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VpnSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /settings/download-client/builtin/status:
+    get:
+      tags: [settings]
+      operationId: getBuiltinStatus
+      summary: The built-in client's protection, and the address peers see
+      description: |
+        Where the built-in client's VPN is (`unprotected`, `connecting`, `connected`, `down`, or `held`), and the address the world
+        sees, looked up over the computer's own network (`publicIP`) and, while the VPN is connected, through it (`vpnIP`). The
+        lookups ask Cloudflare's trace page and are only made when this endpoint is called (the page is open), kept for five minutes,
+        and `refresh=true` (the "Check again" button) repeats them at most once in 30 seconds. If both addresses are the same the
+        VPN isn't hiding anything: `leak` is true, the state is `down` and downloads are held. 404 when the built-in client isn't
+        the download client.
+      parameters:
+        - { name: refresh, in: query, required: false, schema: { type: boolean }, description: Look the addresses up again now (at most once in 30 seconds). }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuiltinStatus" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /settings/download-client/builtin/start-unprotected:
+    post:
+      tags: [settings]
+      operationId: startBuiltinUnprotected
+      summary: Start the built-in client's downloads without a VPN
+      description: |
+        After the VPN was removed, downloads stay stopped (`vpnHeld`) until this is called. Refused with 422 while a VPN is set up.
+        Peers will see the real IP address.
+      responses:
+        "200":
+          description: The saved settings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DownloadClient" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
   /settings/download-client/test:
     post:
       tags: [settings]
@@ -3411,18 +3478,79 @@ components:
 
     DownloadClient:
       type: object
-      required: [type, url, username, passwordSet, folder, listenPort, maxActiveDownloads, maxActiveSeeds, downloadLimitKBs, uploadLimitKBs]
+      required: [type, url, username, passwordSet, folder, listenPort, maxActiveDownloads, maxActiveSeeds, downloadLimitKBs, uploadLimitKBs, forwardedPort, hasVpn, vpnHeld, vpn, vpnProblem]
       properties:
         type: { $ref: "#/components/schemas/DownloadClientType" }
         url: { type: string, description: "The client's address: qBittorrent's Web UI, Transmission's RPC address or Deluge's web UI. Empty: no download client. Always empty for the built-in client." }
         username: { type: string, description: Always empty for Deluge, whose web UI has a password only, and for the built-in client. }
         passwordSet: { type: boolean }
         folder: { type: string, description: "Where the client saves Reelkeeper's downloads, as the client sees it. Empty: the client's default folder (for the built-in client, which has none: it isn't set up)." }
-        listenPort: { type: integer, description: "Built-in client only (0 for the others): the TCP and UDP port peers connect to." }
+        listenPort: { type: integer, description: "Built-in client only (0 for the others): the TCP and UDP port peers connect to. Not used while a VPN is set up (`forwardedPort` is)." }
         maxActiveDownloads: { type: integer, description: "Built-in client only (0 for the others): how many unfinished torrents download at once; the others wait as Queued." }
         maxActiveSeeds: { type: integer, description: "Built-in client only: how many finished torrents upload at once; 0 is no limit." }
         downloadLimitKBs: { type: integer, description: "Built-in client only: download speed limit in KB/s; 0 is no limit." }
         uploadLimitKBs: { type: integer, description: "Built-in client only: upload speed limit in KB/s; 0 is no limit." }
+        forwardedPort: { type: integer, description: "Built-in client with a VPN only: the port the VPN provider forwards to it so peers can connect; 0 means outgoing connections only." }
+        hasVpn: { type: boolean, description: "Built-in client only: a WireGuard VPN is set up (its config is stored encrypted and never sent). True also when the stored config can't be read, see `vpnProblem`." }
+        vpnHeld: { type: boolean, description: "Built-in client only: the VPN was removed and downloads stay stopped until `POST /settings/download-client/builtin/start-unprotected`." }
+        vpn: { allOf: [{ $ref: "#/components/schemas/VpnSummary" }], nullable: true, description: "What the stored VPN config contains, without any secret; null without a VPN." }
+        vpnProblem: { type: string, nullable: true, description: "Set when a VPN is stored but can't be used (for example its encryption key changed). Downloads are held meanwhile." }
+
+    VpnSummary:
+      type: object
+      required: [endpoint, tunnelAddresses, dns, dnsDefault, publicKey, keepalive, mtu, hasPresharedKey, warnings, notes]
+      properties:
+        endpoint: { type: string, description: "The VPN server, as host:port." }
+        tunnelAddresses: { type: array, items: { type: string }, description: "This computer's addresses inside the VPN, such as 10.2.0.2/32." }
+        dns: { type: array, items: { type: string }, description: "The DNS servers names are looked up with, through the VPN." }
+        dnsDefault: { type: boolean, description: "The config names no DNS server, so 1.1.1.1 is asked (through the VPN)." }
+        publicKey: { type: string, description: "This side's public key, worked out from the private key: what the VPN provider has on file. The private key is never shown." }
+        keepalive: { type: integer, description: "Seconds between keepalive packets (25 when the config doesn't say)." }
+        mtu: { type: integer }
+        hasPresharedKey: { type: boolean }
+        warnings:
+          type: array
+          items: { type: string }
+          description: "Things worth knowing that don't stop the config working, such as a config that only sends some traffic through the VPN (Reelkeeper sends all of the built-in client's traffic through it anyway)."
+        notes:
+          type: array
+          items: { type: string }
+          description: "Settings in the file that were ignored or changed."
+
+    BuiltinStatus:
+      type: object
+      required: [state, message, since, lastHandshake, endpoint, tunnelAddresses, dns, dnsDefault, rxBytes, txBytes, forwardedPort, publicIP, publicIPError, vpnIP, vpnIPError, leak, checkedAt]
+      properties:
+        state:
+          type: string
+          enum: [unprotected, connecting, connected, down, held]
+          description: |
+            `unprotected`: no VPN, peers see the real IP. `connecting`: the VPN is coming up, nothing runs yet. `connected`: the VPN is up.
+            `down`: the VPN dropped (no handshake for 3 minutes) or leaks; every torrent is stopped. `held`: the VPN was removed (or can't be used)
+            and downloads are stopped until the person starts them without one.
+        message: { type: string, description: "Plain-English detail for the state; empty when there is nothing to add." }
+        since: { type: string, format: date-time, nullable: true, description: "When the VPN got into this state." }
+        lastHandshake: { type: string, format: date-time, nullable: true, description: "When the VPN server last answered." }
+        endpoint: { type: string, description: "The VPN server, host:port; empty without a VPN." }
+        tunnelAddresses: { type: array, items: { type: string } }
+        dns: { type: array, items: { type: string } }
+        dnsDefault: { type: boolean }
+        rxBytes: { type: integer, format: int64, description: "Bytes received through the VPN since it started." }
+        txBytes: { type: integer, format: int64 }
+        forwardedPort: { type: integer }
+        publicIP: { allOf: [{ $ref: "#/components/schemas/ObservedIp" }], nullable: true, description: "The address the computer's own network shows the world (looked up directly)." }
+        publicIPError: { type: string, description: "Why that lookup failed; empty otherwise." }
+        vpnIP: { allOf: [{ $ref: "#/components/schemas/ObservedIp" }], nullable: true, description: "The address peers would see through the VPN; only looked up while it is connected." }
+        vpnIPError: { type: string }
+        leak: { type: boolean, description: "The VPN shows the same address as the computer, so it isn't hiding anything. Downloads are held." }
+        checkedAt: { type: string, format: date-time, nullable: true, description: "When the addresses were last looked up." }
+
+    ObservedIp:
+      type: object
+      required: [ip, country]
+      properties:
+        ip: { type: string }
+        country: { type: string, description: "Two-letter country code, or empty." }
 
     DownloadClientUpdate:
       type: object
@@ -3438,6 +3566,19 @@ components:
         maxActiveSeeds: { type: integer, minimum: 0, maximum: 10000, description: "Built-in client only; 0 is no limit. Leaving it out keeps the current value (25 at first)." }
         downloadLimitKBs: { type: integer, minimum: 0, description: "Built-in client only: KB/s, 0 for no limit. Leaving it out keeps the current value." }
         uploadLimitKBs: { type: integer, minimum: 0, description: "Built-in client only: KB/s, 0 for no limit. Leaving it out keeps the current value." }
+        vpnConfig:
+          type: string
+          format: password
+          description: |
+            Built-in client only: the text of a WireGuard config. Leaving it out keeps the current one; a config replaces it (a config that
+            can't be used is refused with a plain-English `fields.vpnConfig`); an empty string removes the VPN, which also needs
+            `confirmUnprotected: true`. The config is stored encrypted and never sent back.
+        forwardedPort: { type: integer, minimum: 0, maximum: 65535, description: "Built-in client with a VPN only: the port the VPN provider forwards to it (0: none). Leaving it out keeps the current value." }
+        confirmUnprotected:
+          type: boolean
+          description: |
+            Required (else 422 with `fields.confirmUnprotected`) to remove a VPN: peers will then see the real IP, and the built-in client's downloads stay
+            stopped (`vpnHeld`) until `POST /settings/download-client/builtin/start-unprotected`.
         leaveSeeding:
           type: boolean
           description: |
@@ -3752,11 +3893,16 @@ components:
 
     Queue:
       type: object
-      required: [items, clientError, clientName, limit, full]
+      required: [items, clientError, clientName, limit, full, builtinState]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/QueueItem" }
+        builtinState:
+          type: string
+          nullable: true
+          enum: [unprotected, connecting, connected, down, held]
+          description: "The built-in client's VPN state (see `GET /settings/download-client/builtin/status`) while it is the download client; null for the other clients. `connecting`, `down` and `held` mean its downloads are stopped."
         clientName: { type: string, description: "The download client's name, such as qBittorrent, for the page's wording. \"the download client\" when none is set up." }
         limit: { type: integer, description: The queue limit in Settings → Download Client (0 = no limit). }
         full: { type: boolean, description: Grabbing is On for movies or TV and the queue is at or over the limit, so nothing new is grabbed automatically (Seerr requests still go through). }

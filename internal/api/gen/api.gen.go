@@ -76,6 +76,33 @@ func (e BlocklistItemMediaType) Valid() bool {
 	}
 }
 
+// Defines values for BuiltinStatusState.
+const (
+	BuiltinStatusStateConnected   BuiltinStatusState = "connected"
+	BuiltinStatusStateConnecting  BuiltinStatusState = "connecting"
+	BuiltinStatusStateDown        BuiltinStatusState = "down"
+	BuiltinStatusStateHeld        BuiltinStatusState = "held"
+	BuiltinStatusStateUnprotected BuiltinStatusState = "unprotected"
+)
+
+// Valid indicates whether the value is a known member of the BuiltinStatusState enum.
+func (e BuiltinStatusState) Valid() bool {
+	switch e {
+	case BuiltinStatusStateConnected:
+		return true
+	case BuiltinStatusStateConnecting:
+		return true
+	case BuiltinStatusStateDown:
+		return true
+	case BuiltinStatusStateHeld:
+		return true
+	case BuiltinStatusStateUnprotected:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CleanupEventAction.
 const (
 	CleanupEventActionEmptied     CleanupEventAction = "emptied"
@@ -655,6 +682,33 @@ func (e ProfileSettingsMode) Valid() bool {
 	}
 }
 
+// Defines values for QueueBuiltinState.
+const (
+	QueueBuiltinStateConnected   QueueBuiltinState = "connected"
+	QueueBuiltinStateConnecting  QueueBuiltinState = "connecting"
+	QueueBuiltinStateDown        QueueBuiltinState = "down"
+	QueueBuiltinStateHeld        QueueBuiltinState = "held"
+	QueueBuiltinStateUnprotected QueueBuiltinState = "unprotected"
+)
+
+// Valid indicates whether the value is a known member of the QueueBuiltinState enum.
+func (e QueueBuiltinState) Valid() bool {
+	switch e {
+	case QueueBuiltinStateConnected:
+		return true
+	case QueueBuiltinStateConnecting:
+		return true
+	case QueueBuiltinStateDown:
+		return true
+	case QueueBuiltinStateHeld:
+		return true
+	case QueueBuiltinStateUnprotected:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for QueueItemMediaType.
 const (
 	QueueItemMediaTypeMovie  QueueItemMediaType = "movie"
@@ -1014,16 +1068,16 @@ func (e WantedItemState) Valid() bool {
 
 // Defines values for MoveBackfillJSONBodyDirection.
 const (
-	Down MoveBackfillJSONBodyDirection = "down"
-	Up   MoveBackfillJSONBodyDirection = "up"
+	MoveBackfillJSONBodyDirectionDown MoveBackfillJSONBodyDirection = "down"
+	MoveBackfillJSONBodyDirectionUp   MoveBackfillJSONBodyDirection = "up"
 )
 
 // Valid indicates whether the value is a known member of the MoveBackfillJSONBodyDirection enum.
 func (e MoveBackfillJSONBodyDirection) Valid() bool {
 	switch e {
-	case Down:
+	case MoveBackfillJSONBodyDirectionDown:
 		return true
-	case Up:
+	case MoveBackfillJSONBodyDirectionUp:
 		return true
 	default:
 		return false
@@ -1344,6 +1398,55 @@ type BlocklistItem struct {
 // BlocklistItemMediaType defines model for BlocklistItem.MediaType.
 type BlocklistItemMediaType string
 
+// BuiltinStatus defines model for BuiltinStatus.
+type BuiltinStatus struct {
+	// CheckedAt When the addresses were last looked up.
+	CheckedAt  *time.Time `json:"checkedAt"`
+	Dns        []string   `json:"dns"`
+	DnsDefault bool       `json:"dnsDefault"`
+
+	// Endpoint The VPN server, host:port; empty without a VPN.
+	Endpoint      string `json:"endpoint"`
+	ForwardedPort int    `json:"forwardedPort"`
+
+	// LastHandshake When the VPN server last answered.
+	LastHandshake *time.Time `json:"lastHandshake"`
+
+	// Leak The VPN shows the same address as the computer, so it isn't hiding anything. Downloads are held.
+	Leak bool `json:"leak"`
+
+	// Message Plain-English detail for the state; empty when there is nothing to add.
+	Message string `json:"message"`
+
+	// PublicIP The address the computer's own network shows the world (looked up directly).
+	PublicIP *ObservedIp `json:"publicIP"`
+
+	// PublicIPError Why that lookup failed; empty otherwise.
+	PublicIPError string `json:"publicIPError"`
+
+	// RxBytes Bytes received through the VPN since it started.
+	RxBytes int64 `json:"rxBytes"`
+
+	// Since When the VPN got into this state.
+	Since *time.Time `json:"since"`
+
+	// State `unprotected`: no VPN, peers see the real IP. `connecting`: the VPN is coming up, nothing runs yet. `connected`: the VPN is up.
+	// `down`: the VPN dropped (no handshake for 3 minutes) or leaks; every torrent is stopped. `held`: the VPN was removed (or can't be used)
+	// and downloads are stopped until the person starts them without one.
+	State           BuiltinStatusState `json:"state"`
+	TunnelAddresses []string           `json:"tunnelAddresses"`
+	TxBytes         int64              `json:"txBytes"`
+
+	// VpnIP The address peers would see through the VPN; only looked up while it is connected.
+	VpnIP      *ObservedIp `json:"vpnIP"`
+	VpnIPError string      `json:"vpnIPError"`
+}
+
+// BuiltinStatusState `unprotected`: no VPN, peers see the real IP. `connecting`: the VPN is coming up, nothing runs yet. `connected`: the VPN is up.
+// `down`: the VPN dropped (no handshake for 3 minutes) or leaks; every torrent is stopped. `held`: the VPN was removed (or can't be used)
+// and downloads are stopped until the person starts them without one.
+type BuiltinStatusState string
+
 // Candidate defines model for Candidate.
 type Candidate struct {
 	Overview   string `json:"overview"`
@@ -1568,7 +1671,13 @@ type DownloadClient struct {
 	// Folder Where the client saves Reelkeeper's downloads, as the client sees it. Empty: the client's default folder (for the built-in client, which has none: it isn't set up).
 	Folder string `json:"folder"`
 
-	// ListenPort Built-in client only (0 for the others): the TCP and UDP port peers connect to.
+	// ForwardedPort Built-in client with a VPN only: the port the VPN provider forwards to it so peers can connect; 0 means outgoing connections only.
+	ForwardedPort int `json:"forwardedPort"`
+
+	// HasVpn Built-in client only: a WireGuard VPN is set up (its config is stored encrypted and never sent). True also when the stored config can't be read, see `vpnProblem`.
+	HasVpn bool `json:"hasVpn"`
+
+	// ListenPort Built-in client only (0 for the others): the TCP and UDP port peers connect to. Not used while a VPN is set up (`forwardedPort` is).
 	ListenPort int `json:"listenPort"`
 
 	// MaxActiveDownloads Built-in client only (0 for the others): how many unfinished torrents download at once; the others wait as Queued.
@@ -1590,6 +1699,15 @@ type DownloadClient struct {
 
 	// Username Always empty for Deluge
 	Username string `json:"username"`
+
+	// Vpn What the stored VPN config contains, without any secret; null without a VPN.
+	Vpn *VpnSummary `json:"vpn"`
+
+	// VpnHeld Built-in client only: the VPN was removed and downloads stay stopped until `POST /settings/download-client/builtin/start-unprotected`.
+	VpnHeld bool `json:"vpnHeld"`
+
+	// VpnProblem Set when a VPN is stored but can't be used (for example its encryption key changed). Downloads are held meanwhile.
+	VpnProblem *string `json:"vpnProblem"`
 }
 
 // DownloadClientType Which download client it is. Settings saved before there was a choice read as `qbittorrent`. `builtin` is Reelkeeper's own
@@ -1598,14 +1716,22 @@ type DownloadClientType string
 
 // DownloadClientUpdate defines model for DownloadClientUpdate.
 type DownloadClientUpdate struct {
+	// ConfirmUnprotected Required (else 422 with `fields.confirmUnprotected`) to remove a VPN: peers will then see the real IP, and the built-in client's downloads stay
+	// stopped (`vpnHeld`) until `POST /settings/download-client/builtin/start-unprotected`.
+	ConfirmUnprotected *bool `json:"confirmUnprotected,omitempty"`
+
 	// DownloadLimitKBs Built-in client only: KB/s, 0 for no limit. Leaving it out keeps the current value.
 	DownloadLimitKBs *int `json:"downloadLimitKBs,omitempty"`
 
 	// Folder Download folder as the client sees it (an absolute path), or empty for the client's default. Required by the built-in client (it must exist and be writable).
 	Folder *string `json:"folder,omitempty"`
 
+	// ForwardedPort Built-in client with a VPN only: the port the VPN provider forwards to it (0: none). Leaving it out keeps the current value.
+	ForwardedPort *int `json:"forwardedPort,omitempty"`
+
 	// LeaveSeeding Only when `type` changes (left out means false). True leaves the torrents that are still seeding in the old client (Reelkeeper stops tracking them,
-	// as before 1.3); false moves them too. Torrents in Activity → Queue always move.
+	// as before 1.3); false moves them too. Torrents in Activity → Queue always move. Leaving them in the built-in client stops them
+	// seeding, because that client stops when it is no longer the download client.
 	LeaveSeeding *bool `json:"leaveSeeding,omitempty"`
 
 	// ListenPort Built-in client only. Leaving it out keeps the current value (6881 at first).
@@ -1630,6 +1756,11 @@ type DownloadClientUpdate struct {
 
 	// Username Required for qBittorrent. Transmission's login is optional
 	Username string `json:"username"`
+
+	// VpnConfig Built-in client only: the text of a WireGuard config. Leaving it out keeps the current one; a config replaces it (a config that
+	// can't be used is refused with a plain-English `fields.vpnConfig`); an empty string removes the VPN, which also needs
+	// `confirmUnprotected: true`. The config is stored encrypted and never sent back.
+	VpnConfig *string `json:"vpnConfig,omitempty"`
 }
 
 // DownloadMovePreview defines model for DownloadMovePreview.
@@ -2325,6 +2456,13 @@ type NotificationSettingsUpdate struct {
 	} `json:"webhook"`
 }
 
+// ObservedIp defines model for ObservedIp.
+type ObservedIp struct {
+	// Country Two-letter country code, or empty.
+	Country string `json:"country"`
+	Ip      string `json:"ip"`
+}
+
 // OidcSettings defines model for OidcSettings.
 type OidcSettings struct {
 	ButtonLabel string `json:"buttonLabel"`
@@ -2649,6 +2787,9 @@ type ProwlarrPreview struct {
 
 // Queue defines model for Queue.
 type Queue struct {
+	// BuiltinState The built-in client's VPN state (see `GET /settings/download-client/builtin/status`) while it is the download client; null for the other clients. `connecting`, `down` and `held` mean its downloads are stopped.
+	BuiltinState *QueueBuiltinState `json:"builtinState"`
+
 	// ClientError Why the download client couldn't be asked (the list then shows only what Reelkeeper knows).
 	ClientError *string `json:"clientError"`
 
@@ -2662,6 +2803,9 @@ type Queue struct {
 	// Limit The queue limit in Settings → Download Client (0 = no limit).
 	Limit int `json:"limit"`
 }
+
+// QueueBuiltinState The built-in client's VPN state (see `GET /settings/download-client/builtin/status`) while it is the download client; null for the other clients. `connecting`, `down` and `held` mean its downloads are stopped.
+type QueueBuiltinState string
 
 // QueueItem defines model for QueueItem.
 type QueueItem struct {
@@ -3474,6 +3618,35 @@ type VersionSummary struct {
 	VideoCodec string `json:"videoCodec"`
 }
 
+// VpnSummary defines model for VpnSummary.
+type VpnSummary struct {
+	// Dns The DNS servers names are looked up with, through the VPN.
+	Dns []string `json:"dns"`
+
+	// DnsDefault The config names no DNS server, so 1.1.1.1 is asked (through the VPN).
+	DnsDefault bool `json:"dnsDefault"`
+
+	// Endpoint The VPN server, as host:port.
+	Endpoint        string `json:"endpoint"`
+	HasPresharedKey bool   `json:"hasPresharedKey"`
+
+	// Keepalive Seconds between keepalive packets (25 when the config doesn't say).
+	Keepalive int `json:"keepalive"`
+	Mtu       int `json:"mtu"`
+
+	// Notes Settings in the file that were ignored or changed.
+	Notes []string `json:"notes"`
+
+	// PublicKey This side's public key, worked out from the private key: what the VPN provider has on file. The private key is never shown.
+	PublicKey string `json:"publicKey"`
+
+	// TunnelAddresses This computer's addresses inside the VPN, such as 10.2.0.2/32.
+	TunnelAddresses []string `json:"tunnelAddresses"`
+
+	// Warnings Things worth knowing that don't stop the config working, such as a config that only sends some traffic through the VPN (Reelkeeper sends all of the built-in client's traffic through it anyway).
+	Warnings []string `json:"warnings"`
+}
+
 // WantedCounts defines model for WantedCounts.
 type WantedCounts struct {
 	// MissingEpisodes Episodes
@@ -3822,6 +3995,18 @@ type MonitorEpisodesJSONBody struct {
 	Seasons    *[]int   `json:"seasons,omitempty"`
 }
 
+// GetBuiltinStatusParams defines parameters for GetBuiltinStatus.
+type GetBuiltinStatusParams struct {
+	// Refresh Look the addresses up again now (at most once in 30 seconds).
+	Refresh *bool `form:"refresh,omitempty" json:"refresh,omitempty"`
+}
+
+// CheckDownloadClientVpnJSONBody defines parameters for CheckDownloadClientVpn.
+type CheckDownloadClientVpnJSONBody struct {
+	// Config The text of the WireGuard config file.
+	Config string `json:"config"`
+}
+
 // CheckMetadataJSONBody defines parameters for CheckMetadata.
 type CheckMetadataJSONBody struct {
 	TmdbApiKey *string `json:"tmdbApiKey,omitempty"`
@@ -3968,6 +4153,9 @@ type PutDownloadClientJSONRequestBody = DownloadClientUpdate
 
 // TestDownloadClientJSONRequestBody defines body for TestDownloadClient for application/json ContentType.
 type TestDownloadClientJSONRequestBody = DownloadClientUpdate
+
+// CheckDownloadClientVpnJSONRequestBody defines body for CheckDownloadClientVpn for application/json ContentType.
+type CheckDownloadClientVpnJSONRequestBody CheckDownloadClientVpnJSONBody
 
 // PutGeneralSettingsJSONRequestBody defines body for PutGeneralSettings for application/json ContentType.
 type PutGeneralSettingsJSONRequestBody = GeneralSettings
@@ -4334,12 +4522,21 @@ type ServerInterface interface {
 	// PutDownloadClient Save the download client connection
 	// (PUT /settings/download-client)
 	PutDownloadClient(w http.ResponseWriter, r *http.Request)
+	// StartBuiltinUnprotected Start the built-in client's downloads without a VPN
+	// (POST /settings/download-client/builtin/start-unprotected)
+	StartBuiltinUnprotected(w http.ResponseWriter, r *http.Request)
+	// GetBuiltinStatus The built-in client's protection, and the address peers see
+	// (GET /settings/download-client/builtin/status)
+	GetBuiltinStatus(w http.ResponseWriter, r *http.Request, params GetBuiltinStatusParams)
 	// GetDownloadMovePreview What changing the download client would move
 	// (GET /settings/download-client/move-preview)
 	GetDownloadMovePreview(w http.ResponseWriter, r *http.Request)
 	// TestDownloadClient Try a download client connection without saving it
 	// (POST /settings/download-client/test)
 	TestDownloadClient(w http.ResponseWriter, r *http.Request)
+	// CheckDownloadClientVpn Read a WireGuard config without saving it
+	// (POST /settings/download-client/vpn/check)
+	CheckDownloadClientVpn(w http.ResponseWriter, r *http.Request)
 
 	// (GET /settings/general)
 	GetGeneralSettings(w http.ResponseWriter, r *http.Request)
@@ -5067,6 +5264,18 @@ func (_ Unimplemented) PutDownloadClient(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// StartBuiltinUnprotected Start the built-in client's downloads without a VPN
+// (POST /settings/download-client/builtin/start-unprotected)
+func (_ Unimplemented) StartBuiltinUnprotected(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetBuiltinStatus The built-in client's protection, and the address peers see
+// (GET /settings/download-client/builtin/status)
+func (_ Unimplemented) GetBuiltinStatus(w http.ResponseWriter, r *http.Request, params GetBuiltinStatusParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // GetDownloadMovePreview What changing the download client would move
 // (GET /settings/download-client/move-preview)
 func (_ Unimplemented) GetDownloadMovePreview(w http.ResponseWriter, r *http.Request) {
@@ -5076,6 +5285,12 @@ func (_ Unimplemented) GetDownloadMovePreview(w http.ResponseWriter, r *http.Req
 // TestDownloadClient Try a download client connection without saving it
 // (POST /settings/download-client/test)
 func (_ Unimplemented) TestDownloadClient(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CheckDownloadClientVpn Read a WireGuard config without saving it
+// (POST /settings/download-client/vpn/check)
+func (_ Unimplemented) CheckDownloadClientVpn(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -7783,6 +7998,53 @@ func (siw *ServerInterfaceWrapper) PutDownloadClient(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
+// StartBuiltinUnprotected operation middleware
+func (siw *ServerInterfaceWrapper) StartBuiltinUnprotected(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StartBuiltinUnprotected(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetBuiltinStatus operation middleware
+func (siw *ServerInterfaceWrapper) GetBuiltinStatus(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetBuiltinStatusParams
+
+	// ------------- Optional query parameter "refresh" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "refresh", r.URL.Query(), &params.Refresh, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "refresh"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "refresh", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetBuiltinStatus(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetDownloadMovePreview operation middleware
 func (siw *ServerInterfaceWrapper) GetDownloadMovePreview(w http.ResponseWriter, r *http.Request) {
 
@@ -7802,6 +8064,20 @@ func (siw *ServerInterfaceWrapper) TestDownloadClient(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.TestDownloadClient(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CheckDownloadClientVpn operation middleware
+func (siw *ServerInterfaceWrapper) CheckDownloadClientVpn(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CheckDownloadClientVpn(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8730,6 +9006,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/settings/download-client/move-preview", wrapper.GetDownloadMovePreview)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/settings/download-client/vpn/check", wrapper.CheckDownloadClientVpn)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/settings/download-client/builtin/status", wrapper.GetBuiltinStatus)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/settings/download-client/builtin/start-unprotected", wrapper.StartBuiltinUnprotected)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/settings/download-client/test", wrapper.TestDownloadClient)

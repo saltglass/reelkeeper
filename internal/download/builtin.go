@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/saltglass/reelkeeper/internal/download/builtin"
+	"github.com/saltglass/reelkeeper/internal/notify"
 	"github.com/saltglass/reelkeeper/internal/settings"
 )
 
@@ -27,14 +28,24 @@ import (
 const engineCloseTimeout = 10 * time.Second
 
 // BuiltinHost starts, changes and stops the built-in engine to match the
-// settings.
+// settings. With a VPN configured it also runs the VPN and gives the engine
+// that and nothing else as its network (see builtin_vpn.go).
 type BuiltinHost struct {
 	dataDir string
+	// network is the computer's own network. The engine only ever gets it when
+	// no VPN is set up; with a VPN it is used for nothing but the direct
+	// "what is my IP" lookup and the VPN server's own name.
 	network builtin.Network
 	logger  *slog.Logger
 	// tune lets tests change the engine's configuration (a loopback address,
 	// no DHT, faster timing).
 	tune func(*builtin.Config)
+	// tuneVPN does the same for the VPN's timing and socket.
+	tuneVPN func(*builtin.VPNOptions)
+	// notify tells people the VPN has been down for a while (SetNotifier).
+	notify func(notify.Event)
+	// notifyAfter is how long the VPN is down before anybody is told.
+	notifyAfter time.Duration
 
 	mu  sync.Mutex
 	eng *builtin.Engine
@@ -42,27 +53,53 @@ type BuiltinHost struct {
 	cfg settings.DownloadClient
 	// err is why the engine isn't running when it should be.
 	err error
+	// plan is how the running engine was set up; vpn is its VPN, if it has one.
+	plan  enginePlan
+	vpn   *builtin.VPNNetwork
+	sum   *builtin.VPNSummary
+	watch *downWatch
+	ips   *ipState
+	// ownIPs is the memory of the IP lookups for an engine with no VPN.
+	ownIPs *ipState
+	// The addresses the IP check asks (tests point them at stubs), and its
+	// clock (tests move it).
+	traceDirect, traceTunnel string
+	ipClock                  func() time.Time
 }
 
 // NewBuiltinHost makes a host that keeps the engine's records in dataDir/builtin.
 // Nothing runs until Apply says so.
 func NewBuiltinHost(dataDir string, logger *slog.Logger) *BuiltinHost {
-	return &BuiltinHost{dataDir: dataDir, network: builtin.OSNetwork{}, logger: logger}
+	return &BuiltinHost{dataDir: dataDir, network: builtin.OSNetwork{}, logger: logger, notifyAfter: vpnDownNoticeAfter}
 }
 
 // config turns the settings into the engine's configuration. The DHT and peer
 // exchange are on, for public torrents (the engine keeps private ones off both).
-func (h *BuiltinHost) config(c settings.DownloadClient) builtin.Config {
+// Behind a VPN the port peers connect to is the one the provider forwards (0:
+// none, outgoing connections only).
+func (h *BuiltinHost) config(c settings.DownloadClient, p enginePlan) builtin.Config {
 	cfg := builtin.Config{
 		DataDir: h.dataDir, Folder: c.Folder, ListenPort: c.ListenPort,
 		MaxActiveDownloads: c.MaxActiveDownloads, MaxActiveSeeds: c.MaxActiveSeeds,
 		DownloadLimitKBs: c.DownloadLimitKBs, UploadLimitKBs: c.UploadLimitKBs,
-		DHT: true, PEX: true, Network: h.network, Logger: h.logger,
+		DHT: true, PEX: true, Network: h.network, Logger: h.logger, Hold: p.hold,
+	}
+	if p.mode == modeVPN {
+		cfg.ListenPort = p.forwarded
 	}
 	if h.tune != nil {
 		h.tune(&cfg)
 	}
 	return cfg
+}
+
+// SetTraceURLs points the "what is my IP" check at other pages than TraceURL:
+// the one asked over the computer's own network, and the one asked through the
+// VPN. Tests use it (the two stubs live in different places).
+func (h *BuiltinHost) SetTraceURLs(direct, tunnel string) {
+	h.mu.Lock()
+	h.traceDirect, h.traceTunnel = direct, tunnel
+	h.mu.Unlock()
 }
 
 // Apply makes the engine match the settings: running when the built-in client
@@ -82,24 +119,45 @@ func (h *BuiltinHost) Apply(cur settings.DownloadClient, mv settings.DownloadMov
 		h.stopLocked()
 		return
 	}
-	cfg := h.config(*want)
+	plan, cfgVPN := planFor(*want)
+	cfg := h.config(*want, plan)
 	if h.eng != nil {
-		if !h.eng.RestartNeeded(cfg) {
+		if plan == h.plan && !h.eng.RestartNeeded(cfg) {
 			h.eng.Configure(cfg)
+			// Starting without a VPN after the hold, or the hold coming back.
+			h.eng.SetHold(plan.hold)
 			h.cfg = *want
 			return
 		}
-		h.logger.Info("restarting the built-in client", "port", want.ListenPort)
+		h.logger.Info("restarting the built-in client", "vpn", plan.mode == modeVPN)
 		h.stopLocked()
+	}
+	var vpn *builtin.VPNNetwork
+	if plan.mode == modeVPN {
+		var err error
+		if vpn, err = h.startVPNLocked(cfgVPN); err != nil {
+			// No VPN, no engine: it never falls back to the computer's network.
+			h.err = err
+			h.logger.Error("the built-in download client's VPN can't start", "error", err)
+			return
+		}
+		cfg.Network = vpn
 	}
 	eng, err := builtin.Open(cfg)
 	if err != nil {
+		if vpn != nil {
+			h.stopVPNLocked()
+		}
 		h.err = err
 		h.logger.Error("the built-in download client can't start", "error", err)
 		return
 	}
-	h.eng, h.cfg, h.err = eng, *want, nil
-	h.logger.Info("the built-in download client is running", "port", eng.Port(), "folder", want.Folder)
+	h.eng, h.cfg, h.err, h.plan = eng, *want, nil, plan
+	if plan.mode == modeVPN {
+		h.logger.Info("the built-in download client is running behind a VPN", "folder", want.Folder)
+	} else {
+		h.logger.Info("the built-in download client is running", "port", eng.Port(), "folder", want.Folder, "held", plan.hold)
+	}
 }
 
 func (h *BuiltinHost) stopLocked() {
@@ -112,6 +170,7 @@ func (h *BuiltinHost) stopLocked() {
 		h.logger.Warn("the built-in download client didn't close cleanly", "error", err)
 	}
 	h.eng = nil
+	h.stopVPNLocked()
 }
 
 // Close stops the engine, saving what it knows (the server's shutdown).
@@ -164,8 +223,9 @@ type Builtin struct {
 	host *BuiltinHost
 }
 
-// Name is what messages call this client.
-func (b *Builtin) Name() string { return "Built-in" }
+// Name is what messages call this client: "Built-in" would read oddly in a
+// sentence, so it is "the built-in client".
+func (b *Builtin) Name() string { return "the built-in client" }
 
 // engine is the running engine, or an error that says it isn't.
 func (b *Builtin) engine() (*builtin.Engine, error) {
@@ -185,6 +245,11 @@ func (b *Builtin) Version(_ context.Context) (string, error) {
 	}
 	if b.host == nil {
 		return "", &unreachableError{msg: "the built-in download client isn't available here"}
+	}
+	// Behind a VPN the computer's own ports aren't used (the provider's
+	// forwarded port is, inside the VPN), so there is no port to check.
+	if b.cfg.HasVPN() {
+		return builtin.Version(), nil
 	}
 	// Our own engine already holds the port when it is running with it.
 	if e, port, _ := b.host.running(); e == nil || port != b.cfg.ListenPort {

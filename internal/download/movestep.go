@@ -253,7 +253,7 @@ func (s *Service) waitFor(ctx context.Context, c Client, d *Download, within tim
 			return t, false, err
 		}
 		if !found {
-			return t, false, fmt.Errorf("%s doesn't list the torrent", c.Name())
+			return t, false, fmt.Errorf("%s doesn't list the torrent", sentenceName(c.Name()))
 		}
 		if ok(t) {
 			return t, true, nil
@@ -289,7 +289,7 @@ func (s *Service) check(ctx context.Context, c Client, d *Download) (Torrent, er
 		return t, err
 	}
 	if !ok {
-		return t, failf("%s is still checking the files after %s", c.Name(), s.moveTiming.check)
+		return t, failf("%s is still checking the files after %s", sentenceName(c.Name()), s.moveTiming.check)
 	}
 	return t, nil
 }
@@ -346,7 +346,7 @@ func (s *Service) mvStop(ctx context.Context, e *moveEnv, d *Download) error {
 		if t.Message != "" {
 			why = " (" + strings.TrimRight(t.Message, ". ") + ")"
 		}
-		return failf("%s reports an error or missing files for it%s, so there's nothing safe to check", e.oldName, why)
+		return failf("%s reports an error or missing files for it%s, so there's nothing safe to check", sentenceName(e.oldName), why)
 	}
 	// Know how to give the new client the torrent before disturbing the old.
 	if _, err := s.source(ctx, e, d); err != nil {
@@ -365,7 +365,7 @@ func (s *Service) mvStop(ctx context.Context, e *moveEnv, d *Download) error {
 	}
 	if !stopped {
 		// Stop was asked for, so a failure has to undo it.
-		d.MoveState, d.Message = moveRollback, fmt.Sprintf("%s didn't stop it in time", e.oldName)
+		d.MoveState, d.Message = moveRollback, fmt.Sprintf("%s didn't stop it in time", sentenceName(e.oldName))
 		return s.saveMove(ctx, d, "move_state", "message")
 	}
 	// Only now is what it has verified, and what it has seeded, settled.
@@ -538,7 +538,7 @@ func (s *Service) mvAdd(ctx context.Context, e *moveEnv, d *Download) error {
 		return err
 	}
 	if !found {
-		return failf("%s no longer lists it", e.oldName)
+		return failf("%s no longer lists it", sentenceName(e.oldName))
 	}
 	if err := e.new.EnsureCategory(ctx, d.Category, ""); err != nil {
 		return refused(err)
@@ -551,13 +551,13 @@ func (s *Service) mvAdd(ctx context.Context, e *moveEnv, d *Download) error {
 		return refused(err)
 	}
 	if hash != d.Hash {
-		return failf("%s took it as a different torrent (%s)", e.newName, hash)
+		return failf("%s took it as a different torrent (%s)", sentenceName(e.newName), hash)
 	}
 	// Stopped means stopped: a new client may first check what it was given.
 	if _, stopped, err := s.waitStopped(ctx, e.new, d); err != nil {
 		return err
 	} else if !stopped {
-		return failf("%s didn't settle after adding it", e.newName)
+		return failf("%s didn't settle after adding it", sentenceName(e.newName))
 	}
 	// A magnet link has no details until the new client has fetched them,
 	// and it can't check files before it has them.
@@ -582,7 +582,7 @@ func (s *Service) fetchDetails(ctx context.Context, e *moveEnv, d *Download) err
 		return err
 	} else if !ok {
 		_ = e.new.Stop(ctx, d.Category, []string{d.Hash})
-		return failf("%s couldn't get the torrent's details from the magnet link in %s", e.newName, s.moveTiming.metadata)
+		return failf("%s couldn't get the torrent's details from the magnet link in %s", sentenceName(e.newName), s.moveTiming.metadata)
 	}
 	if err := e.new.Stop(ctx, d.Category, []string{d.Hash}); err != nil {
 		return refused(err)
@@ -590,7 +590,7 @@ func (s *Service) fetchDetails(ctx context.Context, e *moveEnv, d *Download) err
 	if _, ok, err := s.waitStopped(ctx, e.new, d); err != nil {
 		return err
 	} else if !ok {
-		return failf("%s didn't stop the torrent after getting its details", e.newName)
+		return failf("%s didn't stop the torrent after getting its details", sentenceName(e.newName))
 	}
 	return nil
 }
@@ -641,7 +641,7 @@ func (s *Service) mvCheck(ctx context.Context, e *moveEnv, d *Download) error {
 		return refused(err)
 	}
 	if ok, why := s.enough(ctx, d, ml, t); !ok {
-		return failf("%s checked the files where they are and %s", e.newName, why)
+		return failf("%s checked the files where they are and %s", sentenceName(e.newName), why)
 	}
 	// Unfinished files may sit in a temporary folder: they belong in the
 	// final one, which Transmission and Deluge have to be told (qBittorrent isn't).
@@ -776,7 +776,7 @@ func (s *Service) mvRollback(ctx context.Context, e *moveEnv, d *Download) error
 			if err != nil {
 				return err
 			}
-			note = fmt.Sprintf(" %s checked its files again and has %s of %s.", e.oldName, bytesText(t.Verified), bytesText(t.Size))
+			note = fmt.Sprintf(" %s checked its files again and has %s of %s.", sentenceName(e.oldName), bytesText(t.Verified), bytesText(t.Size))
 			if t.Verified < d.MoveOldBytes {
 				note += fmt.Sprintf(" That is less than the %s it had before; look at the files in %s.", bytesText(d.MoveOldBytes), ml.Dir)
 			}

@@ -249,7 +249,8 @@ Reelkeeper does works the same.
 Choose **Built-in** (it carries an *Experimental* badge) to let Reelkeeper
 download torrents itself, with no other program. Everything else Reelkeeper
 does works the same. It is new: it works, but for torrents you care about, an
-external client is still the safer choice. A VPN option is planned.
+external client is still the safer choice. Without a VPN, peers see your real
+IP address, and the card at the top says so in red.
 
 - **No address and no login.** It is set up by its **Download folder**, a path
   inside the Reelkeeper container that exists and can be written to (Test and
@@ -259,6 +260,14 @@ external client is still the safer choice. A VPN option is planned.
   container, TCP and UDP (`6881:6881/tcp` and `6881:6881/udp`), or Reelkeeper
   can still download but finds fewer peers. It never asks your router to open
   it. See [The built-in download client](install.md#the-built-in-download-client).
+- **VPN (WireGuard)**, optional. Drop, upload or paste the WireGuard config
+  file your VPN provider gives you; Reelkeeper shows what is in it and keeps
+  it encrypted. Then everything the built-in client does goes through the VPN,
+  a green card says which address peers see, and if the VPN drops, all
+  downloads stop until it is back. Removing it asks first and holds the
+  downloads until you press **Start without VPN**. Enter the provider's
+  **Forwarded port** if you have one (it replaces the listen port). Details:
+  [A VPN for the built-in client](install.md#a-vpn-for-the-built-in-client-wireguard).
 - **Max active downloads** (3) and **Max active seeding torrents** (25, 0 for no
   limit). Torrents beyond them wait in order and show as *Queued* (downloads)
   or keep their "seeding" state without uploading (finished ones waiting for a

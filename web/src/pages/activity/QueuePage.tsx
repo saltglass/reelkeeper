@@ -64,6 +64,13 @@ export function barKind(state: TorrentState, progress: number): BarKind {
   return "active";
 }
 
+/** What the Queue says while the built-in client's downloads are stopped by its VPN. */
+const vpnBanners: Record<string, string> = {
+  down: "VPN down: the built-in client's downloads are stopped until it reconnects.",
+  connecting: "VPN connecting: the built-in client's downloads start when it is connected.",
+  held: "The built-in client's downloads are stopped until you start them without the VPN.",
+};
+
 export function QueuePage() {
   const { data, error } = useQuery(queueQuery);
   const posters = usePosters();
@@ -104,6 +111,17 @@ export function QueuePage() {
                 The queue is full: {data.items.length} of {data.limit} downloads. Reelkeeper won't
                 grab anything new until some finish (Seerr requests still go through). Change the
                 limit in{" "}
+                <Link to="/settings/download-client" className="text-link hover:underline">
+                  Settings → Download Client
+                </Link>
+                .
+              </p>
+            </Alert>
+          )}
+          {data.builtinState && data.builtinState in vpnBanners && (
+            <Alert variant="warning">
+              <p>
+                {vpnBanners[data.builtinState]} See{" "}
                 <Link to="/settings/download-client" className="text-link hover:underline">
                   Settings → Download Client
                 </Link>

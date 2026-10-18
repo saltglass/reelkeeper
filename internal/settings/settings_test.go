@@ -669,7 +669,7 @@ func TestDownloadClientBuiltin(t *testing.T) {
 		want := settings.DownloadClient{
 			Type: settings.ClientBuiltin, Folder: folder, ListenPort: 6881, MaxActiveDownloads: 3, MaxActiveSeeds: 25,
 		}
-		if got != want || !got.Configured() || got.ClientName() != "Built-in" || got.ClientType() != settings.ClientBuiltin {
+		if got != want || !got.Configured() || got.ClientName() != "the built-in client" || got.ClientType() != settings.ClientBuiltin {
 			t.Fatalf("saved = %+v, want %+v", got, want)
 		}
 		if reread := newService(t, db, testKey).DownloadClient(); reread != want {

@@ -168,9 +168,10 @@ together.
   queue, blocklist, and the "Check downloads" task that triggers imports
 - `internal/download/builtin/`: the built-in torrent client's engine, on
   anacrolix/torrent (MPL-2.0): lifecycle, queueing, limits, its records in
-  `<data folder>/builtin/` and the `Network` every socket comes from.
-  Knows nothing about Reelkeeper's database, downloads or categories beyond
-  a label.
+  `<data folder>/builtin/` and the `Network` every socket comes from, including
+  the WireGuard VPN (`vpn.go`, `vpnconf.go`; wireguard-go, MIT, userspace only)
+  and its kill switch. Knows nothing about Reelkeeper's database, downloads or
+  categories beyond a label. `vpntest/` is a WireGuard server for tests.
 - Importing itself is `library.ImportMovie` (`internal/library/import.go`),
   next to the scanner whose file handling it shares; there's no separate
   importer package.
@@ -484,13 +485,46 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
 - **RAM.** Aim for under 250 MB steady-state for a library of a few thousand
   titles.
 - **The built-in client's sockets only come from its `Network`**
-  (`internal/download/builtin/network.go`). Stage 2 will put a VPN with a kill
-  switch under it, so nothing in the engine may dial, listen or look up a name
-  any other way (no `net.Dial`, `http.DefaultClient`, `net.DefaultResolver`;
-  a test reads the source for them). anacrolix's own sockets, UPnP/NAT-PMP
-  port mapping, WebTorrent, web seeds and its automatic DHT announcing are
-  switched off in `clientConfig`, and a test pins each. Never add port
-  mapping: nobody's router may be asked to open a port.
+  (`internal/download/builtin/network.go`, or `vpn.go` in VPN mode), so nothing
+  in the engine may dial, listen or look up a name any other way (no
+  `net.Dial`, `http.DefaultClient`, `net.DefaultResolver`; a test reads the
+  source for them, and for the WireGuard calls that make a real socket or a TUN
+  device). anacrolix's own sockets, UPnP/NAT-PMP port mapping, WebTorrent, web
+  seeds and its automatic DHT announcing are switched off in `clientConfig`,
+  and a test pins each. Never add port mapping: nobody's router may be asked
+  to open a port.
+- **VPN mode: the only operating system socket is WireGuard's own UDP socket
+  to the VPN server** (`conn.NewDefaultBind` in `vpn.go`; the endpoint's name,
+  if it is one, is looked up once with the OS resolver, and again while the
+  VPN is down). **Never add a fallback to the normal network**: with a VPN
+  config the host (`download/builtin_vpn.go`) gives the engine the VPN and
+  nothing else, and if the VPN can't be built there is no engine; a config
+  that can't be read or used makes the engine start *held* (no sockets), never
+  unprotected. Kill-switch states: `connecting` (no handshake yet, nothing
+  runs), `connected` (handshake in the last 180 s, observed by the poller every
+  5 s), `down` (had been connected and the handshake went stale, the tunnel
+  failed, or the IP check found the VPN shows the real address), and `held`
+  (VPN removed: stays stopped until "Start without VPN", persisted in
+  settings as `VPNHeld`). While not connected `VPNNetwork` refuses every call,
+  closes open connections, and the engine (`reconcile`) stops every torrent
+  and **closes its anacrolix client and all sockets**, making new ones when
+  allowed; paused flags are never touched. The client is rebuilt on purpose
+  for the kill switch (and see below).
+- **Pause in place, never drop-and-re-add.** anacrolix 1.61 keeps its tracker
+  bookkeeping per (tracker, info hash) for the life of a client and hands every
+  later announce result to the *first* torrent added, which is gone once it is
+  dropped: a torrent dropped and added again to the same client never gets
+  tracker peers again (tracker-only/private torrents never finish).
+  `TestAnacrolixTorrentReAddedAfterDropIsTrackerBlind` pins it. So pausing,
+  queueing and seed rotation `parkRunning` the torrent (no connections, no data;
+  its trackers keep being announced to), and anything that has to `stopRunning`
+  (drop) a torrent (recheck, move, removal, storage trouble) marks its hash
+  stale, so the client is made anew before that torrent runs again.
+- **The VPN config is a secret** (it holds the private key): stored sealed
+  (`downloadClient.vpnConfig`), never in an API answer, a log line or an error
+  message (the parser's tests check this); the API shows `VpnSummary`, which
+  has only the derived public key. A stored config that can't be decrypted
+  counts as "VPN set up but unreadable", not as "no VPN".
 - **anacrolix/torrent ignores the private flag.** The engine itself keeps
   private torrents off the DHT and peer exchange (`private.go`); a version bump
   must keep `TestPrivateTorrentsNeverUseTheDHTOrPeerExchange` passing. Tracker

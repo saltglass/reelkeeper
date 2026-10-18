@@ -30,6 +30,9 @@ type DownloadMove struct {
 type storedDownloadMove struct {
 	DownloadMove
 	PasswordSealed string `json:"passwordSealed"`
+	// VPNConfigSealed is the old built-in client's VPN config (encrypted), so
+	// the old client keeps running through its VPN until the move is done.
+	VPNConfigSealed string `json:"vpnConfigSealed,omitempty"`
 }
 
 // DownloadMove returns the move in progress (Active is false when none is).
@@ -46,8 +49,14 @@ func (s *Service) SaveDownloadMove(ctx context.Context, m DownloadMove) error {
 	if err != nil {
 		return err
 	}
+	vpn := ""
+	if m.Old.VPNConfig != "" {
+		if vpn, err = s.box.Seal(m.Old.VPNConfig); err != nil {
+			return err
+		}
+	}
 	s.mu.Lock()
-	if err := s.put(ctx, GroupDownloadMove, storedDownloadMove{DownloadMove: m, PasswordSealed: sealed}); err != nil {
+	if err := s.put(ctx, GroupDownloadMove, storedDownloadMove{DownloadMove: m, PasswordSealed: sealed, VPNConfigSealed: vpn}); err != nil {
 		s.mu.Unlock()
 		return err
 	}
@@ -86,6 +95,18 @@ func (s *Service) loadDownloadMove(ctx context.Context) error {
 			s.logger.Error("can't read a stored credential", "setting", downloadMovePassword, "error", err)
 		} else {
 			m.Old.Password = pw
+		}
+	}
+	if stored.VPNConfigSealed != "" {
+		if cfg, err := s.box.Open(stored.VPNConfigSealed); err != nil {
+			if !errors.Is(err, secrets.ErrUndecryptable) {
+				return err
+			}
+			// Still a VPN, which can't be read: the old client stays held.
+			m.Old.VPNUnreadable = true
+			s.logger.Error("can't read a stored credential", "setting", "downloadMove.vpnConfig", "error", err)
+		} else {
+			m.Old.VPNConfig = cfg
 		}
 	}
 	s.downloadMove = m

@@ -775,7 +775,7 @@ describe("the built-in client", () => {
     expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        "Reelkeeper downloads torrents itself, with no separate app. Experimental: it works, but it's new. A VPN option comes next.",
+        "Reelkeeper downloads torrents itself, with no separate app. Experimental: it works, but it's new. You can add a WireGuard VPN: everything the client does then goes through it, and a kill switch stops every download if it drops.",
       ),
     ).toBeInTheDocument();
     // The starting values.
@@ -914,7 +914,9 @@ describe("the built-in client", () => {
     await screen.findByLabelText("Listen port");
     await userEvent.click(choice().getByRole("button", { name: "Transmission" }));
     expect(
-      await screen.findByText(/Saving moves Reelkeeper's torrents from Built-in to Transmission/),
+      await screen.findByText(
+        /Saving moves Reelkeeper's torrents from the built-in client to Transmission/,
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText(/stop when it is switched off/)).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("RPC address"), "http://tm:9091");

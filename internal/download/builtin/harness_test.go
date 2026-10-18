@@ -198,12 +198,21 @@ type seederOpts struct {
 
 func startSeeder(t *testing.T, o seederOpts, cs ...*content) *seeder {
 	t.Helper()
+	s := newSeederFrom(t, newSeederConfig(o.pex))
+	for _, c := range cs {
+		s.add(t, c)
+	}
+	return s
+}
+
+// newSeederConfig is the configuration of a plain anacrolix client on
+// loopback that only seeds.
+func newSeederConfig(pex bool) *torrent.ClientConfig {
 	cfg := torrent.NewDefaultClientConfig()
-	cfg.DataDir = t.TempDir()
 	cfg.ListenHost = torrent.LoopbackListenHost
 	cfg.ListenPort = 0
 	cfg.NoDHT = true
-	cfg.DisablePEX = !o.pex
+	cfg.DisablePEX = !pex
 	cfg.NoDefaultPortForwarding = true
 	cfg.DisableIPv6 = true
 	cfg.DisableWebtorrent = true
@@ -211,6 +220,13 @@ func startSeeder(t *testing.T, o seederOpts, cs ...*content) *seeder {
 	cfg.DisableTrackers = true
 	cfg.Seed = true
 	cfg.Slogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	return cfg
+}
+
+// newSeederFrom starts the seeder (and closes it when the test ends).
+func newSeederFrom(t *testing.T, cfg *torrent.ClientConfig) *seeder {
+	t.Helper()
+	cfg.DataDir = t.TempDir()
 	s := &seeder{ext: map[string]map[pp.ExtensionName]pp.ExtensionNumber{}}
 	cfg.Callbacks.ReadExtendedHandshake = func(pc *torrent.PeerConn, m *pp.ExtendedHandshakeMessage) {
 		s.mu.Lock()
@@ -223,9 +239,6 @@ func startSeeder(t *testing.T, o seederOpts, cs ...*content) *seeder {
 	}
 	t.Cleanup(func() { cl.Close() })
 	s.cl, s.port = cl, cl.LocalPort()
-	for _, c := range cs {
-		s.add(t, c)
-	}
 	return s
 }
 
@@ -256,7 +269,9 @@ func (s *seeder) peerInfo() torrent.PeerInfo {
 // tracker is a stub HTTP tracker on 127.0.0.1.
 type stubTracker struct {
 	srv *httptest.Server
-	mu  sync.Mutex
+	// handler answers announces (the VPN tests serve it from inside a tunnel).
+	handler http.Handler
+	mu      sync.Mutex
 	// answers by info hash (hex): a failure reason, or peers.
 	failure map[string]string
 	peers   map[string][]string
@@ -266,7 +281,7 @@ type stubTracker struct {
 func startTracker(t *testing.T) *stubTracker {
 	t.Helper()
 	tr := &stubTracker{failure: map[string]string{}, peers: map[string][]string{}, calls: map[string]int{}}
-	tr.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	tr.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ih := fmt.Sprintf("%x", r.URL.Query().Get("info_hash"))
 		tr.mu.Lock()
 		tr.calls[ih]++
@@ -287,7 +302,8 @@ func startTracker(t *testing.T) *stubTracker {
 		}
 		b, _ := bencode.Marshal(resp)
 		_, _ = w.Write(b)
-	}))
+	})
+	tr.srv = httptest.NewServer(tr.handler)
 	t.Cleanup(tr.srv.Close)
 	return tr
 }
