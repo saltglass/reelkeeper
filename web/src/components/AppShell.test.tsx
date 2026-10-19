@@ -160,3 +160,45 @@ describe("sidebar counts", () => {
     }
   });
 });
+
+describe("VPN indicator", () => {
+  const openWith = (builtinState: string | null) =>
+    renderApp("/system/status", {
+      "GET /auth/state": json(signedIn),
+      "GET /settings/general": json({ instanceName: "Reelkeeper", logLevel: "info" }),
+      "GET /system/status": json(status),
+      "GET /queue": json({
+        items: [],
+        clientError: null,
+        clientName: "the built-in client",
+        limit: 0,
+        full: false,
+        builtinState,
+      }),
+    });
+
+  it("shows the built-in client's VPN state under the name, linking to its settings", async () => {
+    for (const [state, label, detail] of [
+      ["connected", "VPN connected", "traffic goes through the VPN"],
+      ["connecting", "VPN connecting", "start when the VPN is connected"],
+      ["down", "VPN down", "stopped until the VPN reconnects"],
+      ["held", "Downloads held", "start them without it"],
+    ]) {
+      const view = openWith(state as string);
+      const link = await screen.findByRole("link", { name: new RegExp(`^${label}`) });
+      expect(link).toHaveAttribute("href", "/settings/download-client");
+      expect(link).toHaveAccessibleName(expect.stringContaining(detail as string));
+      view.unmount();
+    }
+  });
+
+  it("is hidden without a VPN, and for the other download clients", async () => {
+    for (const state of ["unprotected", null]) {
+      const view = openWith(state);
+      // The sidebar has loaded the queue (it shows the live card) but no indicator.
+      expect(await screen.findByText("Nothing downloading")).toBeInTheDocument();
+      expect(screen.queryByText(/^VPN|^Downloads held/)).not.toBeInTheDocument();
+      view.unmount();
+    }
+  });
+});
