@@ -45,6 +45,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { VpnIndicator } from "@/components/VpnIndicator";
 import { useAuthState } from "@/hooks/auth";
 import { queueQuery } from "@/hooks/downloads";
 import { useLiveEvents } from "@/hooks/events";
@@ -193,17 +194,21 @@ function Sidebar({ name }: { name: string }) {
   });
   return (
     <nav className="flex min-h-full flex-col gap-0.5 px-3 pt-5 pb-5" aria-label="Main">
-      <Link to="/" className="group mb-2 flex items-center gap-2.5 rounded-md px-2.5 pb-3">
-        <Logo className="size-8 transition-transform duration-[calc(500ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] group-hover:scale-110 group-hover:-rotate-6" />
-        <span className="flex min-w-0 flex-col">
-          <span className="font-wordmark truncate text-[28px] leading-none tracking-wide">
-            {name}
+      <div className="mb-2 pb-3">
+        <Link to="/" className="group flex items-center gap-2.5 rounded-md px-2.5">
+          <Logo className="size-8 transition-transform duration-[calc(500ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] group-hover:scale-110 group-hover:-rotate-6" />
+          <span className="flex min-w-0 flex-col">
+            <span className="font-wordmark truncate text-[28px] leading-none tracking-wide">
+              {name}
+            </span>
+            {status?.version && (
+              <span className="text-xs text-muted-foreground tabular-nums">{status.version}</span>
+            )}
           </span>
-          {status?.version && (
-            <span className="text-xs text-muted-foreground tabular-nums">{status.version}</span>
-          )}
-        </span>
-      </Link>
+        </Link>
+        {/* Lined up with the name: the link's padding, the logo and the gap (2.5 + 8 + 2.5). */}
+        <VpnIndicator className="mt-1.5 ml-13" />
+      </div>
       {nav.map((section) => (
         <div key={section.title} className="flex flex-col gap-0.5">
           <p className="px-3 pt-4 pb-1.5 text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase">
