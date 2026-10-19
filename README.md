@@ -143,7 +143,7 @@ does the same job, and uses the fact that everything lives together:
   Works behind a reverse proxy with a URL base.
 - Built-in **backups** on a schedule, with restore, which also moves an
   install between SQLite and PostgreSQL.
-- Notifications: Emby library refresh, email and webhooks.
+- Notifications: Emby library refresh (and Jellyfin, from 2.0), email and webhooks.
 - Light and dark themes, usable on a phone, live updates without reloading.
 
 ## Screenshots
@@ -217,8 +217,8 @@ happy.
 Reelkeeper deliberately leaves out subtitles (use Bazarr), music and books,
 playing media, request management (that's Seerr's job), and solving
 Cloudflare challenges itself. Usenet, anime-specific numbering, and library
-updates for Jellyfin and Plex (Emby is supported today) are not supported
-yet; they're planned for 2.0.
+updates for Plex (Emby is supported today, and Jellyfin is coming in 2.0) are
+not supported yet; they're planned for 2.0.
 
 ## Development
 

@@ -721,7 +721,7 @@ func (h *Handlers) DeleteMovie(w http.ResponseWriter, r *http.Request, id int64,
 		return
 	}
 	if deleteFiles && len(res.Deleted) > 0 && h.Notify != nil {
-		// Emby drops the movie at once instead of at its next scan.
+		// Emby or Jellyfin drops the movie at once instead of at its next scan.
 		h.Notify.Notify(r.Context(), notify.Event{Kind: notify.KindDeleted, TitleID: id, Title: "Movie deleted",
 			Message: "Deleted " + res.Deleted[0], Path: res.Deleted[len(res.Deleted)-1]})
 	}

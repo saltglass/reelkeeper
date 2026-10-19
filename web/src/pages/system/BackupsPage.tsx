@@ -183,10 +183,10 @@ export function BackupsPage() {
         <CardContent>
           <p className="text-sm">
             Backups keep stored passwords and keys (indexer logins, the download client, email,
-            Emby) sealed with REELKEEPER_SECRET_KEY. Keep a copy of that key somewhere safe. Without
-            it, a backup still restores your library, settings and history, but those passwords have
-            to be entered again. A backup made with a different key can't be restored until
-            Reelkeeper runs with that key.
+            Emby, Jellyfin) sealed with REELKEEPER_SECRET_KEY. Keep a copy of that key somewhere
+            safe. Without it, a backup still restores your library, settings and history, but those
+            passwords have to be entered again. A backup made with a different key can't be restored
+            until Reelkeeper runs with that key.
           </p>
         </CardContent>
       </Card>

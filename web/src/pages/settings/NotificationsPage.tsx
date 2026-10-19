@@ -18,9 +18,21 @@ import { PageHeader } from "@/pages/PageHeader";
 import { BusyLabel } from "./BusyLabel";
 import { SaveBar } from "./SaveBar";
 
+type Server = "emby" | "jellyfin";
+type Channel = Server | "email" | "webhook";
+
+type ServerForm = {
+  enabled: boolean;
+  url: string;
+  apiKey: string;
+  pathFrom: string;
+  pathTo: string;
+};
+
 /** The form's values. Secrets start empty: the server never sends them. */
 type Form = {
-  emby: { enabled: boolean; url: string; apiKey: string; pathFrom: string; pathTo: string };
+  emby: ServerForm;
+  jellyfin: ServerForm;
   email: {
     enabled: boolean;
     host: string;
@@ -37,17 +49,22 @@ function same(a: Form, b: Form) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+function serverBody(f: ServerForm): NotificationSettingsUpdate["emby"] {
+  return {
+    enabled: f.enabled,
+    url: f.url,
+    pathFrom: f.pathFrom,
+    pathTo: f.pathTo,
+    ...(f.apiKey ? { apiKey: f.apiKey } : {}),
+  };
+}
+
 /** What the API takes: a secret is sent only if it was typed (otherwise the stored one is kept). */
 function toBody(f: Form): NotificationSettingsUpdate {
   const port = Number.parseInt(f.email.port, 10);
   return {
-    emby: {
-      enabled: f.emby.enabled,
-      url: f.emby.url,
-      pathFrom: f.emby.pathFrom,
-      pathTo: f.emby.pathTo,
-      ...(f.emby.apiKey ? { apiKey: f.emby.apiKey } : {}),
-    },
+    emby: serverBody(f.emby),
+    jellyfin: serverBody(f.jellyfin),
     email: {
       enabled: f.email.enabled,
       host: f.email.host,
@@ -70,7 +87,7 @@ function TestButton({
   body,
   disabled,
 }: {
-  channel: "emby" | "email" | "webhook";
+  channel: Channel;
   body: NotificationSettingsUpdate;
   disabled: boolean;
 }) {
@@ -146,19 +163,114 @@ function ChannelCard({
   );
 }
 
+/** What differs between the Emby and Jellyfin cards. */
+const servers: Record<Server, { name: string; keyHelp: string; pathExample: string }> = {
+  emby: {
+    name: "Emby",
+    keyHelp: "Create one in Emby under Dashboard → Advanced → API Keys.",
+    pathExample: "/Volumes/Media",
+  },
+  jellyfin: {
+    name: "Jellyfin",
+    keyHelp: "Create one in Jellyfin under Dashboard → API Keys.",
+    pathExample: "/data/media",
+  },
+};
+
+/** The card for Emby or Jellyfin: the same fields, told about the same events. */
+function MediaServerCard({
+  server,
+  form,
+  keySet,
+  errors,
+  body,
+  onChange,
+}: {
+  server: Server;
+  form: ServerForm;
+  keySet: boolean;
+  errors: Record<string, string>;
+  body: NotificationSettingsUpdate;
+  onChange: (patch: Partial<ServerForm>) => void;
+}) {
+  const { name, keyHelp, pathExample } = servers[server];
+  return (
+    <ChannelCard
+      id={server}
+      title={name}
+      description={`Reelkeeper tells ${name} about each new or changed movie or show folder, so it appears without a full library scan.`}
+      enabled={form.enabled}
+      onEnabled={(v) => onChange({ enabled: v })}
+    >
+      <Field
+        id={`${server}-url`}
+        label={`${name} address`}
+        help="Include the port, like http://192.168.1.30:8096."
+        error={errors[`${server}.url`]}
+      >
+        <Input
+          id={`${server}-url`}
+          inputMode="url"
+          autoComplete="off"
+          placeholder="http://192.168.1.30:8096"
+          value={form.url}
+          onChange={(e) => onChange({ url: e.target.value })}
+        />
+      </Field>
+      <Field id={`${server}-key`} label="API key" help={keyHelp} error={errors[`${server}.apiKey`]}>
+        <Input
+          id={`${server}-key`}
+          aria-label={`${name} API key`}
+          type="password"
+          autoComplete="new-password"
+          placeholder={keySet ? "Saved — leave empty to keep it" : ""}
+          value={form.apiKey}
+          onChange={(e) => onChange({ apiKey: e.target.value })}
+        />
+      </Field>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field
+          id={`${server}-path-from`}
+          label="Reelkeeper's path"
+          error={errors[`${server}.pathFrom`]}
+        >
+          <Input
+            id={`${server}-path-from`}
+            aria-label={`Reelkeeper's path for ${name}`}
+            autoComplete="off"
+            placeholder="/media"
+            value={form.pathFrom}
+            onChange={(e) => onChange({ pathFrom: e.target.value })}
+          />
+        </Field>
+        <Field id={`${server}-path-to`} label={`${name}'s path`} error={errors[`${server}.pathTo`]}>
+          <Input
+            id={`${server}-path-to`}
+            autoComplete="off"
+            placeholder={pathExample}
+            value={form.pathTo}
+            onChange={(e) => onChange({ pathTo: e.target.value })}
+          />
+        </Field>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        If {name} sees your media under a different path (for example on another computer, or in its
+        own container), Reelkeeper's /media becomes {name}'s {pathExample}. Leave both empty if the
+        paths are the same.
+      </p>
+      <TestButton channel={server} body={body} disabled={!form.url} />
+    </ChannelCard>
+  );
+}
+
 export function NotificationsPage() {
   const { data, error } = useQuery(notificationsQuery);
   const save = useSaveNotifications();
   const initial = useMemo<Form | undefined>(
     () =>
       data && {
-        emby: {
-          enabled: data.emby.enabled,
-          url: data.emby.url,
-          apiKey: "",
-          pathFrom: data.emby.pathFrom,
-          pathTo: data.emby.pathTo,
-        },
+        emby: { ...data.emby, apiKey: "" },
+        jellyfin: { ...data.jellyfin, apiKey: "" },
         email: {
           enabled: data.email.enabled,
           host: data.email.host,
@@ -187,6 +299,7 @@ export function NotificationsPage() {
       onSuccess: (saved) =>
         commit({
           emby: { ...saved.emby, apiKey: "" },
+          jellyfin: { ...saved.jellyfin, apiKey: "" },
           email: { ...saved.email, port: String(saved.email.port), password: "" },
           webhook: { ...saved.webhook, secret: "" },
         }),
@@ -200,76 +313,24 @@ export function NotificationsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Notifications"
-        description="Tell Emby about changes, and get told about problems."
+        description="Tell Emby or Jellyfin about changes, and get told about problems."
       />
       {/* noValidate: Reelkeeper checks the addresses and shows its own messages;
           the browser's checks would block Save with a popup instead. */}
       <form onSubmit={submit} noValidate className="space-y-6">
         {err && !Object.keys(fe).length && <Alert variant="error">{err.message}</Alert>}
 
-        <ChannelCard
-          id="emby"
-          title="Emby"
-          description="Reelkeeper tells Emby about each new or changed movie folder, so it appears without a full library scan."
-          enabled={form.emby.enabled}
-          onEnabled={(v) => set("emby", { enabled: v })}
-        >
-          <Field
-            id="emby-url"
-            label="Emby address"
-            help="Include the port, like http://192.168.1.30:8096."
-            error={fe["emby.url"]}
-          >
-            <Input
-              id="emby-url"
-              inputMode="url"
-              autoComplete="off"
-              placeholder="http://192.168.1.30:8096"
-              value={form.emby.url}
-              onChange={(e) => set("emby", { url: e.target.value })}
-            />
-          </Field>
-          <Field
-            id="emby-key"
-            label="API key"
-            help="Create one in Emby under Dashboard → Advanced → API Keys."
-            error={fe["emby.apiKey"]}
-          >
-            <Input
-              id="emby-key"
-              type="password"
-              autoComplete="new-password"
-              placeholder={data.emby.apiKeySet ? "Saved — leave empty to keep it" : ""}
-              value={form.emby.apiKey}
-              onChange={(e) => set("emby", { apiKey: e.target.value })}
-            />
-          </Field>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field id="emby-path-from" label="Reelkeeper's path" error={fe["emby.pathFrom"]}>
-              <Input
-                id="emby-path-from"
-                autoComplete="off"
-                placeholder="/media"
-                value={form.emby.pathFrom}
-                onChange={(e) => set("emby", { pathFrom: e.target.value })}
-              />
-            </Field>
-            <Field id="emby-path-to" label="Emby's path" error={fe["emby.pathTo"]}>
-              <Input
-                id="emby-path-to"
-                autoComplete="off"
-                placeholder="/Volumes/Media"
-                value={form.emby.pathTo}
-                onChange={(e) => set("emby", { pathTo: e.target.value })}
-              />
-            </Field>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            If Emby sees your media under a different path (for example on a Mac), Reelkeeper's
-            /media becomes Emby's /Volumes/Media. Leave both empty if the paths are the same.
-          </p>
-          <TestButton channel="emby" body={body} disabled={!form.emby.url} />
-        </ChannelCard>
+        {(["emby", "jellyfin"] as const).map((server) => (
+          <MediaServerCard
+            key={server}
+            server={server}
+            form={form[server]}
+            keySet={data[server].apiKeySet}
+            errors={fe}
+            body={body}
+            onChange={(patch) => set(server, patch)}
+          />
+        ))}
 
         <ChannelCard
           id="email"

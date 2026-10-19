@@ -364,6 +364,10 @@ All optional. Reelkeeper can tell:
   Advanced → API Keys). If Emby sees the same folders at different paths than
   Reelkeeper does, fill in "Reelkeeper's path" and "Emby's path" to translate
   between them.
+- **Jellyfin** (from 2.0): the same, for Jellyfin. Enter its address and an
+  API key (Jellyfin: Dashboard → API Keys), and its path if it sees your
+  media under a different one, such as `/data/media` in its own container.
+  Emby and Jellyfin can both be on, if you run both.
 - **Email**: problems only (failed imports, stuck downloads it removed, an
   indexer failing for a day, qBittorrent unreachable). Enter your mail
   server's details and press the test button.

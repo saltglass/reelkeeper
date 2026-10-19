@@ -365,8 +365,8 @@ message saying which variable is wrong.
 
 ## The secret key
 
-Reelkeeper stores logins for your trackers, qBittorrent, email and Emby, plus
-your single sign-on secret and API key. They are stored scrambled
+Reelkeeper stores logins for your trackers, qBittorrent, email, Emby and
+Jellyfin, plus your single sign-on secret and API key. They are stored scrambled
 ("sealed") with `REELKEEPER_SECRET_KEY`.
 
 - **Set it yourself.** If you leave it out, Reelkeeper makes a random key and

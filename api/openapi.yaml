@@ -1971,7 +1971,7 @@ paths:
     get:
       tags: [settings]
       operationId: getNotifications
-      summary: Emby, email and webhook notifications (never the secrets)
+      summary: Emby, Jellyfin, email and webhook notifications (never the secrets)
       responses:
         "200":
           description: OK
@@ -2012,7 +2012,7 @@ paths:
               type: object
               required: [channel, settings]
               properties:
-                channel: { type: string, enum: [emby, email, webhook] }
+                channel: { type: string, enum: [emby, jellyfin, email, webhook] }
                 settings: { $ref: "#/components/schemas/NotificationSettingsUpdate" }
       responses:
         "200":
@@ -3609,17 +3609,10 @@ components:
 
     NotificationSettings:
       type: object
-      required: [emby, email, webhook]
+      required: [emby, jellyfin, email, webhook]
       properties:
-        emby:
-          type: object
-          required: [enabled, url, apiKeySet, pathFrom, pathTo]
-          properties:
-            enabled: { type: boolean }
-            url: { type: string, description: "Emby's address, like http://192.168.1.30:8096." }
-            apiKeySet: { type: boolean }
-            pathFrom: { type: string, description: "A folder as Reelkeeper sees it, such as /media. Empty with pathTo: paths are the same." }
-            pathTo: { type: string, description: "The same folder as Emby sees it, such as /Volumes/Media." }
+        emby: { $ref: "#/components/schemas/MediaServerNotify" }
+        jellyfin: { $ref: "#/components/schemas/MediaServerNotify" }
         email:
           type: object
           required: [enabled, host, port, username, passwordSet, from, to]
@@ -3639,19 +3632,33 @@ components:
             url: { type: string }
             secretSet: { type: boolean }
 
+    MediaServerNotify:
+      type: object
+      description: Emby or Jellyfin, told about each new, changed or deleted movie or show folder so it shows up without a full library scan.
+      required: [enabled, url, apiKeySet, pathFrom, pathTo]
+      properties:
+        enabled: { type: boolean }
+        url: { type: string, description: "The server's address, like http://192.168.1.30:8096." }
+        apiKeySet: { type: boolean }
+        pathFrom: { type: string, description: "A folder as Reelkeeper sees it, such as /media. Empty with pathTo: paths are the same." }
+        pathTo: { type: string, description: "The same folder as the server sees it, such as /Volumes/Media." }
+
+    MediaServerNotifyUpdate:
+      type: object
+      required: [enabled, url]
+      properties:
+        enabled: { type: boolean }
+        url: { type: string }
+        apiKey: { type: string, format: password, description: Leave out to keep the stored key. }
+        pathFrom: { type: string }
+        pathTo: { type: string }
+
     NotificationSettingsUpdate:
       type: object
-      required: [emby, email, webhook]
+      required: [emby, jellyfin, email, webhook]
       properties:
-        emby:
-          type: object
-          required: [enabled, url]
-          properties:
-            enabled: { type: boolean }
-            url: { type: string }
-            apiKey: { type: string, format: password, description: Leave out to keep the stored key. }
-            pathFrom: { type: string }
-            pathTo: { type: string }
+        emby: { $ref: "#/components/schemas/MediaServerNotifyUpdate" }
+        jellyfin: { $ref: "#/components/schemas/MediaServerNotifyUpdate" }
         email:
           type: object
           required: [enabled, host, port, from, to]

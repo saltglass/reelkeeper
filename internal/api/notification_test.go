@@ -97,3 +97,50 @@ func TestNotificationsAPI(t *testing.T) {
 		t.Errorf("test changed the stored key: %q", got)
 	}
 }
+
+// Jellyfin through the API: its key is stored, never sent back, kept when
+// left out, and used by Test, which reaches Jellyfin with its own header.
+func TestJellyfinNotificationsAPI(t *testing.T) {
+	db := storetest.Open(t, store.SQLite)
+	a := newApp(t, db, "")
+	a.setup()
+
+	jellyfin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != `MediaBrowser Token="jf-key"` {
+			http.Error(w, "no", http.StatusUnauthorized)
+			return
+		}
+		_, _ = w.Write([]byte(`{"ServerName":"den","Version":"10.11.2","ProductName":"Jellyfin Server"}`))
+	}))
+	defer jellyfin.Close()
+
+	rest := `"email":{"enabled":false,"host":"","port":587,"from":"","to":""},"webhook":{"enabled":false,"url":""}`
+	r := a.do("PUT", "/api/v1/settings/notifications", fmt.Sprintf(`{"emby":{"enabled":false,"url":""},`+
+		`"jellyfin":{"enabled":true,"url":%q,"apiKey":"jf-key","pathFrom":"/media","pathTo":"/data/media"},%s}`, jellyfin.URL, rest))
+	if r.status != 200 || strings.Contains(r.raw, "jf-key") {
+		t.Fatalf("save: %d %s", r.status, r.raw)
+	}
+	jf, _ := r.body["jellyfin"].(map[string]any)
+	if jf["apiKeySet"] != true || jf["url"] != jellyfin.URL || jf["pathTo"] != "/data/media" {
+		t.Errorf("jellyfin = %v", jf)
+	}
+	r = a.do("GET", "/api/v1/settings/notifications", "")
+	if r.status != 200 || strings.Contains(r.raw, "jf-key") || !strings.Contains(r.raw, `"jellyfin":{`) {
+		t.Errorf("get: %d %s", r.status, r.raw)
+	}
+
+	// Test with the key left out uses the stored one.
+	r = a.do("POST", "/api/v1/settings/notifications/test", fmt.Sprintf(`{"channel":"jellyfin","settings":{"emby":{"enabled":false,"url":""},`+
+		`"jellyfin":{"enabled":true,"url":%q},%s}}`, jellyfin.URL, rest))
+	if r.status != 200 || r.body["message"] != "Connected to Jellyfin 10.11.2 (den)" {
+		t.Errorf("test: %d %s", r.status, r.raw)
+	}
+	r = a.do("POST", "/api/v1/settings/notifications/test", fmt.Sprintf(`{"channel":"jellyfin","settings":{"emby":{"enabled":false,"url":""},`+
+		`"jellyfin":{"enabled":true,"url":%q,"apiKey":"wrong"},%s}}`, jellyfin.URL, rest))
+	if r.status != 422 || !strings.Contains(r.raw, "API key") || strings.Contains(r.raw, "wrong") {
+		t.Errorf("test bad key: %d %s", r.status, r.raw)
+	}
+	if got := a.settings.Notifications().Jellyfin.APIKey; got != "jf-key" {
+		t.Errorf("stored key = %q", got)
+	}
+}

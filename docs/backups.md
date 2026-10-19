@@ -23,7 +23,7 @@ A backup does **not** contain:
   above). Back that folder up too if you want the client to remember its
   torrents after a disaster; a restore leaves it alone.
 - **The secret key** (`REELKEEPER_SECRET_KEY`). Stored passwords and keys
-  (indexer logins, qBittorrent, email, Emby, your single sign-on secret and
+  (indexer logins, qBittorrent, email, Emby, Jellyfin, your single sign-on secret and
   API key, and the built-in client's VPN config with its private key) are in the backup but sealed with that key, so they can only be read
   with the same key. Keep a copy of the key somewhere safe, apart from your
   backups. See [The secret key](install.md#the-secret-key).

@@ -10,8 +10,7 @@ import (
 
 func toNotifications(n settings.Notifications) gen.NotificationSettings {
 	var out gen.NotificationSettings
-	out.Emby.Enabled, out.Emby.Url, out.Emby.ApiKeySet = n.Emby.Enabled, n.Emby.URL, n.Emby.APIKey != ""
-	out.Emby.PathFrom, out.Emby.PathTo = n.Emby.PathFrom, n.Emby.PathTo
+	out.Emby, out.Jellyfin = toMediaServer(n.Emby), toMediaServer(n.Jellyfin)
 	out.Email.Enabled, out.Email.Host, out.Email.Port = n.Email.Enabled, n.Email.Host, n.Email.Port
 	out.Email.Username, out.Email.PasswordSet = n.Email.Username, n.Email.Password != ""
 	out.Email.From, out.Email.To = n.Email.From, n.Email.To
@@ -19,22 +18,29 @@ func toNotifications(n settings.Notifications) gen.NotificationSettings {
 	return out
 }
 
+func toMediaServer(c settings.MediaServerNotify) gen.MediaServerNotify {
+	return gen.MediaServerNotify{Enabled: c.Enabled, Url: c.URL, ApiKeySet: c.APIKey != "", PathFrom: c.PathFrom, PathTo: c.PathTo}
+}
+
+func fromMediaServer(b gen.MediaServerNotifyUpdate) settings.MediaServerNotify {
+	return settings.MediaServerNotify{Enabled: b.Enabled, URL: b.Url, PathFrom: derefStr(b.PathFrom), PathTo: derefStr(b.PathTo)}
+}
+
 func fromNotifications(b gen.NotificationSettingsUpdate) settings.NotificationsUpdate {
 	return settings.NotificationsUpdate{
 		Notifications: settings.Notifications{
-			Emby: settings.EmbyNotify{
-				Enabled: b.Emby.Enabled, URL: b.Emby.Url,
-				PathFrom: derefStr(b.Emby.PathFrom), PathTo: derefStr(b.Emby.PathTo),
-			},
+			Emby:     fromMediaServer(b.Emby),
+			Jellyfin: fromMediaServer(b.Jellyfin),
 			Email: settings.EmailNotify{
 				Enabled: b.Email.Enabled, Host: b.Email.Host, Port: b.Email.Port,
 				Username: derefStr(b.Email.Username), From: b.Email.From, To: b.Email.To,
 			},
 			Webhook: settings.WebhookNotify{Enabled: b.Webhook.Enabled, URL: b.Webhook.Url},
 		},
-		EmbyAPIKey:    b.Emby.ApiKey,
-		EmailPassword: b.Email.Password,
-		WebhookSecret: b.Webhook.Secret,
+		EmbyAPIKey:     b.Emby.ApiKey,
+		JellyfinAPIKey: b.Jellyfin.ApiKey,
+		EmailPassword:  b.Email.Password,
+		WebhookSecret:  b.Webhook.Secret,
 	}
 }
 

@@ -868,7 +868,7 @@ func TestNotificationsSettings(t *testing.T) {
 		key, pw, hook := "emby-key-123", "mail-pass-456", "hook-secret-789"
 		u := settings.NotificationsUpdate{
 			Notifications: settings.Notifications{
-				Emby:    settings.EmbyNotify{Enabled: true, URL: " http://192.168.1.30:8096/ ", PathFrom: "/media/", PathTo: "/Volumes/Media"},
+				Emby:    settings.MediaServerNotify{Enabled: true, URL: " http://192.168.1.30:8096/ ", PathFrom: "/media/", PathTo: "/Volumes/Media"},
 				Email:   settings.EmailNotify{Enabled: true, Host: "smtp.example.com", Username: "u", From: "reelkeeper@example.com", To: "dan@example.com"},
 				Webhook: settings.WebhookNotify{Enabled: true, URL: "https://hooks.example.com/reelkeeper"},
 			},
@@ -919,11 +919,76 @@ func TestNotificationsSettings(t *testing.T) {
 	})
 }
 
+// Jellyfin is a second media server next to Emby, with its own address, key
+// (sealed like Emby's) and paths, and messages that name it.
+func TestJellyfinNotificationSettings(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		svc := newService(t, db, testKey)
+		if got := svc.Notifications(); got.Jellyfin.Enabled || got.Jellyfin.URL != "" {
+			t.Errorf("defaults = %+v", got.Jellyfin)
+		}
+		_, err := svc.SaveNotifications(ctx, settings.NotificationsUpdate{Notifications: settings.Notifications{
+			Jellyfin: settings.MediaServerNotify{Enabled: true, PathTo: "data/media"},
+		}})
+		errs := fieldErrors(t, err)
+		for f, want := range map[string]string{"jellyfin.url": "Jellyfin's address", "jellyfin.apiKey": "Jellyfin dashboard", "jellyfin.pathTo": "Jellyfin sees"} {
+			if !strings.Contains(errs[f], want) {
+				t.Errorf("%s = %q, want it to mention %q", f, errs[f], want)
+			}
+		}
+		if len(errs) != 3 || errs["emby.url"] != "" {
+			t.Errorf("errors = %v", errs)
+		}
+
+		key := "jellyfin-key-123"
+		u := settings.NotificationsUpdate{
+			Notifications: settings.Notifications{Jellyfin: settings.MediaServerNotify{
+				Enabled: true, URL: " http://192.168.1.31:8096/ ", PathFrom: "/media/", PathTo: "/data/media",
+			}},
+			JellyfinAPIKey: &key,
+		}
+		saved, err := svc.SaveNotifications(ctx, u)
+		if err != nil || saved.Jellyfin.URL != "http://192.168.1.31:8096" || saved.Jellyfin.PathFrom != "/media" || saved.Jellyfin.APIKey != key || saved.Emby.Enabled {
+			t.Fatalf("save = %+v, %v", saved, err)
+		}
+		var raw string
+		if err := db.DB.NewRaw("SELECT value FROM settings WHERE key = ?", settings.GroupNotifications).Scan(ctx, &raw); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(raw, key) || !strings.Contains(raw, `"jellyfinApiKeySealed":`) {
+			t.Errorf("the key must only be stored encrypted: %s", raw)
+		}
+		// Kept when left out, after a restart, and through a save made with a
+		// secret key that can't read it.
+		u.JellyfinAPIKey = nil
+		again := newService(t, db, testKey)
+		if got, err := again.SaveNotifications(ctx, u); err != nil || got.Jellyfin.APIKey != key {
+			t.Errorf("kept key: %+v, %v", got.Jellyfin, err)
+		}
+		other := newService(t, db, "another-secret-key-0123456789")
+		if got := other.Notifications(); got.Jellyfin.APIKey != "" {
+			t.Errorf("read with the wrong key: %+v", got.Jellyfin)
+		}
+		if _, err := other.SaveNotifications(ctx, u); err != nil {
+			t.Fatalf("a save with an unreadable stored key: %v", err)
+		}
+		if got := newService(t, db, testKey).Notifications(); got.Jellyfin.APIKey != key {
+			t.Errorf("sealed key lost: %+v", got.Jellyfin)
+		}
+		// Testing only Jellyfin ignores a half-filled Emby section.
+		u.Emby = settings.MediaServerNotify{Enabled: true}
+		if _, err := again.ApplyNotificationsFor(u, "jellyfin"); err != nil {
+			t.Errorf("Jellyfin test blocked by Emby's fields: %v", err)
+		}
+	})
+}
+
 func TestNotificationsValidation(t *testing.T) {
 	storetest.Each(t, func(t *testing.T, db *store.Store) {
 		svc := newService(t, db, testKey)
 		_, err := svc.SaveNotifications(context.Background(), settings.NotificationsUpdate{Notifications: settings.Notifications{
-			Emby:    settings.EmbyNotify{Enabled: true, URL: "192.168.1.30", PathFrom: "/media"},
+			Emby:    settings.MediaServerNotify{Enabled: true, URL: "192.168.1.30", PathFrom: "/media"},
 			Email:   settings.EmailNotify{Enabled: true, Port: 70000, From: "nope", To: ""},
 			Webhook: settings.WebhookNotify{Enabled: true},
 		}})

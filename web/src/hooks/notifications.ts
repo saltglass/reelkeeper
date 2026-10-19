@@ -22,7 +22,7 @@ export function useSaveNotifications() {
 export function useTestNotification() {
   return useMutation({
     mutationFn: (v: {
-      channel: "emby" | "email" | "webhook";
+      channel: "emby" | "jellyfin" | "email" | "webhook";
       settings: NotificationSettingsUpdate;
     }) => unwrap(api.POST("/settings/notifications/test", { body: v })),
   });

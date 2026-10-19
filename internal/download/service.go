@@ -169,7 +169,7 @@ type Service struct {
 
 	syncMu sync.Mutex // one check (and import) at a time
 
-	// notify tells Emby, email and webhooks what happened (SetNotifier).
+	// notify tells Emby, Jellyfin, email and webhooks what happened (SetNotifier).
 	notify func(ctx context.Context, ev notify.Event)
 	// clientFailures counts checks in a row that couldn't reach the
 	// download client.
@@ -832,7 +832,7 @@ func (s *Service) importEpisodes(ctx context.Context, d *Download, t Torrent) bo
 		Replace: d.Upgrade,
 	})
 	if len(res.Imported) > 0 {
-		// Emby is told about the show's folder, which covers a new season
+		// The media server is told about the show's folder, which covers a new season
 		// folder too.
 		show := filepath.Dir(filepath.Dir(res.FullPaths[0]))
 		s.tell(ctx, notify.Event{Kind: notify.KindImported, Title: s.movieName(d), TitleID: ptrVal(d.TitleID), Path: show,

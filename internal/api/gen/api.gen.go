@@ -1158,9 +1158,10 @@ func (e UpdateSeriesVersionJSONBodyMonitor) Valid() bool {
 
 // Defines values for TestNotificationJSONBodyChannel.
 const (
-	Email   TestNotificationJSONBodyChannel = "email"
-	Emby    TestNotificationJSONBodyChannel = "emby"
-	Webhook TestNotificationJSONBodyChannel = "webhook"
+	Email    TestNotificationJSONBodyChannel = "email"
+	Emby     TestNotificationJSONBodyChannel = "emby"
+	Jellyfin TestNotificationJSONBodyChannel = "jellyfin"
+	Webhook  TestNotificationJSONBodyChannel = "webhook"
 )
 
 // Valid indicates whether the value is a known member of the TestNotificationJSONBodyChannel enum.
@@ -1169,6 +1170,8 @@ func (e TestNotificationJSONBodyChannel) Valid() bool {
 	case Email:
 		return true
 	case Emby:
+		return true
+	case Jellyfin:
 		return true
 	case Webhook:
 		return true
@@ -2256,6 +2259,31 @@ type MediaFile struct {
 	Video        *MediaVideo     `json:"video,omitempty"`
 }
 
+// MediaServerNotify Emby or Jellyfin, told about each new, changed or deleted movie or show folder so it shows up without a full library scan.
+type MediaServerNotify struct {
+	ApiKeySet bool `json:"apiKeySet"`
+	Enabled   bool `json:"enabled"`
+
+	// PathFrom A folder as Reelkeeper sees it, such as /media. Empty with pathTo: paths are the same.
+	PathFrom string `json:"pathFrom"`
+
+	// PathTo The same folder as the server sees it, such as /Volumes/Media.
+	PathTo string `json:"pathTo"`
+
+	// Url The server's address, like http://192.168.1.30:8096.
+	Url string `json:"url"`
+}
+
+// MediaServerNotifyUpdate defines model for MediaServerNotifyUpdate.
+type MediaServerNotifyUpdate struct {
+	// ApiKey Leave out to keep the stored key.
+	ApiKey   *string `json:"apiKey,omitempty"`
+	Enabled  bool    `json:"enabled"`
+	PathFrom *string `json:"pathFrom,omitempty"`
+	PathTo   *string `json:"pathTo,omitempty"`
+	Url      string  `json:"url"`
+}
+
 // MediaSubtitle defines model for MediaSubtitle.
 type MediaSubtitle struct {
 	Codec    string  `json:"codec"`
@@ -2406,20 +2434,13 @@ type NotificationSettings struct {
 		To       string `json:"to"`
 		Username string `json:"username"`
 	} `json:"email"`
-	Emby struct {
-		ApiKeySet bool `json:"apiKeySet"`
-		Enabled   bool `json:"enabled"`
 
-		// PathFrom A folder as Reelkeeper sees it, such as /media. Empty with pathTo: paths are the same.
-		PathFrom string `json:"pathFrom"`
+	// Emby Emby or Jellyfin, told about each new, changed or deleted movie or show folder so it shows up without a full library scan.
+	Emby MediaServerNotify `json:"emby"`
 
-		// PathTo The same folder as Emby sees it, such as /Volumes/Media.
-		PathTo string `json:"pathTo"`
-
-		// Url Emby's address, like http://192.168.1.30:8096.
-		Url string `json:"url"`
-	} `json:"emby"`
-	Webhook struct {
+	// Jellyfin Emby or Jellyfin, told about each new, changed or deleted movie or show folder so it shows up without a full library scan.
+	Jellyfin MediaServerNotify `json:"jellyfin"`
+	Webhook  struct {
 		Enabled   bool   `json:"enabled"`
 		SecretSet bool   `json:"secretSet"`
 		Url       string `json:"url"`
@@ -2439,15 +2460,9 @@ type NotificationSettingsUpdate struct {
 		To       string  `json:"to"`
 		Username *string `json:"username,omitempty"`
 	} `json:"email"`
-	Emby struct {
-		// ApiKey Leave out to keep the stored key.
-		ApiKey   *string `json:"apiKey,omitempty"`
-		Enabled  bool    `json:"enabled"`
-		PathFrom *string `json:"pathFrom,omitempty"`
-		PathTo   *string `json:"pathTo,omitempty"`
-		Url      string  `json:"url"`
-	} `json:"emby"`
-	Webhook struct {
+	Emby     MediaServerNotifyUpdate `json:"emby"`
+	Jellyfin MediaServerNotifyUpdate `json:"jellyfin"`
+	Webhook  struct {
 		Enabled bool `json:"enabled"`
 
 		// Secret Leave out to keep the stored secret.
@@ -4573,7 +4588,7 @@ type ServerInterface interface {
 	// PreviewNaming Show what templates produce for sample movies, without saving
 	// (POST /settings/naming/preview)
 	PreviewNaming(w http.ResponseWriter, r *http.Request)
-	// GetNotifications Emby, email and webhook notifications (never the secrets)
+	// GetNotifications Emby, Jellyfin, email and webhook notifications (never the secrets)
 	// (GET /settings/notifications)
 	GetNotifications(w http.ResponseWriter, r *http.Request)
 	// PutNotifications Save the notification settings
@@ -5359,7 +5374,7 @@ func (_ Unimplemented) PreviewNaming(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// GetNotifications Emby, email and webhook notifications (never the secrets)
+// GetNotifications Emby, Jellyfin, email and webhook notifications (never the secrets)
 // (GET /settings/notifications)
 func (_ Unimplemented) GetNotifications(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)

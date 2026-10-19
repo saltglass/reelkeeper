@@ -14,6 +14,7 @@ const saved = {
     pathFrom: "/media",
     pathTo: "/Volumes/Media",
   },
+  jellyfin: { enabled: false, url: "", apiKeySet: false, pathFrom: "", pathTo: "" },
   email: {
     enabled: false,
     host: "",
@@ -60,9 +61,9 @@ describe("notification settings", () => {
   it("loads the saved values and never shows the secret", async () => {
     open();
     expect(await screen.findByLabelText("Emby address")).toHaveValue("http://192.168.1.30:8096");
-    expect(screen.getByLabelText("Reelkeeper's path")).toHaveValue("/media");
+    expect(screen.getByLabelText("Reelkeeper's path for Emby")).toHaveValue("/media");
     expect(screen.getByLabelText("Emby's path")).toHaveValue("/Volumes/Media");
-    const key = screen.getByLabelText("API key");
+    const key = screen.getByLabelText("Emby API key");
     expect(key).toHaveValue("");
     expect(key).toHaveAttribute("placeholder", "Saved — leave empty to keep it");
     expect(screen.getByLabelText("Port")).toHaveValue(587);
@@ -84,7 +85,7 @@ describe("notification settings", () => {
     expect(puts[0]?.email.port).toBe(587);
     expect(puts[0]?.email).not.toHaveProperty("password");
 
-    await userEvent.type(screen.getByLabelText("API key"), "new-key");
+    await userEvent.type(screen.getByLabelText("Emby API key"), "new-key");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     await vi.waitFor(() => expect(puts).toHaveLength(2));
     expect(puts[1]?.emby.apiKey).toBe("new-key");
@@ -120,6 +121,39 @@ describe("notification settings", () => {
     await userEvent.click(screen.getByRole("button", { name: "Stay" }));
     expect(screen.getByLabelText("Emby address")).toHaveValue("http://192.168.1.30:80961");
     expect(puts).toHaveLength(0);
+  });
+
+  it("has a Jellyfin card of its own, saved and tested apart from Emby", async () => {
+    const { puts, tests } = open();
+    expect(await screen.findByLabelText("Jellyfin address")).toHaveValue("");
+    expect(screen.getByLabelText("Jellyfin API key")).toHaveAttribute("placeholder", "");
+    await userEvent.click(screen.getByRole("switch", { name: "Jellyfin enabled" }));
+    await userEvent.type(screen.getByLabelText("Jellyfin address"), "http://jellyfin:8096");
+    await userEvent.type(screen.getByLabelText("Jellyfin API key"), "jf-key");
+    await userEvent.type(screen.getByLabelText("Reelkeeper's path for Jellyfin"), "/media");
+    await userEvent.type(screen.getByLabelText("Jellyfin's path"), "/data/media");
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Test" })[1] as HTMLElement);
+    await vi.waitFor(() => expect(tests).toHaveLength(1));
+    expect(tests[0]?.channel).toBe("jellyfin");
+    expect(tests[0]?.settings.jellyfin.url).toBe("http://jellyfin:8096");
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(puts).toHaveLength(1));
+    expect(puts[0]?.jellyfin).toEqual({
+      enabled: true,
+      url: "http://jellyfin:8096",
+      apiKey: "jf-key",
+      pathFrom: "/media",
+      pathTo: "/data/media",
+    });
+    // Emby is sent unchanged, without its stored key.
+    expect(puts[0]?.emby).toEqual({
+      enabled: true,
+      url: "http://192.168.1.30:8096",
+      pathFrom: "/media",
+      pathTo: "/Volumes/Media",
+    });
   });
 
   it("shows field errors from the server", async () => {

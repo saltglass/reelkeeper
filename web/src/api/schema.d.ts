@@ -1513,7 +1513,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Emby, email and webhook notifications (never the secrets) */
+        /** Emby, Jellyfin, email and webhook notifications (never the secrets) */
         get: operations["getNotifications"];
         /**
          * Save the notification settings
@@ -2873,16 +2873,8 @@ export interface components {
             clientError?: string;
         };
         NotificationSettings: {
-            emby: {
-                enabled: boolean;
-                /** @description Emby's address, like http://192.168.1.30:8096. */
-                url: string;
-                apiKeySet: boolean;
-                /** @description A folder as Reelkeeper sees it, such as /media. Empty with pathTo: paths are the same. */
-                pathFrom: string;
-                /** @description The same folder as Emby sees it, such as /Volumes/Media. */
-                pathTo: string;
-            };
+            emby: components["schemas"]["MediaServerNotify"];
+            jellyfin: components["schemas"]["MediaServerNotify"];
             email: {
                 enabled: boolean;
                 host: string;
@@ -2899,18 +2891,31 @@ export interface components {
                 secretSet: boolean;
             };
         };
+        /** @description Emby or Jellyfin, told about each new, changed or deleted movie or show folder so it shows up without a full library scan. */
+        MediaServerNotify: {
+            enabled: boolean;
+            /** @description The server's address, like http://192.168.1.30:8096. */
+            url: string;
+            apiKeySet: boolean;
+            /** @description A folder as Reelkeeper sees it, such as /media. Empty with pathTo: paths are the same. */
+            pathFrom: string;
+            /** @description The same folder as the server sees it, such as /Volumes/Media. */
+            pathTo: string;
+        };
+        MediaServerNotifyUpdate: {
+            enabled: boolean;
+            url: string;
+            /**
+             * Format: password
+             * @description Leave out to keep the stored key.
+             */
+            apiKey?: string;
+            pathFrom?: string;
+            pathTo?: string;
+        };
         NotificationSettingsUpdate: {
-            emby: {
-                enabled: boolean;
-                url: string;
-                /**
-                 * Format: password
-                 * @description Leave out to keep the stored key.
-                 */
-                apiKey?: string;
-                pathFrom?: string;
-                pathTo?: string;
-            };
+            emby: components["schemas"]["MediaServerNotifyUpdate"];
+            jellyfin: components["schemas"]["MediaServerNotifyUpdate"];
             email: {
                 enabled: boolean;
                 host: string;
@@ -7200,7 +7205,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    channel: "emby" | "email" | "webhook";
+                    channel: "emby" | "jellyfin" | "email" | "webhook";
                     settings: components["schemas"]["NotificationSettingsUpdate"];
                 };
             };

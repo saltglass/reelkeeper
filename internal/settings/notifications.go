@@ -15,27 +15,30 @@ const GroupNotifications = "notifications"
 // Sealed-secret field paths (see sealOrKeep).
 const (
 	notifyEmbyKey      = "notifications.emby.apiKey"
+	notifyJellyfinKey  = "notifications.jellyfin.apiKey"
 	notifyEmailPass    = "notifications.email.password"
 	notifyWebhookToken = "notifications.webhook.secret"
 )
 
-// Notifications holds the three notification channels. Secrets are
-// encrypted in the database and never sent to the browser.
+// Notifications holds the notification channels. Secrets are encrypted in
+// the database and never sent to the browser.
 type Notifications struct {
-	Emby    EmbyNotify    `json:"emby"`
-	Email   EmailNotify   `json:"email"`
-	Webhook WebhookNotify `json:"webhook"`
+	Emby     MediaServerNotify `json:"emby"`
+	Jellyfin MediaServerNotify `json:"jellyfin"`
+	Email    EmailNotify       `json:"email"`
+	Webhook  WebhookNotify     `json:"webhook"`
 }
 
-// EmbyNotify tells Emby about new, changed and deleted movie folders.
-type EmbyNotify struct {
+// MediaServerNotify tells a media server (Emby or Jellyfin, which share the
+// call) about new, changed and deleted movie and show folders.
+type MediaServerNotify struct {
 	Enabled bool   `json:"enabled"`
 	URL     string `json:"url"`
 	APIKey  string `json:"-"`
-	// PathFrom/PathTo translate Reelkeeper's library paths into Emby's: when
-	// Reelkeeper sees /media/movies and Emby sees /Volumes/Media/movies,
-	// PathFrom is /media and PathTo is /Volumes/Media. Both empty
-	// means the paths are the same.
+	// PathFrom/PathTo translate Reelkeeper's library paths into the server's:
+	// when Reelkeeper sees /media/movies and the server sees
+	// /Volumes/Media/movies, PathFrom is /media and PathTo is /Volumes/Media.
+	// Both empty means the paths are the same.
 	PathFrom string `json:"pathFrom"`
 	PathTo   string `json:"pathTo"`
 }
@@ -62,6 +65,7 @@ type WebhookNotify struct {
 type storedNotifications struct {
 	Notifications
 	EmbyKeySealed       string `json:"embyApiKeySealed"`
+	JellyfinKeySealed   string `json:"jellyfinApiKeySealed,omitempty"`
 	EmailPasswordSealed string `json:"emailPasswordSealed"`
 	WebhookSecretSealed string `json:"webhookSecretSealed"`
 }
@@ -71,9 +75,10 @@ type storedNotifications struct {
 // are ignored.
 type NotificationsUpdate struct {
 	Notifications
-	EmbyAPIKey    *string
-	EmailPassword *string
-	WebhookSecret *string
+	EmbyAPIKey     *string
+	JellyfinAPIKey *string
+	EmailPassword  *string
+	WebhookSecret  *string
 }
 
 // DefaultNotifications returns the settings used until the user saves any.
@@ -99,7 +104,7 @@ func (s *Service) ApplyNotifications(u NotificationsUpdate) (Notifications, erro
 }
 
 // ApplyNotificationsFor is ApplyNotifications for testing one channel
-// ("emby", "email" or "webhook") before saving: only that channel's fields
+// ("emby", "jellyfin", "email" or "webhook") before saving: only that channel's fields
 // must be valid, so a half-filled email section doesn't stop an Emby test.
 func (s *Service) ApplyNotificationsFor(u NotificationsUpdate, channel string) (Notifications, error) {
 	next, errs := s.applyNotifications(u)
@@ -119,16 +124,12 @@ func (s *Service) applyNotifications(u NotificationsUpdate) (Notifications, vali
 	s.mu.RLock()
 	cur := s.notifications
 	embyKeyKept := s.sealedKeep[notifyEmbyKey] != ""
+	jellyfinKeyKept := s.sealedKeep[notifyJellyfinKey] != ""
 	s.mu.RUnlock()
 
 	next := u.Notifications
-	next.Emby.URL = strings.TrimRight(strings.TrimSpace(next.Emby.URL), "/")
-	next.Emby.PathFrom = strings.TrimRight(strings.TrimSpace(next.Emby.PathFrom), "/")
-	next.Emby.PathTo = strings.TrimRight(strings.TrimSpace(next.Emby.PathTo), "/")
-	next.Emby.APIKey = cur.Emby.APIKey
-	if u.EmbyAPIKey != nil {
-		next.Emby.APIKey = strings.TrimSpace(*u.EmbyAPIKey)
-	}
+	tidyMediaServer(&next.Emby, cur.Emby.APIKey, u.EmbyAPIKey)
+	tidyMediaServer(&next.Jellyfin, cur.Jellyfin.APIKey, u.JellyfinAPIKey)
 	e := &next.Email
 	e.Host = strings.TrimSpace(e.Host)
 	e.Username = strings.TrimSpace(e.Username)
@@ -155,23 +156,26 @@ func (s *Service) applyNotifications(u NotificationsUpdate) (Notifications, vali
 		}
 	}
 
-	em := next.Emby
-	if em.URL != "" {
-		validURL("emby.url", em.URL)
-	} else if em.Enabled {
-		errs.Add("emby.url", "Enter Emby's address, like http://192.168.1.30:8096.")
-	}
-	if em.Enabled && em.APIKey == "" && (!embyKeyKept || u.EmbyAPIKey != nil) {
-		errs.Add("emby.apiKey", "Enter an Emby API key (Emby dashboard → Advanced → API Keys).")
-	}
-	if (em.PathFrom == "") != (em.PathTo == "") {
-		errs.Add("emby.pathTo", "Fill in both paths, or leave both empty if Emby sees the same paths as Reelkeeper.")
-	}
-	for field, v := range map[string]string{"emby.pathFrom": em.PathFrom, "emby.pathTo": em.PathTo} {
-		if v != "" && !strings.HasPrefix(v, "/") {
-			errs.Add(field, "Enter a full path, starting with /.")
+	checkMediaServer := func(prefix, name, keyWhere string, c MediaServerNotify, keyKept, keyTyped bool) {
+		if c.URL != "" {
+			validURL(prefix+".url", c.URL)
+		} else if c.Enabled {
+			errs.Add(prefix+".url", "Enter "+name+"'s address, like http://192.168.1.30:8096.")
+		}
+		if c.Enabled && c.APIKey == "" && (!keyKept || keyTyped) {
+			errs.Add(prefix+".apiKey", "Enter a "+name+" API key ("+keyWhere+").")
+		}
+		if (c.PathFrom == "") != (c.PathTo == "") {
+			errs.Add(prefix+".pathTo", "Fill in both paths, or leave both empty if "+name+" sees the same paths as Reelkeeper.")
+		}
+		for field, v := range map[string]string{prefix + ".pathFrom": c.PathFrom, prefix + ".pathTo": c.PathTo} {
+			if v != "" && !strings.HasPrefix(v, "/") {
+				errs.Add(field, "Enter a full path, starting with /.")
+			}
 		}
 	}
+	checkMediaServer("emby", "Emby", "Emby dashboard → Advanced → API Keys", next.Emby, embyKeyKept, u.EmbyAPIKey != nil)
+	checkMediaServer("jellyfin", "Jellyfin", "Jellyfin dashboard → API Keys", next.Jellyfin, jellyfinKeyKept, u.JellyfinAPIKey != nil)
 
 	if e.Port < 1 || e.Port > 65535 {
 		errs.Add("email.port", "Use a port from 1 to 65535 (587 is usual).")
@@ -199,6 +203,18 @@ func (s *Service) applyNotifications(u NotificationsUpdate) (Notifications, vali
 	return next, errs
 }
 
+// tidyMediaServer trims what was typed for a media server and fills in its
+// API key: the stored one, or the one typed (nil keeps the stored one).
+func tidyMediaServer(c *MediaServerNotify, storedKey string, typed *string) {
+	c.URL = strings.TrimRight(strings.TrimSpace(c.URL), "/")
+	c.PathFrom = strings.TrimRight(strings.TrimSpace(c.PathFrom), "/")
+	c.PathTo = strings.TrimRight(strings.TrimSpace(c.PathTo), "/")
+	c.APIKey = storedKey
+	if typed != nil {
+		c.APIKey = strings.TrimSpace(*typed)
+	}
+}
+
 // SaveNotifications validates and stores the notification settings.
 func (s *Service) SaveNotifications(ctx context.Context, u NotificationsUpdate) (Notifications, error) {
 	next, err := s.ApplyNotifications(u)
@@ -208,6 +224,9 @@ func (s *Service) SaveNotifications(ctx context.Context, u NotificationsUpdate) 
 	s.mu.Lock()
 	if u.EmbyAPIKey != nil {
 		delete(s.sealedKeep, notifyEmbyKey)
+	}
+	if u.JellyfinAPIKey != nil {
+		delete(s.sealedKeep, notifyJellyfinKey)
 	}
 	if u.EmailPassword != nil {
 		delete(s.sealedKeep, notifyEmailPass)
@@ -221,6 +240,7 @@ func (s *Service) SaveNotifications(ctx context.Context, u NotificationsUpdate) 
 		dst          *string
 	}{
 		{notifyEmbyKey, next.Emby.APIKey, &stored.EmbyKeySealed},
+		{notifyJellyfinKey, next.Jellyfin.APIKey, &stored.JellyfinKeySealed},
 		{notifyEmailPass, next.Email.Password, &stored.EmailPasswordSealed},
 		{notifyWebhookToken, next.Webhook.Secret, &stored.WebhookSecretSealed},
 	} {
@@ -251,6 +271,7 @@ func (s *Service) loadNotifications(ctx context.Context) error {
 	}
 	n := stored.Notifications
 	n.Emby.APIKey = s.openSecret(notifyEmbyKey, stored.EmbyKeySealed)
+	n.Jellyfin.APIKey = s.openSecret(notifyJellyfinKey, stored.JellyfinKeySealed)
 	n.Email.Password = s.openSecret(notifyEmailPass, stored.EmailPasswordSealed)
 	n.Webhook.Secret = s.openSecret(notifyWebhookToken, stored.WebhookSecretSealed)
 	s.notifications = n

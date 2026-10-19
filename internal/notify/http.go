@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/saltglass/reelkeeper/internal/settings"
@@ -42,7 +43,7 @@ func statusError(code int) error {
 	return fmt.Errorf("it answered %d %s", code, http.StatusText(code))
 }
 
-// updateType is Emby's word for what happened to a path.
+// updateType is the media server's word for what happened to a path.
 func updateType(kind string) string {
 	switch kind {
 	case KindImported:
@@ -53,9 +54,41 @@ func updateType(kind string) string {
 	return "Modified"
 }
 
-// sendEmby tells Emby about one folder, so it rescans just that folder.
-// (Never a full library refresh: Emby runs on a shared family computer.)
-func sendEmby(ctx context.Context, c settings.EmbyNotify, ev Event) error {
+// mediaServer is what differs between Emby and Jellyfin. Jellyfin began as a
+// fork of Emby and kept its "media updated" call, but drops Emby's /emby
+// prefix and, from 10.11, may refuse Emby's X-Emby-Token header (newer
+// versions do by default), so it gets the standard Authorization header.
+type mediaServer struct {
+	name   string
+	prefix string // before every API path
+	auth   func(req *http.Request, key string)
+	// looksRight tells this server's /System/Info answer from another's.
+	looksRight func(info systemInfo) bool
+}
+
+type systemInfo struct{ ServerName, Version, ProductName string }
+
+var (
+	emby = mediaServer{
+		name: "Emby", prefix: "/emby",
+		auth:       func(req *http.Request, key string) { req.Header.Set("X-Emby-Token", key) },
+		looksRight: func(info systemInfo) bool { return info.Version != "" },
+	}
+	jellyfin = mediaServer{
+		name: "Jellyfin",
+		auth: func(req *http.Request, key string) {
+			req.Header.Set("Authorization", `MediaBrowser Token="`+key+`"`)
+		},
+		looksRight: func(info systemInfo) bool {
+			return info.Version != "" && strings.Contains(info.ProductName, "Jellyfin")
+		},
+	}
+)
+
+// sendMediaServer tells Emby or Jellyfin about one folder, so it rescans just
+// that folder. (Never a full library refresh: the server may be a shared
+// family computer.)
+func sendMediaServer(ctx context.Context, m mediaServer, c settings.MediaServerNotify, ev Event) error {
 	body, err := json.Marshal(map[string]any{"Updates": []map[string]string{{
 		"Path":       translatePath(folderOf(ev.Path), c.PathFrom, c.PathTo),
 		"UpdateType": updateType(ev.Kind),
@@ -63,37 +96,38 @@ func sendEmby(ctx context.Context, c settings.EmbyNotify, ev Event) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.URL+"/emby/Library/Media/Updated", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.URL+m.prefix+"/Library/Media/Updated", bytes.NewReader(body))
 	if err != nil {
 		return cleanErr(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Emby-Token", c.APIKey)
-	_, err = do(req)
-	if err != nil {
-		return fmt.Errorf("emby: %w", err)
+	m.auth(req, c.APIKey)
+	if _, err = do(req); err != nil {
+		return fmt.Errorf("%s: %w", strings.ToLower(m.name), err)
 	}
 	return nil
 }
 
-func testEmby(ctx context.Context, c settings.EmbyNotify) (string, error) {
+// testMediaServer checks the address and API key by asking for the server's
+// details, which needs a valid key.
+func testMediaServer(ctx context.Context, m mediaServer, c settings.MediaServerNotify) (string, error) {
 	if c.URL == "" {
-		return "", errors.New("enter Emby's address first")
+		return "", fmt.Errorf("enter %s's address first", m.name)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.URL+"/emby/System/Info", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.URL+m.prefix+"/System/Info", nil)
 	if err != nil {
 		return "", cleanErr(err)
 	}
-	req.Header.Set("X-Emby-Token", c.APIKey)
+	m.auth(req, c.APIKey)
 	b, err := do(req)
 	if err != nil {
-		return "", fmt.Errorf("couldn't reach Emby: %w", err)
+		return "", fmt.Errorf("couldn't reach %s: %w", m.name, err)
 	}
-	var info struct{ ServerName, Version string }
-	if json.Unmarshal(b, &info) != nil || info.Version == "" {
-		return "", errors.New("that address answered, but it doesn't look like Emby")
+	var info systemInfo
+	if json.Unmarshal(b, &info) != nil || !m.looksRight(info) {
+		return "", fmt.Errorf("that address answered, but it doesn't look like %s", m.name)
 	}
-	return fmt.Sprintf("Connected to Emby %s (%s)", info.Version, info.ServerName), nil
+	return fmt.Sprintf("Connected to %s %s (%s)", m.name, info.Version, info.ServerName), nil
 }
 
 type webhookPayload struct {

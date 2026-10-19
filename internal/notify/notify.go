@@ -1,6 +1,6 @@
-// Package notify tells the outside world what Reelkeeper does: Emby (so a new
-// movie shows up without a library scan), email (problems only) and a
-// webhook (everything).
+// Package notify tells the outside world what Reelkeeper does: Emby and
+// Jellyfin (so a new movie or episode shows up without a library scan), email
+// (problems only) and a webhook (everything).
 //
 // Sending never blocks the caller and never fails it: each channel runs in
 // its own goroutine with a timeout, and a channel that fails is logged
@@ -67,17 +67,18 @@ type Event struct {
 	Title   string
 	Message string
 	TitleID int64
-	// Path is a file or folder, as Reelkeeper sees it. Emby is told about its
-	// folder, translated into Emby's own path.
+	// Path is a file or folder, as Reelkeeper sees it. Emby and Jellyfin are
+	// told about its folder, translated into the server's own path.
 	Path string
 	At   time.Time
 }
 
 // Channel names, as used by Test.
 const (
-	ChannelEmby    = "emby"
-	ChannelEmail   = "email"
-	ChannelWebhook = "webhook"
+	ChannelEmby     = "emby"
+	ChannelJellyfin = "jellyfin"
+	ChannelEmail    = "email"
+	ChannelWebhook  = "webhook"
 )
 
 const (
@@ -130,8 +131,13 @@ func (s *Service) Notify(ctx context.Context, ev Event) {
 	// The caller's request may end before sending does.
 	bg := context.WithoutCancel(ctx)
 
-	if cfg.Emby.Enabled && (ev.Kind == KindImported || ev.Kind == KindDeleted || ev.Kind == KindRenamed) && ev.Path != "" {
-		s.send(bg, ChannelEmby, func(ctx context.Context) error { return sendEmby(ctx, cfg.Emby, ev) })
+	if (ev.Kind == KindImported || ev.Kind == KindDeleted || ev.Kind == KindRenamed) && ev.Path != "" {
+		if cfg.Emby.Enabled {
+			s.send(bg, ChannelEmby, func(ctx context.Context) error { return sendMediaServer(ctx, emby, cfg.Emby, ev) })
+		}
+		if cfg.Jellyfin.Enabled {
+			s.send(bg, ChannelJellyfin, func(ctx context.Context) error { return sendMediaServer(ctx, jellyfin, cfg.Jellyfin, ev) })
+		}
 	}
 	if cfg.Email.Enabled && IsProblem(ev.Kind) && s.shouldEmail(ev) {
 		s.send(bg, ChannelEmail, func(ctx context.Context) error { return sendEmail(ctx, cfg.Email, subjectFor(ev), bodyFor(ev)) })
@@ -183,7 +189,9 @@ func (s *Service) Test(ctx context.Context, channel string, cfg settings.Notific
 	defer cancel()
 	switch channel {
 	case ChannelEmby:
-		return testEmby(ctx, cfg.Emby)
+		return testMediaServer(ctx, emby, cfg.Emby)
+	case ChannelJellyfin:
+		return testMediaServer(ctx, jellyfin, cfg.Jellyfin)
 	case ChannelEmail:
 		err := sendEmail(ctx, cfg.Email, "Reelkeeper: test", "This is a test email from Reelkeeper. If you can read it, email notifications work.\n\nSent by Reelkeeper")
 		if err != nil {
@@ -200,7 +208,8 @@ func (s *Service) Test(ctx context.Context, channel string, cfg settings.Notific
 	return "", fmt.Errorf("unknown channel %q", channel)
 }
 
-// translatePath turns a path as Reelkeeper sees it into the path as Emby sees it.
+// translatePath turns a path as Reelkeeper sees it into the path as the media
+// server sees it.
 func translatePath(p, from, to string) string {
 	if from == "" {
 		return p
@@ -214,7 +223,8 @@ func translatePath(p, from, to string) string {
 	return p
 }
 
-// fileExts are the file types whose folder Emby should be told about.
+// fileExts are the file types whose folder the media server should be told
+// about.
 var fileExts = map[string]bool{
 	".mkv": true, ".mp4": true, ".m4v": true, ".avi": true, ".mov": true, ".wmv": true,
 	".ts": true, ".m2ts": true, ".webm": true, ".mpg": true, ".mpeg": true,
