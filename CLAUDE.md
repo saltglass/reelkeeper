@@ -68,7 +68,7 @@ all mediocre" app.
 - Import lists (Trakt/IMDb)
 - Multiple users with roles
 - Telegram notifications (Dan, 2026-10-09).
-- Jellyfin and Plex library updates, like Emby's (planned for 2.0).
+- Plex library updates, like Emby's and Jellyfin's (planned for 2.0).
 - Interactive (user-driven) search. Seerr already does this well (Dan,
   2026-10-08); Reelkeeper searches automatically. The search engine exists for
   that; only the screens are left out.
@@ -182,7 +182,7 @@ together.
 - `internal/auth/`: sessions, local users, OIDC, API keys, bypass rules
 - `internal/jobs/`: persisted command queue and scheduler (survives restarts;
   visible under System → Tasks)
-- `internal/notify/`: Emby, email, webhook
+- `internal/notify/`: Emby and Jellyfin (one sender, `mediaServer`), email, webhook
 - `internal/store/`: DB access; `migrations/sqlite/` and `migrations/postgres/`
 - `web/`: React app
 - `testdata/`: release names, recorded indexer responses, and golden
@@ -448,13 +448,11 @@ These mirror Radarr's options, but cleaner:
 Planned with Dan on 2026-10-13; settled 2026-10-15 ("branch as you see
 fit"; 1.x may include small features; Usenet and anime are probably 2.0).
 
-- **Until 2.0 work starts, everything stays on `main`**: 1.1, 1.2… and
-  patches are tagged there. A release branch only pays off once `main`
-  holds unfinished or breaking work while a fix must ship.
-- **When 2.0 work starts** (e.g. Usenet or anime), create `release/1.x`
-  from the latest 1.x tag first. From then on `main` is 2.0, and 1.x
-  fixes and small features (no schema changes, nothing breaking) go on
-  `release/1.x`; production installs run its tags.
+- **2.0 work has started** (2026-10-19, with Jellyfin). `release/1.x` was
+  cut on 2026-10-18 at the 1.2.0 commit; 1.2.1 is tagged there. `main` is
+  now 2.0, and 1.x fixes and small features (no schema changes, nothing
+  breaking) go on `release/1.x`; production installs run its tags.
+  (Before this, everything stayed on `main`, and 1.0–1.2 were tagged there.)
 - **A fix lands on `release/1.x` first**, is tagged there, and then
   `release/1.x` is merged into `main`. That merge is how every 1.x fix
   reaches 2.0. Never merge `main` into `release/1.x`: it would leak
@@ -550,8 +548,8 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
 
 Ask Dan, then update this file once each is settled.
 
-- **Usenet, anime, Jellyfin and Plex:** not in 1.x; 2.0, each from a plan
-  Dan approves.
+- **Usenet, anime and Plex:** not in 1.x; 2.0, each from a plan Dan
+  approves.
 
 ## Roadmap
 
@@ -570,11 +568,16 @@ previous one is half-done.
 - **2.0:** cut `release/1.x` from the last 1.x tag first, then Usenet and
   anime, and Jellyfin and Plex next to Emby (Dan, 2026-10-16), each from a
   plan Dan approves. Other torrent clients only if users ask for them.
-  - **Jellyfin and Plex:** the same job Emby has today: after an import,
-    delete or rename, tell the media server which folder changed (with the
-    same path translation), so it shows up without a full library scan,
-    plus a Test button. Jellyfin forked from Emby and has the same
-    "media updated" call, so it is small. Plex needs its own client: find
+  - **Jellyfin: done** (2026-10-19, on `main`). Its own card next to
+    Emby's in Settings → Notifications (both can be on), sharing Emby's
+    sender: the same "media updated" call without the `/emby` prefix, and
+    the key in `Authorization: MediaBrowser Token="…"`, because Jellyfin
+    10.11 can refuse Emby's legacy `X-Emby-Token` and newer versions do by
+    default. Never switch it back to the legacy header.
+  - **Plex:** the same job Emby and Jellyfin do: after an import, delete or
+    rename, tell the media server which folder changed (with the same path
+    translation), so it shows up without a full library scan, plus a Test
+    button. Plex needs its own client: find
     the library section that holds the folder, then ask for a partial scan
     of that folder with the server's token. Naming and scanning already
     follow Jellyfin's and Plex's conventions (multi-version names, Plex
