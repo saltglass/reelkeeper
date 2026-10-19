@@ -170,6 +170,29 @@ func TestEmbyAndJellyfinBothGetTheEvent(t *testing.T) {
 	}
 }
 
+// Jellyfin answers Emby's /emby paths too, with a Jellyfin key, so the Emby
+// card's Test must not report a Jellyfin server as Emby (2026-10-19).
+func TestEmbyTestRejectsAJellyfinServer(t *testing.T) {
+	var paths []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.Path)
+		if r.Header.Get("X-Emby-Token") != "jf-key" {
+			http.Error(w, "no", http.StatusUnauthorized)
+			return
+		}
+		_, _ = w.Write([]byte(`{"ServerName":"den","Version":"10.11.0","ProductName":"Jellyfin Server"}`))
+	}))
+	defer srv.Close()
+	svc := newSvc(settings.Notifications{})
+	msg, err := svc.Test(context.Background(), "emby", settings.Notifications{Emby: settings.MediaServerNotify{URL: srv.URL, APIKey: "jf-key"}})
+	if err == nil || err.Error() != "that address answered, but it is a Jellyfin server; use the Jellyfin card" {
+		t.Errorf("= %q, %v", msg, err)
+	}
+	if len(paths) != 1 || paths[0] != "/emby/System/Info" {
+		t.Errorf("asked %v", paths)
+	}
+}
+
 func TestJellyfinTest(t *testing.T) {
 	product := "Jellyfin Server"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

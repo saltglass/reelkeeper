@@ -62,8 +62,9 @@ type mediaServer struct {
 	name   string
 	prefix string // before every API path
 	auth   func(req *http.Request, key string)
-	// looksRight tells this server's /System/Info answer from another's.
-	looksRight func(info systemInfo) bool
+	// problem says why a /System/Info answer isn't from this kind of server,
+	// or is "" when it is.
+	problem func(info systemInfo) string
 }
 
 type systemInfo struct{ ServerName, Version, ProductName string }
@@ -71,16 +72,28 @@ type systemInfo struct{ ServerName, Version, ProductName string }
 var (
 	emby = mediaServer{
 		name: "Emby", prefix: "/emby",
-		auth:       func(req *http.Request, key string) { req.Header.Set("X-Emby-Token", key) },
-		looksRight: func(info systemInfo) bool { return info.Version != "" },
+		auth: func(req *http.Request, key string) { req.Header.Set("X-Emby-Token", key) },
+		problem: func(info systemInfo) string {
+			switch {
+			case strings.Contains(info.ProductName, "Jellyfin"):
+				// Jellyfin answers Emby's /emby paths too, with any Jellyfin key.
+				return "that address answered, but it is a Jellyfin server; use the Jellyfin card"
+			case info.Version == "":
+				return "that address answered, but it doesn't look like Emby"
+			}
+			return ""
+		},
 	}
 	jellyfin = mediaServer{
 		name: "Jellyfin",
 		auth: func(req *http.Request, key string) {
 			req.Header.Set("Authorization", `MediaBrowser Token="`+key+`"`)
 		},
-		looksRight: func(info systemInfo) bool {
-			return info.Version != "" && strings.Contains(info.ProductName, "Jellyfin")
+		problem: func(info systemInfo) string {
+			if info.Version == "" || !strings.Contains(info.ProductName, "Jellyfin") {
+				return "that address answered, but it doesn't look like Jellyfin"
+			}
+			return ""
 		},
 	}
 )
@@ -124,8 +137,11 @@ func testMediaServer(ctx context.Context, m mediaServer, c settings.MediaServerN
 		return "", fmt.Errorf("couldn't reach %s: %w", m.name, err)
 	}
 	var info systemInfo
-	if json.Unmarshal(b, &info) != nil || !m.looksRight(info) {
+	if json.Unmarshal(b, &info) != nil {
 		return "", fmt.Errorf("that address answered, but it doesn't look like %s", m.name)
+	}
+	if problem := m.problem(info); problem != "" {
+		return "", errors.New(problem)
 	}
 	return fmt.Sprintf("Connected to %s %s (%s)", m.name, info.Version, info.ServerName), nil
 }

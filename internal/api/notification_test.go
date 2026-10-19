@@ -144,3 +144,29 @@ func TestJellyfinNotificationsAPI(t *testing.T) {
 		t.Errorf("stored key = %q", got)
 	}
 }
+
+// A Jellyfin server in the Emby card: Test (here with the stored key, left
+// out of the request as the browser does) says so in plain words.
+func TestEmbyCardTestOnAJellyfinServer(t *testing.T) {
+	db := storetest.Open(t, store.SQLite)
+	a := newApp(t, db, "")
+	a.setup()
+	jellyfin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/emby/System/Info" || r.Header.Get("X-Emby-Token") != "jf-key" {
+			http.Error(w, "no", http.StatusUnauthorized)
+			return
+		}
+		_, _ = w.Write([]byte(`{"ServerName":"den","Version":"10.11.0","ProductName":"Jellyfin Server"}`))
+	}))
+	defer jellyfin.Close()
+
+	rest := `"jellyfin":{"enabled":false,"url":""},"email":{"enabled":false,"host":"","port":587,"from":"","to":""},"webhook":{"enabled":false,"url":""}`
+	r := a.do("PUT", "/api/v1/settings/notifications", fmt.Sprintf(`{"emby":{"enabled":true,"url":%q,"apiKey":"jf-key"},%s}`, jellyfin.URL, rest))
+	if r.status != 200 {
+		t.Fatalf("save: %d %s", r.status, r.raw)
+	}
+	r = a.do("POST", "/api/v1/settings/notifications/test", fmt.Sprintf(`{"channel":"emby","settings":{"emby":{"enabled":true,"url":%q},%s}}`, jellyfin.URL, rest))
+	if r.status != 422 || r.body["message"] != "That address answered, but it is a Jellyfin server; use the Jellyfin card." {
+		t.Errorf("test: %d %s", r.status, r.raw)
+	}
+}
