@@ -152,6 +152,51 @@ func TestJellyfinGetsTheTranslatedFolder(t *testing.T) {
 	}
 }
 
+// The exact request each server gets for an import, a deletion and a rename.
+// A rename stays one "Modified" update for the movie's folder: Jellyfin 10.11
+// ignores UpdateType and refreshes the nearest existing library item for the
+// path, which for a rename is the library folder whatever is sent (old path,
+// new path or both), so sending more would change nothing (2026-10-19).
+func TestMediaServerRequestBodies(t *testing.T) {
+	for _, server := range []string{"emby", "jellyfin"} {
+		t.Run(server, func(t *testing.T) {
+			var c captured
+			srv := httptest.NewServer(c.handler(204, ""))
+			defer srv.Close()
+			ms := settings.MediaServerNotify{Enabled: true, URL: srv.URL, APIKey: "k", PathFrom: "/media", PathTo: "/srv/media"}
+			cfg := settings.Notifications{Emby: ms}
+			wantPath := "/emby/Library/Media/Updated"
+			if server == "jellyfin" {
+				cfg = settings.Notifications{Jellyfin: ms}
+				wantPath = "/Library/Media/Updated"
+			}
+			svc := newSvc(cfg)
+			cases := []struct{ kind, path, body string }{
+				{notify.KindImported, "/media/movies/Metropolis (1927)/Metropolis (1927) [Bluray-1080p].mkv",
+					`{"Updates":[{"Path":"/srv/media/movies/Metropolis (1927)","UpdateType":"Created"}]}`},
+				{notify.KindDeleted, "/media/movies/Nosferatu (1922)",
+					`{"Updates":[{"Path":"/srv/media/movies/Nosferatu (1922)","UpdateType":"Deleted"}]}`},
+				{notify.KindRenamed, "/media/movies/Metropolis (1927)/Metropolis (1927) [WEBDL-1080p].mkv",
+					`{"Updates":[{"Path":"/srv/media/movies/Metropolis (1927)","UpdateType":"Modified"}]}`},
+			}
+			for _, tc := range cases {
+				c.reqs, c.body = nil, nil
+				svc.Notify(context.Background(), notify.Event{Kind: tc.kind, Path: tc.path})
+				svc.Wait()
+				if len(c.reqs) != 1 {
+					t.Fatalf("%s: %d requests", tc.kind, len(c.reqs))
+				}
+				if r := c.reqs[0]; r.Method != "POST" || r.URL.Path != wantPath || r.Header.Get("Content-Type") != "application/json" {
+					t.Errorf("%s: %s %s %q", tc.kind, r.Method, r.URL.Path, r.Header.Get("Content-Type"))
+				}
+				if c.body[0] != tc.body {
+					t.Errorf("%s: body\n got %s\nwant %s", tc.kind, c.body[0], tc.body)
+				}
+			}
+		})
+	}
+}
+
 // Emby and Jellyfin can both be on (one library in each); each gets the event.
 func TestEmbyAndJellyfinBothGetTheEvent(t *testing.T) {
 	var e, j captured

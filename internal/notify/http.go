@@ -101,6 +101,16 @@ var (
 // sendMediaServer tells Emby or Jellyfin about one folder, so it rescans just
 // that folder. (Never a full library refresh: the server may be a shared
 // family computer.)
+//
+// Jellyfin (10.11, PostUpdatedMedia) reads only each update's Path and ignores
+// its UpdateType: after its LibraryMonitorDelay (60 s by default) it refreshes
+// the nearest library item that still exists for that path. For a renamed
+// movie that is the whole library folder, whatever path is sent (the new
+// folder, the new file or the old one), so the old item goes after about a
+// minute but the new one can take a few more while Jellyfin works through
+// that folder. Nothing in the request changes that, so a rename sends the
+// same single update as before, and Emby's handling is left as it was
+// (docs/first-run.md tells people to expect the delay).
 func sendMediaServer(ctx context.Context, m mediaServer, c settings.MediaServerNotify, ev Event) error {
 	body, err := json.Marshal(map[string]any{"Updates": []map[string]string{{
 		"Path":       translatePath(folderOf(ev.Path), c.PathFrom, c.PathTo),
