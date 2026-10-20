@@ -199,8 +199,10 @@ func TestBackfillWaitsThenFinishesWithLeftovers(t *testing.T) {
 		if quiet || len(g.got) != 1 || !strings.Contains(msg, "grabbed 1 release") {
 			t.Errorf("first run: %q quiet=%v grabbed=%v", msg, quiet, g.got)
 		}
-		if got := queriesOf(f); len(got) != 2 {
-			t.Errorf("searched %v; want both missing episodes", got)
+		// S01E06 has no release of its own, so its finished season is searched
+		// as a whole too.
+		if got := queriesOf(f); !slices.Equal(got, []string{"S01E5", "S01E6", "S01E"}) {
+			t.Errorf("searched %v; want both missing episodes, then the season", got)
 		}
 
 		// It's downloading: the next run searches nothing and is quiet.
@@ -285,9 +287,10 @@ func TestBackfillFinishesComplete(t *testing.T) {
 		if got := f.backfillMessages(t); !slices.Contains(got, want) {
 			t.Errorf("History = %q, want %q", got, want)
 		}
-		// Only one search a run: Black Books is searched in this run, not
-		// finished early.
-		if len(f.idx.queries) != 2 {
+		// Only one show a run: Black Books is searched in this run (its two
+		// episodes, then its season for the one with nothing), not finished
+		// early.
+		if len(f.idx.queries) != 3 {
 			t.Errorf("queries = %v", queriesOf(f))
 		}
 	})
@@ -584,7 +587,8 @@ func TestBackfillTriesEveryUnitBeforeFinishing(t *testing.T) {
 		f := newFixture(t, db)
 		bfOn(f)
 		// Twelve seasons of two episodes, the first of each on disk: twelve
-		// single-episode searches, two more than one search makes.
+		// single-episode searches, two more than one search makes. Each finds
+		// nothing, so each one's season is searched as a whole too.
 		eps := map[string]string{}
 		for n := 1; n <= maxUnitsPerSearch+2; n++ {
 			eps[fmt.Sprintf("S%02dE01", n)] = "2006-02-03"
@@ -600,8 +604,8 @@ func TestBackfillTriesEveryUnitBeforeFinishing(t *testing.T) {
 		}
 		f.now = f.now.Add(time.Minute)
 		runBackfill(t, f)
-		if len(f.idx.queries) != maxUnitsPerSearch {
-			t.Errorf("first run searched %d, want %d", len(f.idx.queries), maxUnitsPerSearch)
+		if len(f.idx.queries) != 2*maxUnitsPerSearch {
+			t.Errorf("first run searched %d, want %d", len(f.idx.queries), 2*maxUnitsPerSearch)
 		}
 		if st := stateOf(t, f, row.ID); st != BackfillActive {
 			t.Fatalf("state = %s after searching only some of the episodes", st)
@@ -753,6 +757,51 @@ func TestBackfillTokenCannotBeForged(t *testing.T) {
 		}
 		if len(g.got) != 0 {
 			t.Errorf("grabbed %v with a forged token", g.got)
+		}
+	})
+}
+
+// Options include a finished season's packs for its single missing
+// episodes, from one season search; taking one grabs it for every missing
+// episode of the season.
+func TestBackfillOptionsOfferSeasonPacks(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newFixture(t, db)
+		g, _ := bfOn(f)
+		a := bfShow(t, db, f, "The IT Crowd")
+		row, _ := f.svc.BackfillAdd(ctx, a)
+		f.idx.releases = nil
+		runBackfill(t, f)
+
+		f.idx.releases = []indexer.Release{tvRel("The.IT.Crowd.S01.720p.HDTV.x264-PACK", 4<<30, 90)}
+		f.idx.queries = nil
+		opts, err := f.svc.BackfillOptions(ctx, row.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := queriesOf(f); !slices.Equal(got, []string{"S01E5", "S01E", "S01E6"}) {
+			t.Errorf("queries = %v; the season once", got)
+		}
+		if len(opts.Units) != 2 {
+			t.Fatalf("units = %+v", opts.Units)
+		}
+		for _, u := range opts.Units {
+			if len(u.Options) != 1 || u.Options[0].Title != "The.IT.Crowd.S01.720p.HDTV.x264-PACK" {
+				t.Errorf("%s options = %+v", u.Label, u.Options)
+			}
+			for _, r := range u.Options[0].Reasons {
+				if strings.Contains(r, "whole season") {
+					t.Errorf("%s: the pack is offered as a pack, not turned down for being one: %q", u.Label, r)
+				}
+			}
+		}
+		if _, err := f.svc.BackfillGrabOption(ctx, row.ID, opts.Units[1].Options[0].Token); err != nil {
+			t.Fatal(err)
+		}
+		sv := f.sv(a)
+		if len(g.grabs) != 1 || !slices.Equal(g.grabs[0].TV.EpisodeIDs, []int64{epID(sv, "S01E05"), epID(sv, "S01E06")}) {
+			t.Errorf("grabs = %+v", g.grabs)
 		}
 	})
 }

@@ -720,6 +720,9 @@ func (s *Service) BackfillOptions(ctx context.Context, id int64) (*BackfillOptio
 	s.optMu.Lock()
 	s.forgetOldOptionsLocked()
 	s.optMu.Unlock()
+	// A finished season's packs are offered for its single episodes too
+	// (see packFallback), from one season search each.
+	packs := map[int][]indexer.Release{}
 	for _, u := range us {
 		rels, _, err := s.idx.Search(ctx, u.query(), indexer.SearchOptions{})
 		if err != nil {
@@ -729,18 +732,53 @@ func (s *Service) BackfillOptions(ctx context.Context, id int64) (*BackfillOptio
 		if err != nil {
 			return nil, err
 		}
-		var offered []tvCandidate
-		for _, c := range cs {
+		// What each candidate would be grabbed for: the unit's episodes, or a
+		// fallback pack's.
+		forIDs := map[*tvCandidate][]int64{}
+		if pu, ok := s.packFallback(u, newSearchRun()); ok {
+			prels, searched := packs[u.season]
+			if !searched {
+				if prels, _, err = s.idx.Search(ctx, pu.query(), indexer.SearchOptions{}); err != nil {
+					return nil, err
+				}
+				prels = dedupe(prels)
+				packs[u.season] = prels
+			}
+			pcs, err := s.decideTV(ctx, w, pu.target(), prels)
+			if err != nil {
+				return nil, err
+			}
+			// The episode search's packs were turned down only for being
+			// packs; the season search judged them as packs.
+			cs = slices.DeleteFunc(cs, func(c tvCandidate) bool { return c.cov.Pack })
+			for _, c := range pcs {
+				if c.cov.Pack {
+					cs = append(cs, c)
+				}
+			}
+			for i := range cs {
+				if cs[i].cov.Pack {
+					forIDs[&cs[i]] = pu.episodeIDs()
+				}
+			}
+		}
+		var offered []*tvCandidate
+		for i := range cs {
+			c := &cs[i]
 			if c.d.Accepted || c.d.WrongContent || c.rel.Seeders <= 0 || blocked(c.rel.Title, c.rel.InfoHash) {
 				continue
 			}
 			offered = append(offered, c)
 		}
-		slices.SortStableFunc(offered, func(a, b tvCandidate) int { return b.rel.Seeders - a.rel.Seeders })
+		slices.SortStableFunc(offered, func(a, b *tvCandidate) int { return b.rel.Seeders - a.rel.Seeders })
 		unit := BackfillUnit{Label: u.label(), EpisodeIDs: u.episodeIDs(), Options: []BackfillOption{}}
 		for _, c := range offered[:min(len(offered), optionsPerUnit)] {
+			ids, ok := forIDs[c]
+			if !ok {
+				ids = u.episodeIDs()
+			}
 			token, err := s.rememberOption(pickedOption{
-				rowID: id, versionID: row.VersionID, episodeIDs: u.episodeIDs(), label: u.label(), rel: c.rel, d: c.d, cov: c.cov,
+				rowID: id, versionID: row.VersionID, episodeIDs: ids, label: u.label(), rel: c.rel, d: c.d, cov: c.cov,
 			})
 			if err != nil {
 				return nil, err
