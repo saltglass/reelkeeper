@@ -138,6 +138,10 @@ type tvUnit struct {
 	season   int
 	episodes []library.Episode
 	pack     bool
+	// fallback marks a season search made because a single episode's search
+	// found nothing acceptable (see packFallback). It leaves the search times
+	// to the episode searches, so it never delays one.
+	fallback bool
 }
 
 func (u tvUnit) label() string {
@@ -211,6 +215,39 @@ func (s *Service) units(w *tvWanted) []tvUnit {
 func packWorthIt(all []library.Episode, season, wanted int, today string) bool {
 	total := 0
 	for _, e := range all {
+		if *e.Season == season {
+			total++
+		}
+	}
+	return seasonFinished(all, season, today) && wanted*2 > total
+}
+
+// packFallback is the season search to try when a single episode's search
+// found nothing acceptable, or ok false when there is none to try. Indexers
+// asked for one episode (S01E06) answer with releases named for it, so a
+// complete-season torrent never shows up; when the season has finished
+// airing, a pack may be the only copy there is (2026-10-20: a show missing
+// one episode, with a complete season one pack on the tracker). The pack is
+// for every wanted episode of the season not already chosen in this run, so
+// a season with several missing episodes is grabbed once; importing takes
+// only those episodes and leaves the files the version has alone.
+func (s *Service) packFallback(u tvUnit, run *searchRun) (tvUnit, bool) {
+	if u.pack || u.w.daily() || u.season == 0 || !seasonFinished(u.w.sv.Episodes, u.season, s.localToday()) {
+		return tvUnit{}, false
+	}
+	var eps []library.Episode
+	for _, e := range u.w.wanted {
+		if *e.Season == u.season && e.AirDate != "" && !run.claimed[e.ID] {
+			eps = append(eps, e)
+		}
+	}
+	return tvUnit{w: u.w, season: u.season, episodes: eps, pack: true, fallback: true}, true
+}
+
+// seasonFinished reports whether every episode of a season has aired.
+func seasonFinished(all []library.Episode, season int, today string) bool {
+	total := 0
+	for _, e := range all {
 		if *e.Season != season {
 			continue
 		}
@@ -219,7 +256,25 @@ func packWorthIt(all []library.Episode, season, wanted int, today string) bool {
 			return false
 		}
 	}
-	return total > 1 && wanted*2 > total
+	return total > 1
+}
+
+// searchRun is what the searches of one run share: the seasons already
+// searched as a fallback pack (by version and season), so each is searched
+// once, and the episodes chosen releases are on their way for, so their own
+// searches are skipped.
+type searchRun struct {
+	packTried map[[2]int64]bool
+	claimed   map[int64]bool
+}
+
+func newSearchRun() *searchRun {
+	return &searchRun{packTried: map[[2]int64]bool{}, claimed: map[int64]bool{}}
+}
+
+// skip reports whether every episode of a unit is already on its way.
+func (r *searchRun) skip(u tvUnit) bool {
+	return !slices.ContainsFunc(u.episodes, func(e library.Episode) bool { return !r.claimed[e.ID] })
 }
 
 // target is what the decision engine checks releases against.
@@ -420,8 +475,12 @@ func (s *Service) searchSeries(ctx context.Context, versionID int64, trigger str
 		us = us[:maxUnitsPerSearch]
 	}
 	var msgs []string
+	run := newSearchRun()
 	for _, u := range us {
-		ur, err := s.searchUnit(ctx, u, trigger)
+		if run.skip(u) {
+			continue // a season pack grabbed in this run holds it
+		}
+		ur, err := s.searchUnit(ctx, u, trigger, run)
 		if err != nil {
 			return res, err
 		}
@@ -450,9 +509,14 @@ type unitSearch struct {
 	acceptable, grabbed, held int
 	// unanswered: no indexer answered, so nothing was really searched.
 	unanswered bool
+	// heldIDs are the episodes whose chosen release was held back.
+	heldIDs map[int64]bool
 }
 
-func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string) (unitSearch, error) {
+// searchUnit searches for a unit and acts on what it finds. When a single
+// episode's search finds nothing acceptable, the season is searched as a
+// pack too (packFallback), once per run.
+func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string, run *searchRun) (unitSearch, error) {
 	rels, failures, err := s.idx.Search(ctx, u.query(), indexer.SearchOptions{})
 	if err != nil {
 		return unitSearch{}, err
@@ -472,6 +536,10 @@ func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string) (uni
 	picks := pickTV(cs, u.episodes)
 	what := u.w.label() + " " + u.label()
 	msg := fmt.Sprintf("Searched for %s: %s, %d acceptable.", what, countText(len(rels), "release"), accepted)
+	if u.fallback {
+		msg = fmt.Sprintf("Nothing for the episode on its own, so searched for %s as a whole: %s, %d acceptable.",
+			what, countText(len(rels), "release"), accepted)
+	}
 	if len(rels) > 0 && accepted == 0 {
 		msg += " " + commonReason(plain(cs))
 	}
@@ -490,11 +558,11 @@ func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string) (uni
 	if err := s.history.Add(ctx, s.tvEvent(u.w, EventSearched, msg), data); err != nil {
 		return unitSearch{}, err
 	}
-	res := unitSearch{acceptable: len(picks), unanswered: unsearched}
+	res := unitSearch{acceptable: len(picks), unanswered: unsearched, heldIDs: map[int64]bool{}}
 	// Episodes whose grab the queue limit (or backfill's quota) holds back
 	// don't count as searched: they stay first in line for when the queue
 	// has room or the limit is raised.
-	held := map[int64]bool{}
+	held := res.heldIDs
 	for _, p := range picks {
 		limited := false
 		if trigger != TriggerRequest { // a request isn't held back by either limit
@@ -518,11 +586,30 @@ func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string) (uni
 		case outcomeHeld:
 			res.held++
 		}
+		if outcome != outcomeHeld {
+			for _, id := range p.ids {
+				run.claimed[id] = true
+			}
+		}
 		if gm != "" {
 			msg += " " + gm
 		}
 	}
-	if !unsearched {
+	if pu, ok := s.packFallback(u, run); ok && !unsearched && len(picks) == 0 && !run.packTried[[2]int64{u.w.sv.Version.ID, int64(u.season)}] {
+		run.packTried[[2]int64{u.w.sv.Version.ID, int64(u.season)}] = true
+		pr, err := s.searchUnit(ctx, pu, trigger, run)
+		if err != nil {
+			return unitSearch{}, err
+		}
+		msg += " " + pr.message
+		res.acceptable += pr.acceptable
+		res.grabbed += pr.grabbed
+		res.held += pr.held
+		for id := range pr.heldIDs {
+			held[id] = true
+		}
+	}
+	if !unsearched && !u.fallback {
 		var done []int64
 		for _, id := range u.episodeIDs() {
 			if !held[id] {
@@ -682,8 +769,12 @@ func (s *Service) tvPass(ctx context.Context, perRun int, every time.Duration) (
 		return fmt.Sprintf("TV: nothing to search: %s waiting, all searched in the last %s.", countText(len(all), "search"), days(every)), nil
 	}
 	var names []string
+	run := newSearchRun()
 	for _, u := range due {
-		if _, err := s.searchUnit(ctx, u, TriggerScheduled); err != nil {
+		if run.skip(u) {
+			continue
+		}
+		if _, err := s.searchUnit(ctx, u, TriggerScheduled, run); err != nil {
 			return "", err
 		}
 		names = append(names, u.w.sv.Title.Title+" "+u.label())

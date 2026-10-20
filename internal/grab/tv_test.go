@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -420,4 +421,93 @@ func TestTVRequestSkipsTheLimits(t *testing.T) {
 			})
 		})
 	}
+}
+
+// One episode missing from a finished season, and the only copy anywhere is
+// a complete-season torrent (2026-10-20: a show missing S01E06, with "Season
+// 1 complete" on the tracker). Asked for S01E06, indexers never return the
+// pack, so the season is searched as a whole too, and the pack is grabbed
+// for just that episode (importing leaves the five on disk alone).
+func TestTVSeasonPackForOneMissingEpisode(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newFixture(t, db)
+		g, _ := bfOn(f)
+		sv := addSeries(t, db, f, "The Completely Made-Up Adventures of Dick Turpin", "standard", map[string]string{
+			"S01E01": "2024-03-01", "S01E02": "2024-03-01", "S01E03": "2024-03-01",
+			"S01E04": "2024-03-01", "S01E05": "2024-03-01", "S01E06": "2024-03-01",
+		}, "S01E06")
+		f.idx.releases = []indexer.Release{
+			tvRel("The.Completely.Made-Up.Adventures.of.Dick.Turpin.S01.1080p.ATVP.WEB-DL.DDP5.1.H.264-NTb", 6<<30, 40),
+		}
+		msg, err := f.svc.SearchVersion(ctx, sv.Version.ID, TriggerManual)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := queriesOf(f); !slices.Equal(got, []string{"S01E6", "S01E"}) {
+			t.Errorf("queries = %v; want the episode, then its season", got)
+		}
+		if len(g.grabs) != 1 || g.grabs[0].TV == nil || !slices.Equal(g.grabs[0].TV.EpisodeIDs, []int64{epID(sv, "S01E06")}) {
+			t.Fatalf("grabs = %v (%s)", g.got, msg)
+		}
+		if !strings.Contains(msg, "so searched for The Completely Made-Up Adventures of Dick Turpin (2015), HD season 1 as a whole: 1 release, 1 acceptable.") ||
+			!strings.Contains(msg, "for season 1 (1 wanted episode)") {
+			t.Errorf("message = %q", msg)
+		}
+		if _, ok := f.lib.epSearched[sv.Version.ID][epID(sv, "S01E06")]; !ok {
+			t.Errorf("S01E06 wasn't marked searched: %v", f.lib.epSearched)
+		}
+	})
+}
+
+// No season search for a season still airing (there's no pack yet), and
+// none when the episode's own search found something.
+func TestTVNoSeasonFallbackWhenNotNeeded(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newFixture(t, db)
+		airing := addSeries(t, db, f, "The Expanse", "standard", map[string]string{
+			"S06E01": "2026-09-01", "S06E02": "2026-09-08", "S06E03": "2026-10-20",
+		}, "S06E02")
+		if _, err := f.svc.SearchVersion(ctx, airing.Version.ID, TriggerManual); err != nil {
+			t.Fatal(err)
+		}
+		if got := queriesOf(f); !slices.Equal(got, []string{"S06E2"}) {
+			t.Errorf("airing season: queries = %v", got)
+		}
+	})
+}
+
+// Two episodes missing, one with a release of its own: that one is grabbed
+// alone, and the season pack found for the other is grabbed for the other
+// only (never the same episode twice). The season is searched once.
+func TestTVSeasonFallbackSkipsEpisodesAlreadyChosen(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newFixture(t, db)
+		g, _ := bfOn(f)
+		sv := addSeries(t, db, f, "The Expanse", "standard", map[string]string{
+			"S01E01": "2015-12-14", "S01E02": "2015-12-15", "S01E03": "2015-12-22", "S01E04": "2015-12-29",
+		}, "S01E03", "S01E04")
+		f.idx.releases = []indexer.Release{
+			tvRel("The.Expanse.S01E03.1080p.WEB-DL.H.264-NTb", 2<<30, 50),
+			tvRel("The.Expanse.S01.1080p.BluRay.x264-ROVERS", 9<<30, 20),
+		}
+		msg, err := f.svc.SearchVersion(ctx, sv.Version.ID, TriggerManual)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := queriesOf(f); !slices.Equal(got, []string{"S01E3", "S01E4", "S01E"}) {
+			t.Errorf("queries = %v", got)
+		}
+		if len(g.grabs) != 2 {
+			t.Fatalf("grabs = %v (%s)", g.got, msg)
+		}
+		if ids := g.grabs[0].TV.EpisodeIDs; !slices.Equal(ids, []int64{epID(sv, "S01E03")}) {
+			t.Errorf("first grab for %v", ids)
+		}
+		if g.grabs[1].Release.Title != "The.Expanse.S01.1080p.BluRay.x264-ROVERS" || !slices.Equal(g.grabs[1].TV.EpisodeIDs, []int64{epID(sv, "S01E04")}) {
+			t.Errorf("second grab = %s for %v", g.grabs[1].Release.Title, g.grabs[1].TV.EpisodeIDs)
+		}
+	})
 }
