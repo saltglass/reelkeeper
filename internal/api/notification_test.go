@@ -170,3 +170,43 @@ func TestEmbyCardTestOnAJellyfinServer(t *testing.T) {
 		t.Errorf("test: %d %s", r.status, r.raw)
 	}
 }
+
+// Plex through the API: the token is stored and never sent back, and Test
+// (with the stored token) lists Plex's libraries.
+func TestPlexNotificationsAPI(t *testing.T) {
+	db := storetest.Open(t, store.SQLite)
+	a := newApp(t, db, "")
+	a.setup()
+	plex := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Plex-Token") != "plex-token" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		switch r.URL.Path {
+		case "/":
+			_, _ = w.Write([]byte(`{"MediaContainer":{"friendlyName":"den","machineIdentifier":"abc","version":"1.41.2"}}`))
+		case "/library/sections":
+			_, _ = w.Write([]byte(`{"MediaContainer":{"Directory":[{"key":"1","title":"Movies","Location":[{"path":"/data/movies"}]}]}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer plex.Close()
+
+	rest := `"emby":{"enabled":false,"url":""},"jellyfin":{"enabled":false,"url":""},"email":{"enabled":false,"host":"","port":587,"from":"","to":""},"webhook":{"enabled":false,"url":""}`
+	r := a.do("PUT", "/api/v1/settings/notifications", fmt.Sprintf(`{"plex":{"enabled":true,"url":%q,"apiKey":"plex-token","pathFrom":"/media","pathTo":"/data"},%s}`, plex.URL, rest))
+	if r.status != 200 || strings.Contains(r.raw, "plex-token") {
+		t.Fatalf("save: %d %s", r.status, r.raw)
+	}
+	if px, _ := r.body["plex"].(map[string]any); px["apiKeySet"] != true || px["pathTo"] != "/data" {
+		t.Errorf("plex = %v", px)
+	}
+	r = a.do("POST", "/api/v1/settings/notifications/test", fmt.Sprintf(`{"channel":"plex","settings":{"plex":{"enabled":true,"url":%q,"pathFrom":"/media","pathTo":"/data"},%s}}`, plex.URL, rest))
+	if r.status != 200 || !strings.HasPrefix(fmt.Sprint(r.body["message"]), "Connected to Plex 1.41.2 (den): Movies.") {
+		t.Errorf("test: %d %s", r.status, r.raw)
+	}
+	r = a.do("POST", "/api/v1/settings/notifications/test", fmt.Sprintf(`{"channel":"plex","settings":{"plex":{"enabled":true,"url":%q,"apiKey":"wrong"},%s}}`, plex.URL, rest))
+	if r.status != 422 || !strings.Contains(r.raw, "token") || strings.Contains(r.raw, "wrong") {
+		t.Errorf("bad token: %d %s", r.status, r.raw)
+	}
+}

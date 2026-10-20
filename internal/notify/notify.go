@@ -1,5 +1,5 @@
-// Package notify tells the outside world what Reelkeeper does: Emby and
-// Jellyfin (so a new movie or episode shows up without a library scan), email
+// Package notify tells the outside world what Reelkeeper does: Emby, Jellyfin
+// and Plex (so a new movie or episode shows up without a library scan), email
 // (problems only) and a webhook (everything).
 //
 // Sending never blocks the caller and never fails it: each channel runs in
@@ -67,8 +67,8 @@ type Event struct {
 	Title   string
 	Message string
 	TitleID int64
-	// Path is a file or folder, as Reelkeeper sees it. Emby and Jellyfin are
-	// told about its folder, translated into the server's own path.
+	// Path is a file or folder, as Reelkeeper sees it. Emby, Jellyfin and Plex
+	// are told about its folder, translated into the server's own path.
 	Path string
 	At   time.Time
 }
@@ -77,6 +77,7 @@ type Event struct {
 const (
 	ChannelEmby     = "emby"
 	ChannelJellyfin = "jellyfin"
+	ChannelPlex     = "plex"
 	ChannelEmail    = "email"
 	ChannelWebhook  = "webhook"
 )
@@ -96,8 +97,9 @@ type Service struct {
 	wg sync.WaitGroup
 
 	mu       sync.Mutex
-	live     func(Event)          // shows the event in open browsers (SetLive)
-	lastMail map[string]time.Time // Kind+Title -> when it was last emailed
+	live     func(Event)                             // shows the event in open browsers (SetLive)
+	folders  func(context.Context) ([]string, error) // Reelkeeper's media folders (SetMediaFolders)
+	lastMail map[string]time.Time                    // Kind+Title -> when it was last emailed
 }
 
 // New returns a Service reading its channels from cfg on every event, so
@@ -112,6 +114,14 @@ func New(cfg func() settings.Notifications, logger *slog.Logger) *Service {
 func (s *Service) SetLive(fn func(Event)) {
 	s.mu.Lock()
 	s.live = fn
+	s.mu.Unlock()
+}
+
+// SetMediaFolders gives Test a way to list Reelkeeper's media folders, so
+// Plex's Test can say which of them no Plex library holds.
+func (s *Service) SetMediaFolders(fn func(context.Context) ([]string, error)) {
+	s.mu.Lock()
+	s.folders = fn
 	s.mu.Unlock()
 }
 
@@ -137,6 +147,9 @@ func (s *Service) Notify(ctx context.Context, ev Event) {
 		}
 		if cfg.Jellyfin.Enabled {
 			s.send(bg, ChannelJellyfin, func(ctx context.Context) error { return sendMediaServer(ctx, jellyfin, cfg.Jellyfin, ev) })
+		}
+		if cfg.Plex.Enabled {
+			s.send(bg, ChannelPlex, func(ctx context.Context) error { return sendPlex(ctx, cfg.Plex, ev) })
 		}
 	}
 	if cfg.Email.Enabled && IsProblem(ev.Kind) && s.shouldEmail(ev) {
@@ -192,6 +205,18 @@ func (s *Service) Test(ctx context.Context, channel string, cfg settings.Notific
 		return testMediaServer(ctx, emby, cfg.Emby)
 	case ChannelJellyfin:
 		return testMediaServer(ctx, jellyfin, cfg.Jellyfin)
+	case ChannelPlex:
+		var folders []string
+		s.mu.Lock()
+		list := s.folders
+		s.mu.Unlock()
+		if list != nil {
+			var err error
+			if folders, err = list(ctx); err != nil {
+				s.logger.Warn("couldn't list the media folders for Plex's test", "error", err)
+			}
+		}
+		return testPlex(ctx, cfg.Plex, folders)
 	case ChannelEmail:
 		err := sendEmail(ctx, cfg.Email, "Reelkeeper: test", "This is a test email from Reelkeeper. If you can read it, email notifications work.\n\nSent by Reelkeeper")
 		if err != nil {

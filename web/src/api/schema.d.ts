@@ -1513,7 +1513,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Emby, Jellyfin, email and webhook notifications (never the secrets) */
+        /** Emby, Jellyfin, Plex, email and webhook notifications (never the secrets) */
         get: operations["getNotifications"];
         /**
          * Save the notification settings
@@ -2875,6 +2875,8 @@ export interface components {
         NotificationSettings: {
             emby: components["schemas"]["MediaServerNotify"];
             jellyfin: components["schemas"]["MediaServerNotify"];
+            /** @description Plex's `apiKeySet` says whether its token (X-Plex-Token) is stored. */
+            plex: components["schemas"]["MediaServerNotify"];
             email: {
                 enabled: boolean;
                 host: string;
@@ -2891,7 +2893,7 @@ export interface components {
                 secretSet: boolean;
             };
         };
-        /** @description Emby or Jellyfin, told about each new, changed or deleted movie or show folder so it shows up without a full library scan. */
+        /** @description Emby, Jellyfin or Plex, told about each new, changed or deleted movie or show folder so it shows up without a full library scan. */
         MediaServerNotify: {
             enabled: boolean;
             /** @description The server's address, like http://192.168.1.30:8096. */
@@ -2916,6 +2918,8 @@ export interface components {
         NotificationSettingsUpdate: {
             emby: components["schemas"]["MediaServerNotifyUpdate"];
             jellyfin: components["schemas"]["MediaServerNotifyUpdate"];
+            /** @description Plex's `apiKey` is its token (X-Plex-Token). */
+            plex: components["schemas"]["MediaServerNotifyUpdate"];
             email: {
                 enabled: boolean;
                 host: string;
@@ -7205,7 +7209,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    channel: "emby" | "jellyfin" | "email" | "webhook";
+                    channel: "emby" | "jellyfin" | "plex" | "email" | "webhook";
                     settings: components["schemas"]["NotificationSettingsUpdate"];
                 };
             };

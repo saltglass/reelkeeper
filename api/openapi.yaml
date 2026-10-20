@@ -1971,7 +1971,7 @@ paths:
     get:
       tags: [settings]
       operationId: getNotifications
-      summary: Emby, Jellyfin, email and webhook notifications (never the secrets)
+      summary: Emby, Jellyfin, Plex, email and webhook notifications (never the secrets)
       responses:
         "200":
           description: OK
@@ -2012,7 +2012,7 @@ paths:
               type: object
               required: [channel, settings]
               properties:
-                channel: { type: string, enum: [emby, jellyfin, email, webhook] }
+                channel: { type: string, enum: [emby, jellyfin, plex, email, webhook] }
                 settings: { $ref: "#/components/schemas/NotificationSettingsUpdate" }
       responses:
         "200":
@@ -3609,10 +3609,13 @@ components:
 
     NotificationSettings:
       type: object
-      required: [emby, jellyfin, email, webhook]
+      required: [emby, jellyfin, plex, email, webhook]
       properties:
         emby: { $ref: "#/components/schemas/MediaServerNotify" }
         jellyfin: { $ref: "#/components/schemas/MediaServerNotify" }
+        plex:
+          allOf: [{ $ref: "#/components/schemas/MediaServerNotify" }]
+          description: Plex's `apiKeySet` says whether its token (X-Plex-Token) is stored.
         email:
           type: object
           required: [enabled, host, port, username, passwordSet, from, to]
@@ -3634,7 +3637,7 @@ components:
 
     MediaServerNotify:
       type: object
-      description: Emby or Jellyfin, told about each new, changed or deleted movie or show folder so it shows up without a full library scan.
+      description: Emby, Jellyfin or Plex, told about each new, changed or deleted movie or show folder so it shows up without a full library scan.
       required: [enabled, url, apiKeySet, pathFrom, pathTo]
       properties:
         enabled: { type: boolean }
@@ -3655,10 +3658,13 @@ components:
 
     NotificationSettingsUpdate:
       type: object
-      required: [emby, jellyfin, email, webhook]
+      required: [emby, jellyfin, plex, email, webhook]
       properties:
         emby: { $ref: "#/components/schemas/MediaServerNotifyUpdate" }
         jellyfin: { $ref: "#/components/schemas/MediaServerNotifyUpdate" }
+        plex:
+          allOf: [{ $ref: "#/components/schemas/MediaServerNotifyUpdate" }]
+          description: Plex's `apiKey` is its token (X-Plex-Token).
         email:
           type: object
           required: [enabled, host, port, from, to]

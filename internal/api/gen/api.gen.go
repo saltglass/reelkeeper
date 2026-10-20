@@ -1161,6 +1161,7 @@ const (
 	Email    TestNotificationJSONBodyChannel = "email"
 	Emby     TestNotificationJSONBodyChannel = "emby"
 	Jellyfin TestNotificationJSONBodyChannel = "jellyfin"
+	Plex     TestNotificationJSONBodyChannel = "plex"
 	Webhook  TestNotificationJSONBodyChannel = "webhook"
 )
 
@@ -1172,6 +1173,8 @@ func (e TestNotificationJSONBodyChannel) Valid() bool {
 	case Emby:
 		return true
 	case Jellyfin:
+		return true
+	case Plex:
 		return true
 	case Webhook:
 		return true
@@ -2259,7 +2262,7 @@ type MediaFile struct {
 	Video        *MediaVideo     `json:"video,omitempty"`
 }
 
-// MediaServerNotify Emby or Jellyfin, told about each new, changed or deleted movie or show folder so it shows up without a full library scan.
+// MediaServerNotify Emby, Jellyfin or Plex, told about each new, changed or deleted movie or show folder so it shows up without a full library scan.
 type MediaServerNotify struct {
 	ApiKeySet bool `json:"apiKeySet"`
 	Enabled   bool `json:"enabled"`
@@ -2435,12 +2438,15 @@ type NotificationSettings struct {
 		Username string `json:"username"`
 	} `json:"email"`
 
-	// Emby Emby or Jellyfin, told about each new, changed or deleted movie or show folder so it shows up without a full library scan.
+	// Emby Emby, Jellyfin or Plex, told about each new, changed or deleted movie or show folder so it shows up without a full library scan.
 	Emby MediaServerNotify `json:"emby"`
 
-	// Jellyfin Emby or Jellyfin, told about each new, changed or deleted movie or show folder so it shows up without a full library scan.
+	// Jellyfin Emby, Jellyfin or Plex, told about each new, changed or deleted movie or show folder so it shows up without a full library scan.
 	Jellyfin MediaServerNotify `json:"jellyfin"`
-	Webhook  struct {
+
+	// Plex Plex's `apiKeySet` says whether its token (X-Plex-Token) is stored.
+	Plex    MediaServerNotify `json:"plex"`
+	Webhook struct {
 		Enabled   bool   `json:"enabled"`
 		SecretSet bool   `json:"secretSet"`
 		Url       string `json:"url"`
@@ -2462,7 +2468,10 @@ type NotificationSettingsUpdate struct {
 	} `json:"email"`
 	Emby     MediaServerNotifyUpdate `json:"emby"`
 	Jellyfin MediaServerNotifyUpdate `json:"jellyfin"`
-	Webhook  struct {
+
+	// Plex Plex's `apiKey` is its token (X-Plex-Token).
+	Plex    MediaServerNotifyUpdate `json:"plex"`
+	Webhook struct {
 		Enabled bool `json:"enabled"`
 
 		// Secret Leave out to keep the stored secret.
@@ -4588,7 +4597,7 @@ type ServerInterface interface {
 	// PreviewNaming Show what templates produce for sample movies, without saving
 	// (POST /settings/naming/preview)
 	PreviewNaming(w http.ResponseWriter, r *http.Request)
-	// GetNotifications Emby, Jellyfin, email and webhook notifications (never the secrets)
+	// GetNotifications Emby, Jellyfin, Plex, email and webhook notifications (never the secrets)
 	// (GET /settings/notifications)
 	GetNotifications(w http.ResponseWriter, r *http.Request)
 	// PutNotifications Save the notification settings
@@ -5374,7 +5383,7 @@ func (_ Unimplemented) PreviewNaming(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// GetNotifications Emby, Jellyfin, email and webhook notifications (never the secrets)
+// GetNotifications Emby, Jellyfin, Plex, email and webhook notifications (never the secrets)
 // (GET /settings/notifications)
 func (_ Unimplemented) GetNotifications(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)

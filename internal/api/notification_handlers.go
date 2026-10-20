@@ -10,7 +10,7 @@ import (
 
 func toNotifications(n settings.Notifications) gen.NotificationSettings {
 	var out gen.NotificationSettings
-	out.Emby, out.Jellyfin = toMediaServer(n.Emby), toMediaServer(n.Jellyfin)
+	out.Emby, out.Jellyfin, out.Plex = toMediaServer(n.Emby), toMediaServer(n.Jellyfin), toMediaServer(n.Plex)
 	out.Email.Enabled, out.Email.Host, out.Email.Port = n.Email.Enabled, n.Email.Host, n.Email.Port
 	out.Email.Username, out.Email.PasswordSet = n.Email.Username, n.Email.Password != ""
 	out.Email.From, out.Email.To = n.Email.From, n.Email.To
@@ -31,6 +31,7 @@ func fromNotifications(b gen.NotificationSettingsUpdate) settings.NotificationsU
 		Notifications: settings.Notifications{
 			Emby:     fromMediaServer(b.Emby),
 			Jellyfin: fromMediaServer(b.Jellyfin),
+			Plex:     fromMediaServer(b.Plex),
 			Email: settings.EmailNotify{
 				Enabled: b.Email.Enabled, Host: b.Email.Host, Port: b.Email.Port,
 				Username: derefStr(b.Email.Username), From: b.Email.From, To: b.Email.To,
@@ -39,6 +40,7 @@ func fromNotifications(b gen.NotificationSettingsUpdate) settings.NotificationsU
 		},
 		EmbyAPIKey:     b.Emby.ApiKey,
 		JellyfinAPIKey: b.Jellyfin.ApiKey,
+		PlexToken:      b.Plex.ApiKey,
 		EmailPassword:  b.Email.Password,
 		WebhookSecret:  b.Webhook.Secret,
 	}

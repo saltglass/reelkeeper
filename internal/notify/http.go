@@ -36,7 +36,7 @@ func do(req *http.Request) ([]byte, error) {
 func statusError(code int) error {
 	switch code {
 	case http.StatusUnauthorized, http.StatusForbidden:
-		return fmt.Errorf("it answered %d %s; check the API key or secret", code, http.StatusText(code))
+		return fmt.Errorf("it answered %d %s; check the API key, token or secret", code, http.StatusText(code))
 	case http.StatusNotFound:
 		return errors.New("it answered 404 Not Found; check the address")
 	}

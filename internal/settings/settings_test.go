@@ -984,6 +984,51 @@ func TestJellyfinNotificationSettings(t *testing.T) {
 	})
 }
 
+// Plex is a third media server with the same fields; its key is a token,
+// sealed like the others, and its messages say how to find it.
+func TestPlexNotificationSettings(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		svc := newService(t, db, testKey)
+		_, err := svc.SaveNotifications(ctx, settings.NotificationsUpdate{Notifications: settings.Notifications{
+			Plex: settings.MediaServerNotify{Enabled: true, PathFrom: "/media"},
+		}})
+		errs := fieldErrors(t, err)
+		for f, want := range map[string]string{"plex.url": "Plex's address", "plex.apiKey": "X-Plex-Token", "plex.pathTo": "Plex sees"} {
+			if !strings.Contains(errs[f], want) {
+				t.Errorf("%s = %q, want it to mention %q", f, errs[f], want)
+			}
+		}
+		token := "plex-token-123"
+		u := settings.NotificationsUpdate{
+			Notifications: settings.Notifications{Plex: settings.MediaServerNotify{Enabled: true, URL: "http://192.168.1.32:32400/", PathFrom: "/media", PathTo: "/data"}},
+			PlexToken:     &token,
+		}
+		saved, err := svc.SaveNotifications(ctx, u)
+		if err != nil || saved.Plex.URL != "http://192.168.1.32:32400" || saved.Plex.APIKey != token || saved.Emby.Enabled || saved.Jellyfin.Enabled {
+			t.Fatalf("save = %+v, %v", saved, err)
+		}
+		var raw string
+		if err := db.DB.NewRaw("SELECT value FROM settings WHERE key = ?", settings.GroupNotifications).Scan(ctx, &raw); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(raw, token) || !strings.Contains(raw, `"plexTokenSealed":`) {
+			t.Errorf("the token must only be stored encrypted: %s", raw)
+		}
+		u.PlexToken = nil
+		if got, err := newService(t, db, testKey).SaveNotifications(ctx, u); err != nil || got.Plex.APIKey != token {
+			t.Errorf("kept token: %+v, %v", got.Plex, err)
+		}
+		other := newService(t, db, "another-secret-key-0123456789")
+		if _, err := other.SaveNotifications(ctx, u); err != nil {
+			t.Fatalf("a save with an unreadable stored token: %v", err)
+		}
+		if got := newService(t, db, testKey).Notifications(); got.Plex.APIKey != token {
+			t.Errorf("sealed token lost: %+v", got.Plex)
+		}
+	})
+}
+
 func TestNotificationsValidation(t *testing.T) {
 	storetest.Each(t, func(t *testing.T, db *store.Store) {
 		svc := newService(t, db, testKey)

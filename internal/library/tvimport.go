@@ -41,7 +41,7 @@ type EpisodeImportRequest struct {
 type EpisodeImportResult struct {
 	// Imported are the new files, relative to their media folder.
 	Imported []string
-	// FullPaths are the same with the media folder (for Emby and Jellyfin).
+	// FullPaths are the same with the media folder (for the media servers).
 	FullPaths []string
 	// Skipped explains files that weren't imported on purpose (an episode
 	// that already has a file, one the download wasn't for).

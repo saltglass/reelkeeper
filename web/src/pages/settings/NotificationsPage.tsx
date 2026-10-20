@@ -18,7 +18,7 @@ import { PageHeader } from "@/pages/PageHeader";
 import { BusyLabel } from "./BusyLabel";
 import { SaveBar } from "./SaveBar";
 
-type Server = "emby" | "jellyfin";
+type Server = "emby" | "jellyfin" | "plex";
 type Channel = Server | "email" | "webhook";
 
 type ServerForm = {
@@ -33,6 +33,7 @@ type ServerForm = {
 type Form = {
   emby: ServerForm;
   jellyfin: ServerForm;
+  plex: ServerForm;
   email: {
     enabled: boolean;
     host: string;
@@ -65,6 +66,7 @@ function toBody(f: Form): NotificationSettingsUpdate {
   return {
     emby: serverBody(f.emby),
     jellyfin: serverBody(f.jellyfin),
+    plex: serverBody(f.plex),
     email: {
       enabled: f.email.enabled,
       host: f.email.host,
@@ -163,21 +165,44 @@ function ChannelCard({
   );
 }
 
-/** What differs between the Emby and Jellyfin cards. */
-const servers: Record<Server, { name: string; keyHelp: string; pathExample: string }> = {
+/** What differs between the media server cards. */
+const servers: Record<
+  Server,
+  {
+    name: string;
+    keyLabel: string;
+    keyHelp: string;
+    port: number;
+    pathExample: string;
+    note?: string;
+  }
+> = {
   emby: {
     name: "Emby",
+    keyLabel: "API key",
     keyHelp: "Create one in Emby under Dashboard → Advanced → API Keys.",
+    port: 8096,
     pathExample: "/Volumes/Media",
   },
   jellyfin: {
     name: "Jellyfin",
+    keyLabel: "API key",
     keyHelp: "Create one in Jellyfin under Dashboard → API Keys.",
+    port: 8096,
     pathExample: "/data/media",
+  },
+  plex: {
+    name: "Plex",
+    keyLabel: "Token",
+    keyHelp:
+      "Your Plex token. In Plex Web, open any movie's ⋯ menu → Get Info → View XML, and copy what follows X-Plex-Token= in the new tab's address.",
+    port: 32400,
+    pathExample: "/data",
+    note: 'Reelkeeper asks Plex to scan just the changed folder, in the Plex library that holds it; Test lists your libraries and any media folder none of them holds. A deleted or renamed movie leaves Plex only while its Settings → Library → "Empty trash automatically after every scan" is on (the default).',
   },
 };
 
-/** The card for Emby or Jellyfin: the same fields, told about the same events. */
+/** The card for Emby, Jellyfin or Plex: the same fields, told about the same events. */
 function MediaServerCard({
   server,
   form,
@@ -193,7 +218,7 @@ function MediaServerCard({
   body: NotificationSettingsUpdate;
   onChange: (patch: Partial<ServerForm>) => void;
 }) {
-  const { name, keyHelp, pathExample } = servers[server];
+  const { name, keyLabel, keyHelp, port, pathExample, note } = servers[server];
   return (
     <ChannelCard
       id={server}
@@ -205,22 +230,27 @@ function MediaServerCard({
       <Field
         id={`${server}-url`}
         label={`${name} address`}
-        help="Include the port, like http://192.168.1.30:8096."
+        help={`Include the port, like http://192.168.1.30:${port}.`}
         error={errors[`${server}.url`]}
       >
         <Input
           id={`${server}-url`}
           inputMode="url"
           autoComplete="off"
-          placeholder="http://192.168.1.30:8096"
+          placeholder={`http://192.168.1.30:${port}`}
           value={form.url}
           onChange={(e) => onChange({ url: e.target.value })}
         />
       </Field>
-      <Field id={`${server}-key`} label="API key" help={keyHelp} error={errors[`${server}.apiKey`]}>
+      <Field
+        id={`${server}-key`}
+        label={keyLabel}
+        help={keyHelp}
+        error={errors[`${server}.apiKey`]}
+      >
         <Input
           id={`${server}-key`}
-          aria-label={`${name} API key`}
+          aria-label={`${name} ${keyLabel}`}
           type="password"
           autoComplete="new-password"
           placeholder={keySet ? "Saved — leave empty to keep it" : ""}
@@ -258,6 +288,7 @@ function MediaServerCard({
         own container), Reelkeeper's /media becomes {name}'s {pathExample}. Leave both empty if the
         paths are the same.
       </p>
+      {note && <p className="text-sm text-muted-foreground">{note}</p>}
       <TestButton channel={server} body={body} disabled={!form.url} />
     </ChannelCard>
   );
@@ -271,6 +302,7 @@ export function NotificationsPage() {
       data && {
         emby: { ...data.emby, apiKey: "" },
         jellyfin: { ...data.jellyfin, apiKey: "" },
+        plex: { ...data.plex, apiKey: "" },
         email: {
           enabled: data.email.enabled,
           host: data.email.host,
@@ -300,6 +332,7 @@ export function NotificationsPage() {
         commit({
           emby: { ...saved.emby, apiKey: "" },
           jellyfin: { ...saved.jellyfin, apiKey: "" },
+          plex: { ...saved.plex, apiKey: "" },
           email: { ...saved.email, port: String(saved.email.port), password: "" },
           webhook: { ...saved.webhook, secret: "" },
         }),
@@ -313,14 +346,14 @@ export function NotificationsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Notifications"
-        description="Tell Emby or Jellyfin about changes, and get told about problems."
+        description="Tell Emby, Jellyfin or Plex about changes, and get told about problems."
       />
       {/* noValidate: Reelkeeper checks the addresses and shows its own messages;
           the browser's checks would block Save with a popup instead. */}
       <form onSubmit={submit} noValidate className="space-y-6">
         {err && !Object.keys(fe).length && <Alert variant="error">{err.message}</Alert>}
 
-        {(["emby", "jellyfin"] as const).map((server) => (
+        {(["emby", "jellyfin", "plex"] as const).map((server) => (
           <MediaServerCard
             key={server}
             server={server}

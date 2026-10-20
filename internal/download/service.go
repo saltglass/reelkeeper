@@ -169,7 +169,7 @@ type Service struct {
 
 	syncMu sync.Mutex // one check (and import) at a time
 
-	// notify tells Emby, Jellyfin, email and webhooks what happened (SetNotifier).
+	// notify tells the media servers, email and webhooks what happened (SetNotifier).
 	notify func(ctx context.Context, ev notify.Event)
 	// clientFailures counts checks in a row that couldn't reach the
 	// download client.

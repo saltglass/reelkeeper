@@ -16,6 +16,7 @@ const GroupNotifications = "notifications"
 const (
 	notifyEmbyKey      = "notifications.emby.apiKey"
 	notifyJellyfinKey  = "notifications.jellyfin.apiKey"
+	notifyPlexToken    = "notifications.plex.token"
 	notifyEmailPass    = "notifications.email.password"
 	notifyWebhookToken = "notifications.webhook.secret"
 )
@@ -25,12 +26,14 @@ const (
 type Notifications struct {
 	Emby     MediaServerNotify `json:"emby"`
 	Jellyfin MediaServerNotify `json:"jellyfin"`
-	Email    EmailNotify       `json:"email"`
-	Webhook  WebhookNotify     `json:"webhook"`
+	// Plex uses the same fields; its APIKey is the server's X-Plex-Token.
+	Plex    MediaServerNotify `json:"plex"`
+	Email   EmailNotify       `json:"email"`
+	Webhook WebhookNotify     `json:"webhook"`
 }
 
-// MediaServerNotify tells a media server (Emby or Jellyfin, which share the
-// call) about new, changed and deleted movie and show folders.
+// MediaServerNotify tells a media server (Emby, Jellyfin or Plex) about new,
+// changed and deleted movie and show folders.
 type MediaServerNotify struct {
 	Enabled bool   `json:"enabled"`
 	URL     string `json:"url"`
@@ -66,6 +69,7 @@ type storedNotifications struct {
 	Notifications
 	EmbyKeySealed       string `json:"embyApiKeySealed"`
 	JellyfinKeySealed   string `json:"jellyfinApiKeySealed,omitempty"`
+	PlexTokenSealed     string `json:"plexTokenSealed,omitempty"`
 	EmailPasswordSealed string `json:"emailPasswordSealed"`
 	WebhookSecretSealed string `json:"webhookSecretSealed"`
 }
@@ -77,6 +81,7 @@ type NotificationsUpdate struct {
 	Notifications
 	EmbyAPIKey     *string
 	JellyfinAPIKey *string
+	PlexToken      *string
 	EmailPassword  *string
 	WebhookSecret  *string
 }
@@ -104,7 +109,7 @@ func (s *Service) ApplyNotifications(u NotificationsUpdate) (Notifications, erro
 }
 
 // ApplyNotificationsFor is ApplyNotifications for testing one channel
-// ("emby", "jellyfin", "email" or "webhook") before saving: only that channel's fields
+// ("emby", "jellyfin", "plex", "email" or "webhook") before saving: only that channel's fields
 // must be valid, so a half-filled email section doesn't stop an Emby test.
 func (s *Service) ApplyNotificationsFor(u NotificationsUpdate, channel string) (Notifications, error) {
 	next, errs := s.applyNotifications(u)
@@ -125,11 +130,13 @@ func (s *Service) applyNotifications(u NotificationsUpdate) (Notifications, vali
 	cur := s.notifications
 	embyKeyKept := s.sealedKeep[notifyEmbyKey] != ""
 	jellyfinKeyKept := s.sealedKeep[notifyJellyfinKey] != ""
+	plexTokenKept := s.sealedKeep[notifyPlexToken] != ""
 	s.mu.RUnlock()
 
 	next := u.Notifications
 	tidyMediaServer(&next.Emby, cur.Emby.APIKey, u.EmbyAPIKey)
 	tidyMediaServer(&next.Jellyfin, cur.Jellyfin.APIKey, u.JellyfinAPIKey)
+	tidyMediaServer(&next.Plex, cur.Plex.APIKey, u.PlexToken)
 	e := &next.Email
 	e.Host = strings.TrimSpace(e.Host)
 	e.Username = strings.TrimSpace(e.Username)
@@ -156,14 +163,14 @@ func (s *Service) applyNotifications(u NotificationsUpdate) (Notifications, vali
 		}
 	}
 
-	checkMediaServer := func(prefix, name, keyWhere string, c MediaServerNotify, keyKept, keyTyped bool) {
+	checkMediaServer := func(prefix, name, keyAsk string, c MediaServerNotify, keyKept, keyTyped bool) {
 		if c.URL != "" {
 			validURL(prefix+".url", c.URL)
 		} else if c.Enabled {
 			errs.Add(prefix+".url", "Enter "+name+"'s address, like http://192.168.1.30:8096.")
 		}
 		if c.Enabled && c.APIKey == "" && (!keyKept || keyTyped) {
-			errs.Add(prefix+".apiKey", "Enter a "+name+" API key ("+keyWhere+").")
+			errs.Add(prefix+".apiKey", keyAsk)
 		}
 		if (c.PathFrom == "") != (c.PathTo == "") {
 			errs.Add(prefix+".pathTo", "Fill in both paths, or leave both empty if "+name+" sees the same paths as Reelkeeper.")
@@ -174,8 +181,9 @@ func (s *Service) applyNotifications(u NotificationsUpdate) (Notifications, vali
 			}
 		}
 	}
-	checkMediaServer("emby", "Emby", "Emby dashboard → Advanced → API Keys", next.Emby, embyKeyKept, u.EmbyAPIKey != nil)
-	checkMediaServer("jellyfin", "Jellyfin", "Jellyfin dashboard → API Keys", next.Jellyfin, jellyfinKeyKept, u.JellyfinAPIKey != nil)
+	checkMediaServer("emby", "Emby", "Enter an Emby API key (Emby dashboard → Advanced → API Keys).", next.Emby, embyKeyKept, u.EmbyAPIKey != nil)
+	checkMediaServer("jellyfin", "Jellyfin", "Enter a Jellyfin API key (Jellyfin dashboard → API Keys).", next.Jellyfin, jellyfinKeyKept, u.JellyfinAPIKey != nil)
+	checkMediaServer("plex", "Plex", "Enter your Plex token (in Plex Web: an item's ⋯ → Get Info → View XML; it's the X-Plex-Token in the address).", next.Plex, plexTokenKept, u.PlexToken != nil)
 
 	if e.Port < 1 || e.Port > 65535 {
 		errs.Add("email.port", "Use a port from 1 to 65535 (587 is usual).")
@@ -228,6 +236,9 @@ func (s *Service) SaveNotifications(ctx context.Context, u NotificationsUpdate) 
 	if u.JellyfinAPIKey != nil {
 		delete(s.sealedKeep, notifyJellyfinKey)
 	}
+	if u.PlexToken != nil {
+		delete(s.sealedKeep, notifyPlexToken)
+	}
 	if u.EmailPassword != nil {
 		delete(s.sealedKeep, notifyEmailPass)
 	}
@@ -241,6 +252,7 @@ func (s *Service) SaveNotifications(ctx context.Context, u NotificationsUpdate) 
 	}{
 		{notifyEmbyKey, next.Emby.APIKey, &stored.EmbyKeySealed},
 		{notifyJellyfinKey, next.Jellyfin.APIKey, &stored.JellyfinKeySealed},
+		{notifyPlexToken, next.Plex.APIKey, &stored.PlexTokenSealed},
 		{notifyEmailPass, next.Email.Password, &stored.EmailPasswordSealed},
 		{notifyWebhookToken, next.Webhook.Secret, &stored.WebhookSecretSealed},
 	} {
@@ -272,6 +284,7 @@ func (s *Service) loadNotifications(ctx context.Context) error {
 	n := stored.Notifications
 	n.Emby.APIKey = s.openSecret(notifyEmbyKey, stored.EmbyKeySealed)
 	n.Jellyfin.APIKey = s.openSecret(notifyJellyfinKey, stored.JellyfinKeySealed)
+	n.Plex.APIKey = s.openSecret(notifyPlexToken, stored.PlexTokenSealed)
 	n.Email.Password = s.openSecret(notifyEmailPass, stored.EmailPasswordSealed)
 	n.Webhook.Secret = s.openSecret(notifyWebhookToken, stored.WebhookSecretSealed)
 	s.notifications = n

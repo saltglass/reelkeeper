@@ -53,7 +53,7 @@ type Deps struct {
 	Migrate *migrate.Service
 	// Backups makes, lists and restores Reelkeeper's own backups.
 	Backups *backup.Service
-	// Notify sends Emby, Jellyfin, email and webhook notifications.
+	// Notify sends Emby, Jellyfin, Plex, email and webhook notifications.
 	Notify *notify.Service
 	// TMDBBaseURL and ImageBaseURL override TMDB's addresses (tests use
 	// fakes); empty means the real ones.

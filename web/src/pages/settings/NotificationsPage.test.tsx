@@ -15,6 +15,7 @@ const saved = {
     pathTo: "/Volumes/Media",
   },
   jellyfin: { enabled: false, url: "", apiKeySet: false, pathFrom: "", pathTo: "" },
+  plex: { enabled: false, url: "", apiKeySet: false, pathFrom: "", pathTo: "" },
   email: {
     enabled: false,
     host: "",
@@ -153,6 +154,31 @@ describe("notification settings", () => {
       url: "http://192.168.1.30:8096",
       pathFrom: "/media",
       pathTo: "/Volumes/Media",
+    });
+  });
+
+  it("has a Plex card asking for a token, with Plex's port", async () => {
+    const { puts, tests } = open();
+    const url = await screen.findByLabelText("Plex address");
+    expect(url).toHaveAttribute("placeholder", "http://192.168.1.30:32400");
+    expect(screen.getByText(/X-Plex-Token=/)).toBeInTheDocument();
+    expect(screen.getByText(/Empty trash automatically after every scan/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("switch", { name: "Plex enabled" }));
+    await userEvent.type(url, "http://plex:32400");
+    await userEvent.type(screen.getByLabelText("Plex Token"), "plex-token");
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Test" })[2] as HTMLElement);
+    await vi.waitFor(() => expect(tests).toHaveLength(1));
+    expect(tests[0]?.channel).toBe("plex");
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(puts).toHaveLength(1));
+    expect(puts[0]?.plex).toEqual({
+      enabled: true,
+      url: "http://plex:32400",
+      apiKey: "plex-token",
+      pathFrom: "",
+      pathTo: "",
     });
   });
 

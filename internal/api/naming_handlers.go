@@ -109,7 +109,8 @@ func (h *Handlers) RenameMovie(w http.ResponseWriter, r *http.Request, id int64)
 	writeJSON(w, http.StatusOK, toRenames(plan))
 }
 
-// tellRenamed lets Emby and Jellyfin know a title's files were renamed.
+// tellRenamed lets the media servers (Emby, Jellyfin, Plex) know a title's
+// files were renamed.
 func (h *Handlers) tellRenamed(r *http.Request, titleID int64, plan []library.VersionRename) {
 	if h.Notify == nil {
 		return

@@ -400,6 +400,14 @@ func openApp(ctx context.Context, cfg config.Config, logger *slog.Logger, servin
 	gr.SetDownloads(dl, dl)
 	dl.SetWantedTitles(gr.WantedTitleIDs)
 	nt := notify.New(st.Notifications, logger)
+	nt.SetMediaFolders(func(ctx context.Context) ([]string, error) {
+		rfs, err := lib.RootFolders(ctx)
+		paths := make([]string, len(rfs))
+		for i, rf := range rfs {
+			paths[i] = rf.Path
+		}
+		return paths, err
+	})
 	dl.SetNotifier(nt.Notify)
 	gr.SetNotifier(nt.Notify)
 	idx.SetNotifier(nt.Notify)

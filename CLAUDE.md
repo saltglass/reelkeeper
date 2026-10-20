@@ -68,7 +68,6 @@ all mediocre" app.
 - Import lists (Trakt/IMDb)
 - Multiple users with roles
 - Telegram notifications (Dan, 2026-10-09).
-- Plex library updates, like Emby's and Jellyfin's (planned for 2.0).
 - Interactive (user-driven) search. Seerr already does this well (Dan,
   2026-10-08); Reelkeeper searches automatically. The search engine exists for
   that; only the screens are left out.
@@ -182,7 +181,8 @@ together.
 - `internal/auth/`: sessions, local users, OIDC, API keys, bypass rules
 - `internal/jobs/`: persisted command queue and scheduler (survives restarts;
   visible under System → Tasks)
-- `internal/notify/`: Emby and Jellyfin (one sender, `mediaServer`), email, webhook
+- `internal/notify/`: Emby and Jellyfin (one sender, `mediaServer`), Plex
+  (`plex.go`), email, webhook
 - `internal/store/`: DB access; `migrations/sqlite/` and `migrations/postgres/`
 - `web/`: React app
 - `testdata/`: release names, recorded indexer responses, and golden
@@ -548,8 +548,7 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
 
 Ask Dan, then update this file once each is settled.
 
-- **Usenet, anime and Plex:** not in 1.x; 2.0, each from a plan Dan
-  approves.
+- **Usenet and anime:** not in 1.x; 2.0, each from a plan Dan approves.
 
 ## Roadmap
 
@@ -574,11 +573,14 @@ previous one is half-done.
     the key in `Authorization: MediaBrowser Token="…"`, because Jellyfin
     10.11 can refuse Emby's legacy `X-Emby-Token` and newer versions do by
     default. Never switch it back to the legacy header.
-  - **Plex:** the same job Emby and Jellyfin do: after an import, delete or
-    rename, tell the media server which folder changed (with the same path
-    translation), so it shows up without a full library scan, plus a Test
-    button. Plex needs its own client: find
-    the library section that holds the folder, then ask for a partial scan
-    of that folder with the server's token. Naming and scanning already
-    follow Jellyfin's and Plex's conventions (multi-version names, Plex
-    edition tags, "Plex Versions" folders skipped).
+  - **Plex: done** (2026-10-20, on `main`). Its own card (address, token,
+    the two paths). Plex's scan needs the library ("section") number, so
+    `notify/plex.go` lists `/library/sections` (JSON) and asks the library
+    whose folder holds the changed folder (the longest match) to scan just
+    that folder (`/library/sections/{key}/refresh?path=`). The token goes
+    in the `X-Plex-Token` header, never the address. Test lists the
+    libraries and any media folder no library holds (an error when none
+    is held). The token is pasted by hand; **"Sign in with Plex" (plex.tv's
+    PIN flow) is shelved**: Dan doesn't want a dependency on plex.tv
+    (2026-10-20). Naming and scanning already follow Plex's conventions
+    (Plex edition tags, "Plex Versions" folders skipped).

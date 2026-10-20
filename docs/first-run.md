@@ -371,6 +371,14 @@ All optional. Reelkeeper can tell:
   Jellyfin after about a minute, but a renamed one can take a few minutes:
   Jellyfin drops the old name after a minute, then rechecks the whole
   library folder before the new name appears.
+- **Plex** (from 2.0): the same, for Plex. Enter its address (port 32400)
+  and your Plex token: in Plex Web, open any movie's ⋯ menu → Get Info →
+  View XML, and copy what follows `X-Plex-Token=` in the new tab's address.
+  Plex scans only the changed folder, in the Plex library that holds it, so
+  each media folder must be in a Plex library; the test button lists your
+  libraries and any media folder none of them holds. A deleted or renamed
+  movie leaves Plex only while its "Empty trash automatically after every
+  scan" setting (Settings → Library) is on, which it is by default.
 - **Email**: problems only (failed imports, stuck downloads it removed, an
   indexer failing for a day, qBittorrent unreachable). Enter your mail
   server's details and press the test button.
