@@ -355,12 +355,12 @@ Files replaced by an upgrade are not deleted at once. They go into a hidden
 `.reelkeeper-replaced` folder inside the media folder and are emptied after 30
 days (0 keeps them forever).
 
-## 8. Notifications (Settings → Notifications)
+## 8. Media servers (Settings → Media servers)
 
-All optional. Reelkeeper can tell:
+All optional. Reelkeeper can tell your media server about each change, so
+it appears there without a full library scan:
 
-- **Emby**: about each new or changed movie folder, so it appears without a
-  full library scan. Enter Emby's address and an API key (Emby: Dashboard →
+- **Emby**: enter Emby's address and an API key (Emby: Dashboard →
   Advanced → API Keys). If Emby sees the same folders at different paths than
   Reelkeeper does, fill in "Reelkeeper's path" and "Emby's path" to translate
   between them.
@@ -379,6 +379,13 @@ All optional. Reelkeeper can tell:
   libraries and any media folder none of them holds. A deleted or renamed
   movie leaves Plex only while its "Empty trash automatically after every
   scan" setting (Settings → Library) is on, which it is by default.
+
+Each has a Test button.
+
+## 9. Notifications (Settings → Notifications)
+
+All optional. Reelkeeper can send:
+
 - **Email**: problems only (failed imports, stuck downloads it removed, an
   indexer failing for a day, qBittorrent unreachable). Enter your mail
   server's details and press the test button.
@@ -387,7 +394,7 @@ All optional. Reelkeeper can tell:
 
 Each has a Test button.
 
-## 9. Add your movies and shows
+## 10. Add your movies and shows
 
 Open Movies or Series in the sidebar. Whatever Reelkeeper found by scanning
 your folders is already there. To have it look for something new, add it with

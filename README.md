@@ -143,7 +143,8 @@ does the same job, and uses the fact that everything lives together:
   Works behind a reverse proxy with a URL base.
 - Built-in **backups** on a schedule, with restore, which also moves an
   install between SQLite and PostgreSQL.
-- Notifications: Emby library refresh (and Jellyfin and Plex, from 2.0), email and webhooks.
+- Media servers: Emby library refresh (and Jellyfin and Plex, from 2.0).
+- Notifications: email and webhooks.
 - Light and dark themes, usable on a phone, live updates without reloading.
 
 ## Screenshots

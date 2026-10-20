@@ -409,7 +409,12 @@ These mirror Radarr's options, but cleaner:
   - Wanted
   - Activity: Queue, History, Seeding & cleanup
   - Settings: Media Folders, Quality Profiles, Indexers, Download Client, Cleanup,
-    Notifications, Security, General
+    Media servers, Notifications, General, Security
+  - Media servers (Emby, Jellyfin, Plex) and Notifications (email, webhook)
+    are two pages over one setting: the API, storage and backups still call
+    all five "notifications" (`/settings/notifications`). Each page sends its
+    own cards as edited and the other page's as saved
+    (`NotificationParts.tsx`). Split 2026-10-20 (Dan).
   - System: Status, Tasks, Logs, Backups, Blocklist
 - **Branding:** the Gryphon palette (near-black `#07060b`, violet `#8b5cf6` →
   cyan `#22d3ee`) through theme tokens, so a public release can be rebranded.
@@ -568,7 +573,7 @@ previous one is half-done.
   anime, and Jellyfin and Plex next to Emby (Dan, 2026-10-16), each from a
   plan Dan approves. Other torrent clients only if users ask for them.
   - **Jellyfin: done** (2026-10-19, on `main`). Its own card next to
-    Emby's in Settings → Notifications (both can be on), sharing Emby's
+    Emby's in Settings → Media servers (both can be on), sharing Emby's
     sender: the same "media updated" call without the `/emby` prefix, and
     the key in `Authorization: MediaBrowser Token="…"`, because Jellyfin
     10.11 can refuse Emby's legacy `X-Emby-Token` and newer versions do by

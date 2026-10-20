@@ -1,39 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
-import { type FormEvent, type ReactNode, useEffect, useMemo } from "react";
+import { type FormEvent, useMemo } from "react";
 import { RequestError } from "@/api/client";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { useDraft } from "@/hooks/draft";
 import {
+  type NotificationSettings,
   type NotificationSettingsUpdate,
   notificationsQuery,
   useSaveNotifications,
-  useTestNotification,
 } from "@/hooks/notifications";
 import { PageHeader } from "@/pages/PageHeader";
-import { BusyLabel } from "./BusyLabel";
+import { ChannelCard, pageError, savedBody, TestButton } from "./NotificationParts";
 import { SaveBar } from "./SaveBar";
 
-type Server = "emby" | "jellyfin" | "plex";
-type Channel = Server | "email" | "webhook";
-
-type ServerForm = {
-  enabled: boolean;
-  url: string;
-  apiKey: string;
-  pathFrom: string;
-  pathTo: string;
-};
+// Emby, Jellyfin and Plex are on the Media servers page.
+const channels = ["email", "webhook"] as const;
 
 /** The form's values. Secrets start empty: the server never sends them. */
 type Form = {
-  emby: ServerForm;
-  jellyfin: ServerForm;
-  plex: ServerForm;
   email: {
     enabled: boolean;
     host: string;
@@ -50,23 +36,26 @@ function same(a: Form, b: Form) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-function serverBody(f: ServerForm): NotificationSettingsUpdate["emby"] {
+function toForm(d: NotificationSettings): Form {
   return {
-    enabled: f.enabled,
-    url: f.url,
-    pathFrom: f.pathFrom,
-    pathTo: f.pathTo,
-    ...(f.apiKey ? { apiKey: f.apiKey } : {}),
+    email: {
+      enabled: d.email.enabled,
+      host: d.email.host,
+      port: String(d.email.port),
+      username: d.email.username,
+      password: "",
+      from: d.email.from,
+      to: d.email.to,
+    },
+    webhook: { enabled: d.webhook.enabled, url: d.webhook.url, secret: "" },
   };
 }
 
 /** What the API takes: a secret is sent only if it was typed (otherwise the stored one is kept). */
-function toBody(f: Form): NotificationSettingsUpdate {
+function toBody(f: Form, saved: NotificationSettings): NotificationSettingsUpdate {
   const port = Number.parseInt(f.email.port, 10);
   return {
-    emby: serverBody(f.emby),
-    jellyfin: serverBody(f.jellyfin),
-    plex: serverBody(f.plex),
+    ...savedBody(saved),
     email: {
       enabled: f.email.enabled,
       host: f.email.host,
@@ -84,238 +73,10 @@ function toBody(f: Form): NotificationSettingsUpdate {
   };
 }
 
-function TestButton({
-  channel,
-  body,
-  disabled,
-}: {
-  channel: Channel;
-  body: NotificationSettingsUpdate;
-  disabled: boolean;
-}) {
-  const test = useTestNotification();
-  const err = test.error instanceof RequestError ? test.error : undefined;
-  // Editing the form makes an earlier result stale.
-  const { reset } = test;
-  const values = JSON.stringify(body);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: clear the result when the values change
-  useEffect(() => reset(), [values, reset]);
-  return (
-    <div className="space-y-2" aria-live="polite">
-      <Button
-        type="button"
-        variant="outline"
-        disabled={test.isPending || disabled}
-        onClick={() => test.mutate({ channel, settings: body })}
-      >
-        <BusyLabel busy={test.isPending} ok={Boolean(test.data)}>
-          {test.isPending ? "Testing…" : "Test"}
-        </BusyLabel>
-      </Button>
-      {test.data && <Alert variant="success">{test.data.message}</Alert>}
-      {err && (
-        <Alert variant="error">
-          {Object.entries(err.fields).find(([field]) => field.startsWith(`${channel}.`))?.[1] ??
-            err.message}
-        </Alert>
-      )}
-    </div>
-  );
-}
-
-function ChannelCard({
-  id,
-  title,
-  description,
-  enabled,
-  onEnabled,
-  children,
-}: {
-  id: string;
-  title: string;
-  description: string;
-  enabled: boolean;
-  onEnabled: (v: boolean) => void;
-  children: ReactNode;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1 basis-64 space-y-1">
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </div>
-        <label
-          htmlFor={`${id}-enabled`}
-          className="flex cursor-pointer items-center gap-2 text-sm font-medium"
-        >
-          <span className={enabled ? "text-foreground" : "text-muted-foreground"}>
-            {enabled ? "On" : "Off"}
-          </span>
-          <Switch
-            id={`${id}-enabled`}
-            aria-label={`${title} enabled`}
-            checked={enabled}
-            onCheckedChange={onEnabled}
-          />
-        </label>
-      </CardHeader>
-      <CardContent className="space-y-5">{children}</CardContent>
-    </Card>
-  );
-}
-
-/** What differs between the media server cards. */
-const servers: Record<
-  Server,
-  {
-    name: string;
-    keyLabel: string;
-    keyHelp: string;
-    port: number;
-    pathExample: string;
-    note?: string;
-  }
-> = {
-  emby: {
-    name: "Emby",
-    keyLabel: "API key",
-    keyHelp: "Create one in Emby under Dashboard → Advanced → API Keys.",
-    port: 8096,
-    pathExample: "/Volumes/Media",
-  },
-  jellyfin: {
-    name: "Jellyfin",
-    keyLabel: "API key",
-    keyHelp: "Create one in Jellyfin under Dashboard → API Keys.",
-    port: 8096,
-    pathExample: "/data/media",
-  },
-  plex: {
-    name: "Plex",
-    keyLabel: "Token",
-    keyHelp:
-      "Your Plex token. In Plex Web, open any movie's ⋯ menu → Get Info → View XML, and copy what follows X-Plex-Token= in the new tab's address.",
-    port: 32400,
-    pathExample: "/data",
-    note: 'Reelkeeper asks Plex to scan just the changed folder, in the Plex library that holds it; Test lists your libraries and any media folder none of them holds. A deleted or renamed movie leaves Plex only while its Settings → Library → "Empty trash automatically after every scan" is on (the default).',
-  },
-};
-
-/** The card for Emby, Jellyfin or Plex: the same fields, told about the same events. */
-function MediaServerCard({
-  server,
-  form,
-  keySet,
-  errors,
-  body,
-  onChange,
-}: {
-  server: Server;
-  form: ServerForm;
-  keySet: boolean;
-  errors: Record<string, string>;
-  body: NotificationSettingsUpdate;
-  onChange: (patch: Partial<ServerForm>) => void;
-}) {
-  const { name, keyLabel, keyHelp, port, pathExample, note } = servers[server];
-  return (
-    <ChannelCard
-      id={server}
-      title={name}
-      description={`Reelkeeper tells ${name} about each new or changed movie or show folder, so it appears without a full library scan.`}
-      enabled={form.enabled}
-      onEnabled={(v) => onChange({ enabled: v })}
-    >
-      <Field
-        id={`${server}-url`}
-        label={`${name} address`}
-        help={`Include the port, like http://192.168.1.30:${port}.`}
-        error={errors[`${server}.url`]}
-      >
-        <Input
-          id={`${server}-url`}
-          inputMode="url"
-          autoComplete="off"
-          placeholder={`http://192.168.1.30:${port}`}
-          value={form.url}
-          onChange={(e) => onChange({ url: e.target.value })}
-        />
-      </Field>
-      <Field
-        id={`${server}-key`}
-        label={keyLabel}
-        help={keyHelp}
-        error={errors[`${server}.apiKey`]}
-      >
-        <Input
-          id={`${server}-key`}
-          aria-label={`${name} ${keyLabel}`}
-          type="password"
-          autoComplete="new-password"
-          placeholder={keySet ? "Saved — leave empty to keep it" : ""}
-          value={form.apiKey}
-          onChange={(e) => onChange({ apiKey: e.target.value })}
-        />
-      </Field>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field
-          id={`${server}-path-from`}
-          label="Reelkeeper's path"
-          error={errors[`${server}.pathFrom`]}
-        >
-          <Input
-            id={`${server}-path-from`}
-            aria-label={`Reelkeeper's path for ${name}`}
-            autoComplete="off"
-            placeholder="/media"
-            value={form.pathFrom}
-            onChange={(e) => onChange({ pathFrom: e.target.value })}
-          />
-        </Field>
-        <Field id={`${server}-path-to`} label={`${name}'s path`} error={errors[`${server}.pathTo`]}>
-          <Input
-            id={`${server}-path-to`}
-            autoComplete="off"
-            placeholder={pathExample}
-            value={form.pathTo}
-            onChange={(e) => onChange({ pathTo: e.target.value })}
-          />
-        </Field>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        If {name} sees your media under a different path (for example on another computer, or in its
-        own container), Reelkeeper's /media becomes {name}'s {pathExample}. Leave both empty if the
-        paths are the same.
-      </p>
-      {note && <p className="text-sm text-muted-foreground">{note}</p>}
-      <TestButton channel={server} body={body} disabled={!form.url} />
-    </ChannelCard>
-  );
-}
-
 export function NotificationsPage() {
   const { data, error } = useQuery(notificationsQuery);
   const save = useSaveNotifications();
-  const initial = useMemo<Form | undefined>(
-    () =>
-      data && {
-        emby: { ...data.emby, apiKey: "" },
-        jellyfin: { ...data.jellyfin, apiKey: "" },
-        plex: { ...data.plex, apiKey: "" },
-        email: {
-          enabled: data.email.enabled,
-          host: data.email.host,
-          port: String(data.email.port),
-          username: data.email.username,
-          password: "",
-          from: data.email.from,
-          to: data.email.to,
-        },
-        webhook: { enabled: data.webhook.enabled, url: data.webhook.url, secret: "" },
-      },
-    [data],
-  );
+  const initial = useMemo(() => data && toForm(data), [data]);
   const { draft: form, setDraft, dirty, reset, commit } = useDraft(initial, same);
 
   if (error) return <Alert variant="error">Couldn't load settings: {error.message}</Alert>;
@@ -323,20 +84,12 @@ export function NotificationsPage() {
 
   const err = save.error instanceof RequestError ? save.error : undefined;
   const fe = err?.fields ?? {};
-  const body = toBody(form);
+  const message = pageError(err, channels);
+  const body = toBody(form, data);
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    save.mutate(body, {
-      onSuccess: (saved) =>
-        commit({
-          emby: { ...saved.emby, apiKey: "" },
-          jellyfin: { ...saved.jellyfin, apiKey: "" },
-          plex: { ...saved.plex, apiKey: "" },
-          email: { ...saved.email, port: String(saved.email.port), password: "" },
-          webhook: { ...saved.webhook, secret: "" },
-        }),
-    });
+    save.mutate(body, { onSuccess: (saved) => commit(toForm(saved)) });
   }
 
   const set = <K extends keyof Form>(k: K, patch: Partial<Form[K]>) =>
@@ -346,24 +99,12 @@ export function NotificationsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Notifications"
-        description="Tell Emby, Jellyfin or Plex about changes, and get told about problems."
+        description="Get told about problems, or send every event to other tools."
       />
       {/* noValidate: Reelkeeper checks the addresses and shows its own messages;
           the browser's checks would block Save with a popup instead. */}
       <form onSubmit={submit} noValidate className="space-y-6">
-        {err && !Object.keys(fe).length && <Alert variant="error">{err.message}</Alert>}
-
-        {(["emby", "jellyfin", "plex"] as const).map((server) => (
-          <MediaServerCard
-            key={server}
-            server={server}
-            form={form[server]}
-            keySet={data[server].apiKeySet}
-            errors={fe}
-            body={body}
-            onChange={(patch) => set(server, patch)}
-          />
-        ))}
+        {message && <Alert variant="error">{message}</Alert>}
 
         <ChannelCard
           id="email"

@@ -27,6 +27,7 @@ import { ImportRadarrPage } from "@/pages/settings/ImportRadarrPage";
 import { ImportSonarrPage } from "@/pages/settings/ImportSonarrPage";
 import { IndexersPage } from "@/pages/settings/IndexersPage";
 import { MediaFoldersPage } from "@/pages/settings/MediaFoldersPage";
+import { MediaServersPage } from "@/pages/settings/MediaServersPage";
 import { NotificationsPage } from "@/pages/settings/NotificationsPage";
 import { ProfileSettingsPage } from "@/pages/settings/ProfileSettingsPage";
 import { QualityProfilesPage } from "@/pages/settings/QualityProfilesPage";
@@ -184,6 +185,12 @@ const cleanupSettingsRoute = createRoute({
   component: CleanupSettingsPage,
 });
 
+const mediaServersRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/media-servers",
+  component: MediaServersPage,
+});
+
 const notificationsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/notifications",
@@ -276,6 +283,7 @@ const routeTree = rootRoute.addChildren([
     oldBlocklistRoute,
     cleanupActivityRoute,
     cleanupSettingsRoute,
+    mediaServersRoute,
     notificationsRoute,
     generalRoute,
     securityRoute,
