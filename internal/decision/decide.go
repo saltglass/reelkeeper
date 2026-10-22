@@ -38,6 +38,10 @@ type Candidate struct {
 	// Blocklisted is set by the caller when the release is on the
 	// blocklist.
 	Blocklisted bool
+	// Usenet marks a release that downloads over Usenet. It has no seeders
+	// (MinSeeders doesn't apply), and it wins a tie with an equally good
+	// torrent (see Compare).
+	Usenet bool
 }
 
 // Existing describes the file a version already has, for upgrade checks.
@@ -77,6 +81,9 @@ type Decision struct {
 	// offer wrong content. Not part of the stored or shown verdict.
 	WrongContent bool `json:"-"`
 
+	// Usenet is set for a Usenet release (Candidate.Usenet).
+	Usenet bool `json:"usenet,omitempty"`
+
 	rank    int // position of the quality in the profile, higher is better
 	seeders int
 	size    int64
@@ -91,7 +98,7 @@ func Decide(p *Profile, m Movie, c Candidate, have *Existing) Decision {
 	r := parser.Parse(c.Name)
 	d := Decision{
 		Name: c.Name, Release: r, Quality: QualityOf(r), Revision: max(r.Revision, 1),
-		Languages: languagesOf(r, m), seeders: c.Seeders, size: c.Size,
+		Languages: languagesOf(r, m), seeders: c.Seeders, size: c.Size, Usenet: c.Usenet,
 	}
 	d.rank = p.rank(d.Quality)
 	d.Score, d.Formats = p.Score(Input{
@@ -125,7 +132,7 @@ func Decide(p *Profile, m Movie, c Candidate, have *Existing) Decision {
 	if c.Blocklisted {
 		reject("It's on the blocklist.")
 	}
-	if c.MinSeeders > 0 && c.Seeders < c.MinSeeders {
+	if c.MinSeeders > 0 && c.Seeders < c.MinSeeders && !c.Usenet {
 		reject("It has %s; at least %d needed.", plural(c.Seeders, "seeder"), c.MinSeeders)
 	}
 	if have != nil {
@@ -250,8 +257,9 @@ func (p *Profile) sizeProblem(q Quality, size int64, runtime int, what string) s
 
 // Best sorts decisions best first: accepted before rejected, then by
 // quality (and revision, when propers are preferred), custom-format score,
-// then enough seeders, size and seeders (see Compare). Ties keep their order. It's what picks the release to
-// grab: the first accepted one.
+// then Usenet before torrents, then enough seeders, size and seeders (see
+// Compare). Ties keep their order. It's what picks the release to grab: the
+// first accepted one.
 func (p *Profile) Best(ds []Decision) { slices.SortStableFunc(ds, p.Compare) }
 
 // Compare orders two decisions the way Best does: negative when a is the
@@ -275,12 +283,22 @@ func (p *Profile) Compare(a, b Decision) int {
 		if c := cmp.Compare(b.Score, a.Score); c != 0 {
 			return c
 		}
+		// Equally good (same quality, revision and score): Usenet wins. It is
+		// usually faster, and leaves nothing to seed (decided with Dan,
+		// 2026-10-22: quality first, Usenet only breaks ties, no setting).
+		if a.Usenet != b.Usenet {
+			if a.Usenet {
+				return -1
+			}
+			return 1
+		}
 		// A release with enough seeders downloads fine; past that, size
 		// says more than popularity: within the size limits, bigger is
 		// usually less compressed. (A small re-encode with 145 seeders
 		// once beat an 8 GB web release with 14.) Below enough seeders,
-		// seeders come first, in steps (1, 10, 100...).
-		aOK, bOK := a.seeders >= enoughSeeders, b.seeders >= enoughSeeders
+		// seeders come first, in steps (1, 10, 100...). Usenet releases
+		// have no seeders and don't need any: size decides between them.
+		aOK, bOK := a.seeders >= enoughSeeders || a.Usenet, b.seeders >= enoughSeeders || b.Usenet
 		switch {
 		case aOK != bOK:
 			if aOK {
@@ -298,6 +316,14 @@ func (p *Profile) Compare(a, b Decision) int {
 		}
 		return cmp.Compare(b.size, a.size)
 	}
+}
+
+// WonOnUsenet reports whether a, a Usenet release, comes before b, a
+// torrent, only because it's Usenet: both are accepted, and they're equally
+// good otherwise (same quality, revision and score). History says so.
+func (p *Profile) WonOnUsenet(a, b Decision) bool {
+	return a.Usenet && !b.Usenet && a.Accepted && b.Accepted &&
+		a.rank == b.rank && a.Score == b.Score && (!p.PreferPropers || a.Revision == b.Revision)
 }
 
 // enoughSeeders is when a torrent can be counted on to finish; past it,

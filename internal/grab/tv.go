@@ -338,7 +338,7 @@ func (s *Service) decideTV(ctx context.Context, w *tvWanted, t decision.EpisodeT
 	for i, r := range rels {
 		d, cov := decision.DecideEpisode(w.profile, w.show, t, decision.Candidate{
 			Name: r.Title, Size: r.Size, Seeders: r.Seeders, MinSeeders: minSeeders,
-			IndexerFlags: indexerFlags(r.Release), Blocklisted: blocked(r.Title, r.InfoHash),
+			IndexerFlags: indexerFlags(r.Release), Blocklisted: blocked(r.Title, r.InfoHash), Usenet: r.Usenet(),
 		})
 		out[i] = tvCandidate{candidate: candidate{rel: r, d: d}, cov: cov}
 	}
@@ -543,6 +543,7 @@ func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string, run 
 	if len(rels) > 0 && accepted == 0 {
 		msg += " " + commonReason(plain(cs))
 	}
+	msg += usenetTie(u.w.profile, plain(cs))
 	var errs []string
 	for _, f := range failures {
 		errs = append(errs, f.Indexer+": "+f.Message)
@@ -894,6 +895,7 @@ func (s *Service) rssWanted(ctx context.Context, w *tvWanted, kSeason int, eps [
 	if accepted == 0 {
 		msg += " " + commonReason(plain(cs))
 	}
+	msg += usenetTie(w.profile, plain(cs))
 	data := EventData{Trigger: TriggerRSS, EpisodeIDs: u.episodeIDs()}
 	data.Releases, data.More = verdicts(plain(cs))
 	if err := s.history.Add(ctx, s.tvEvent(w, EventRSS, msg), data); err != nil {

@@ -330,6 +330,7 @@ func (s *Service) search(ctx context.Context, w wanted, trigger string) (string,
 	if len(rels) > 0 && accepted == 0 {
 		msg += " " + commonReason(ds)
 	}
+	msg += usenetTie(w.profile, ds)
 	var errs []string
 	for _, f := range failures {
 		errs = append(errs, f.Indexer+": "+f.Message)
@@ -356,6 +357,20 @@ func (s *Service) search(ctx context.Context, w wanted, trigger string) (string,
 	return msg + " " + grabMsg, nil
 }
 
+// usenetTie says, for a search's message, when the best release is Usenet and
+// an equally good torrent was passed over for it; otherwise "".
+func usenetTie(p *decision.Profile, ds []candidate) string {
+	if len(ds) == 0 || !ds[0].d.Usenet {
+		return ""
+	}
+	for _, c := range ds[1:] {
+		if p.WonOnUsenet(ds[0].d, c.d) {
+			return " Usenet was chosen over an equally good torrent (" + c.rel.Title + ")."
+		}
+	}
+	return ""
+}
+
 // candidate pairs a release with the verdict on it.
 type candidate struct {
 	rel indexer.Release
@@ -376,7 +391,7 @@ func (s *Service) decide(ctx context.Context, w wanted, rels []indexer.Release) 
 	for i, r := range rels {
 		out[i] = candidate{rel: r, d: decision.Decide(w.profile, w.movie, decision.Candidate{
 			Name: r.Title, Size: r.Size, Seeders: r.Seeders, MinSeeders: minSeeders,
-			IndexerFlags: indexerFlags(r.Release), Blocklisted: blocked(r.Title, r.InfoHash),
+			IndexerFlags: indexerFlags(r.Release), Blocklisted: blocked(r.Title, r.InfoHash), Usenet: r.Usenet(),
 		}, w.have)}
 		if w.have != nil && !w.v.Version.Upgrades {
 			out[i].d.Accepted = false
@@ -714,6 +729,7 @@ func (s *Service) RSSSync(ctx context.Context) (msg string, quiet bool, err erro
 		if accepted == 0 {
 			msg += " " + commonReason(ds)
 		}
+		msg += usenetTie(w.profile, ds)
 		data := EventData{Trigger: TriggerRSS}
 		data.Releases, data.More = verdicts(ds)
 		if err := s.history.Add(ctx, s.event(w, EventRSS, msg), data); err != nil {
@@ -781,7 +797,8 @@ func (s *Service) forgetOldRSS() {
 }
 
 // dedupe drops the same torrent found on several indexers (or twice on
-// one), keeping the copy with the most seeders.
+// one), keeping the copy with the most seeders. The same name on Usenet
+// and on a torrent site is two different downloads, and both stay.
 func dedupe(rels []indexer.Release) []indexer.Release {
 	seen := map[string]int{}
 	var out []indexer.Release
@@ -789,6 +806,9 @@ func dedupe(rels []indexer.Release) []indexer.Release {
 		k := r.InfoHash
 		if k == "" {
 			k = fmt.Sprintf("%s|%d", strings.ToLower(r.Title), r.Size)
+		}
+		if r.Usenet() {
+			k = "usenet|" + k
 		}
 		if i, ok := seen[k]; ok {
 			if r.Seeders > out[i].Seeders {
@@ -826,7 +846,7 @@ func verdict(c candidate) Verdict {
 	v := Verdict{
 		Name: c.rel.Title, Indexer: c.rel.Indexer, Size: c.rel.Size, Seeders: c.rel.Seeders,
 		Quality: c.d.Quality.Name, Score: c.d.Score, Accepted: c.d.Accepted, Upgrade: c.d.Upgrade,
-		Rejections: c.d.Rejections,
+		Rejections: c.d.Rejections, Usenet: c.rel.Usenet(),
 	}
 	for _, f := range c.d.Formats {
 		v.Formats = append(v.Formats, FormatScore{f.Name, f.Score})

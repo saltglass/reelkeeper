@@ -87,6 +87,8 @@ type Verdict struct {
 	Accepted   bool          `json:"accepted"`
 	Upgrade    bool          `json:"upgrade,omitempty"`
 	Rejections []string      `json:"rejections,omitempty"`
+	// Usenet marks a Usenet release (Seeders then means nothing).
+	Usenet bool `json:"usenet,omitempty"`
 }
 
 // FormatScore is a custom format a release matched.

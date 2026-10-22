@@ -57,7 +57,7 @@ func DecideEpisode(p *Profile, s Show, t EpisodeTarget, c Candidate) (Decision, 
 	m := Movie{Title: s.Title, Year: s.Year, AltTitles: s.AltTitles, OriginalLanguage: s.OriginalLanguage}
 	d := Decision{
 		Name: c.Name, Release: r, Quality: QualityOf(r), Revision: max(r.Revision, 1),
-		Languages: languagesOf(r, m), seeders: c.Seeders, size: c.Size,
+		Languages: languagesOf(r, m), seeders: c.Seeders, size: c.Size, Usenet: c.Usenet,
 	}
 	d.rank = p.rank(d.Quality)
 	d.Score, d.Formats = p.Score(Input{
@@ -121,7 +121,7 @@ func DecideEpisode(p *Profile, s Show, t EpisodeTarget, c Candidate) (Decision, 
 	if c.Blocklisted {
 		reject("It's on the blocklist.")
 	}
-	if c.MinSeeders > 0 && c.Seeders < c.MinSeeders {
+	if c.MinSeeders > 0 && c.Seeders < c.MinSeeders && !c.Usenet {
 		reject("It has %s; at least %d needed.", plural(c.Seeders, "seeder"), c.MinSeeders)
 	}
 	d.Accepted = len(d.Rejections) == 0
