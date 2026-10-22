@@ -74,12 +74,13 @@ dev-stack:
     @colima status >/dev/null 2>&1 || colima start
     docker compose -f dev/compose.yaml up -d --wait
 
-# Run the integration tests that use the dev stack's real qBittorrent, Transmission and Deluge (moving torrents between them, and between a throwaway Transmission and the built-in client).
+# Run the integration tests that use the dev stack's real qBittorrent, Transmission and Deluge (moving torrents between them, and between a throwaway Transmission and the built-in client), and its SABnzbd with the made-up Usenet (fakenews).
 # Needs REELKEEPER_TEST_QBIT_PASS set to the dev qBittorrent's Web UI password. No internet is used: see dev/compose.yaml.
 test-clients: dev-stack
     REELKEEPER_TEST_QBIT_URL=http://localhost:8081 REELKEEPER_TEST_QBIT_USER=${REELKEEPER_TEST_QBIT_USER:-admin} \
     REELKEEPER_TEST_TRANSMISSION_URL=http://localhost:9092 REELKEEPER_TEST_TRANSMISSION_USER=reelkeeper REELKEEPER_TEST_TRANSMISSION_PASS=reelkeeper \
     REELKEEPER_TEST_DELUGE_URL=http://localhost:8112 REELKEEPER_TEST_DELUGE_PASS=reelkeeper \
+    REELKEEPER_TEST_SABNZBD_URL=http://localhost:8085 \
     go test ./internal/download -run 'TestReal' -count=1 -v -timeout 60m
 
 # Stop the dev stack (keeps its data volumes)

@@ -35,7 +35,7 @@ func main() {
 		data := fs.String("data", "/data", "data folder")
 		nntpAddr := fs.String("nntp", ":119", "news server address")
 		httpAddr := fs.String("http", ":8080", "indexer address")
-		base := fs.String("base", "http://fakenews:8080", "the indexer's address as download clients reach it (.nzb links)")
+		base := fs.String("base", "", "the address .nzb links point at (default: the address each search came to)")
 		_ = fs.Parse(os.Args[2:])
 		news := &newsServer{data: *data, log: log}
 		l, err := net.Listen("tcp", *nntpAddr)

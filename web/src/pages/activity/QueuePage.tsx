@@ -327,7 +327,11 @@ function QueueRow({
               )}
             </div>
             <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground tabular-nums">
-              <span className="font-semibold text-foreground">{percent}%</span>
+              {/* No percentage while there's none to show (repairing, unpacking,
+                  getting details) or after a Usenet client gave up. */}
+              {kind !== "fetching" && t.state !== "failed" && (
+                <span className="font-semibold text-foreground">{percent}%</span>
+              )}
               {failed && <span>{stateLabel(t.state, clientName)}</span>}
               {t.speed > 0 && <span>{formatBytes(t.speed)}/s</span>}
               {t.etaSeconds != null && <span>{shortDuration(t.etaSeconds)} left</span>}

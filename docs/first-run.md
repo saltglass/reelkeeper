@@ -103,8 +103,9 @@ Choose Add indexer and pick one of:
   private. Private ones ask for your login or API key. The list is downloaded
   from the internet, so Reelkeeper needs internet access to show it.
 - **Torznab or Newznab feed**: an address plus an API key, for example from
-  Jackett. (Reelkeeper can only download torrents, so a Newznab feed will not
-  produce downloads.)
+  Jackett. A Newznab feed is a Usenet indexer: from 2.0 it is searched once a
+  Usenet client is set up (see [Usenet: SABnzbd](#usenet-sabnzbd-from-20)).
+  Before 2.0, a Newznab feed will not produce downloads.
 - **Knaben**: a public search engine covering many torrent sites. No settings.
 
 For private trackers, fill in the "minimum ratio" and "minimum seed time" the
@@ -338,12 +339,62 @@ already downloaded are checked, not downloaded again; nothing is deleted."
 - The stored password isn't carried over to the other client, so enter the
   new one.
 
+### Usenet: SABnzbd (from 2.0)
+
+Usenet is optional. If you have a Usenet provider and a Usenet (Newznab)
+indexer, set up **SABnzbd** in its own card below the torrent client: either
+can be set up alone, or both. Enter SABnzbd's address with the port, such as
+`http://sabnzbd:8080`, and its API key (in SABnzbd: Config → General →
+Security), and press Test. It should answer "Connected to SABnzbd" with the
+version.
+
+- **Version 4.0 or newer.** Test refuses an older SABnzbd and says so.
+- **Its own categories.** Reelkeeper creates `reelkeeper-movies` and
+  `reelkeeper-tv` in SABnzbd, each with a folder of the same name inside
+  SABnzbd's completed folder, and never touches other jobs.
+- **The same paths.** SABnzbd's completed folder (Config → Folders) must
+  exist at the same path inside Reelkeeper, as for the torrent client (see
+  [Folders and paths](install.md#folders-and-paths-read-this-first)).
+- **Settings Test checks.** With SABnzbd's duplicate detection on, a release
+  Reelkeeper grabs again would be refused, so Test warns about it: turn it
+  off (Config → Switches); Reelkeeper already avoids grabbing the same
+  release twice. If SABnzbd is set to forget finished jobs at once (History
+  Retention), Reelkeeper would never see them finish, so Test refuses until
+  you choose to keep them (any number of days or jobs is fine).
+- **Which release wins.** Your quality profile decides as always. Only
+  between two equally good releases (same quality and score), one on Usenet
+  and one a torrent, does Usenet win: it is usually faster and leaves nothing
+  to seed. History says when that happened. Minimum seeders doesn't apply to
+  Usenet releases.
+- **Indexers.** Usenet indexers are searched only while SABnzbd is set up,
+  and torrent indexers only while a torrent client is (with neither, torrent
+  indexers still are, so dry run shows what would be grabbed).
+- **In the Queue**, Usenet downloads show SABnzbd's own steps: queued,
+  downloading, checking and repairing files (when a few pieces were missing),
+  unpacking, then waiting to import. Pause, Resume and Move to top work while
+  a download is still in SABnzbd's queue.
+- **After the import** there is nothing to seed, so cleanup removes the job
+  from SABnzbd and deletes its folder (only that job's folder, inside
+  Reelkeeper's category folder). **A download SABnzbd gives up on** (too many
+  missing pieces, a failed repair or unpack) is removed, blocklisted and
+  searched for again, with SABnzbd's reason. Both follow cleanup's mode, so
+  in dry run they are only listed.
+- **Free space.** A Usenet download needs about twice its size while
+  SABnzbd unpacks it, and Reelkeeper allows for that against "Keep at least
+  N GB free", using the free space SABnzbd reports.
+- Usenet downloads never move between clients: switching the torrent client
+  leaves them alone.
+
 ## 7. Cleanup (Settings → Cleanup)
 
 Cleanup tidies qBittorrent after Reelkeeper: it removes finished torrents once
 they have seeded enough, and removes stuck downloads (no progress, too slow,
 deleted on the tracker, files missing) and asks for a different release. It
 only ever touches torrents in Reelkeeper's own categories.
+
+From 2.0 it also tidies SABnzbd: Usenet downloads are removed straight after
+their import, and ones SABnzbd gave up on are replaced (see
+[Usenet: SABnzbd](#usenet-sabnzbd-from-20)).
 
 It starts in **Dry run**, like grabbing: Activity → Seeding & cleanup lists
 what Reelkeeper *would* remove and why, and nothing is removed. Watch it for a

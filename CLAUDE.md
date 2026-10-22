@@ -57,7 +57,8 @@ all mediocre" app.
   indexers are imported with the indexers milestone.
 
 **Later**: design for these now, but don't build them yet:
-- Usenet (SABnzbd/NZBGet)
+- Usenet: SABnzbd is done on `main` (2.0, Part A of the Usenet plan,
+  2026-10-22); NZBGet is Part B, next.
 - Anime (absolute numbering, XEM scene mapping)
 - Other torrent clients beyond Transmission and Deluge (both shipped,
   as 1.2/1.4, see Roadmap). Only clients users ask for, e.g.
@@ -130,12 +131,19 @@ together.
 - `just image`: build the container image for amd64 and arm64
 - `just image-local`: build the image for this machine and load it
 - `just dev-stack` / `just dev-stack-down`: local docker compose (Colima)
-  with Postgres, qBittorrent, Transmission, Deluge and Seerr for integration
-  testing (peer discovery permanently off; never on the internet)
+  with Postgres, qBittorrent, Transmission, Deluge, SABnzbd, fakenews (a
+  made-up Usenet) and Seerr for integration testing (peer discovery
+  permanently off; never on the internet)
 - `just test-clients`: the real-client tests against the dev stack (~40 min),
   including moves between a real Transmission and the built-in client (that
   one runs a throwaway Transmission with no network, in the repo's git-ignored
-  `tmp/` folder)
+  `tmp/` folder), and Usenet downloads end to end through the dev SABnzbd
+  and fakenews
+- `docker exec reelkeeper-dev-fakenews fakenews make [-missing N] NAME`: a
+  made-up Usenet release in the dev stack's fake Usenet (`dev/fakenews`, its
+  own Go module: a news server, a release maker with par2, and a Newznab
+  indexer at http://localhost:8086). Nobody needs a Usenet subscription to
+  build or test Usenet.
 - `just load-builtin`: the built-in client's memory with up to 5,000 made-up
   seeding torrents (~1 hour, loopback only; `LOAD_REAL=1` for real-sized
   ones); results in `tmp/load-builtin/`
@@ -165,6 +173,8 @@ together.
 - `internal/grab/`: automatic search, RSS sync and the scheduled pass;
   History
 - `internal/download/`: the qBittorrent, Transmission and Deluge clients,
+  SABnzbd (`sabnzbd.go`) and what Usenet downloads do differently
+  (`usenet.go`),
   the adapter for the built-in client (`builtin.go`, with the host that runs
   its engine), moving torrents between them, Reelkeeper's downloads table and
   queue, blocklist, and the "Check downloads" task that triggers imports
@@ -548,12 +558,31 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
   log line "announced" (`trackers.go`), pinned by `TestTrackerMessages`.
 - **The built-in client's torrent list is not in backups.** It lives in
   `<data folder>/builtin/` (see docs/backups.md).
+- **Usenet downloads share the torrent code through an adapter**
+  (`usenetAdapter` in `download/usenet.go`): a Usenet job is read as a
+  `Torrent` whose Hash is the job's ID, so the Queue, imports and Pause/Remove
+  work for both. A download's `Protocol` says which client holds it
+  (`clientFor`); every torrent-only query (moves, Seeding, `ClientChanged`)
+  says `protocol <> 'usenet'`, and a record written without a protocol is a
+  torrent (the model hook fills it in). Changing the torrent client must
+  never touch Usenet downloads (`TestTorrentClientChangeLeavesUsenetAlone`).
+- **SABnzbd never deletes a completed job's folder**, even asked to with
+  `del_files=1`, so Reelkeeper does after a verified import: only the job's
+  own folder inside the category folder (`removeCompletedFolder`). SABnzbd
+  also says yes to IDs it doesn't have (pause, delete), so every change is
+  checked by listing again, and it files a job with an unknown category
+  under its default one, so categories are created and checked first.
+- **A Usenet job is finished only at "Completed" in SABnzbd's history**: it
+  leaves the queue as soon as it is downloaded and is checked, repaired and
+  unpacked in the history first.
 
 ## Open decisions
 
 Ask Dan, then update this file once each is settled.
 
 - **Usenet and anime:** not in 1.x; 2.0, each from a plan Dan approves.
+  Usenet's plan was approved 2026-10-22 (SABnzbd first, then NZBGet; quality
+  first, Usenet only breaks ties, no setting).
 
 ## Roadmap
 
@@ -589,3 +618,9 @@ previous one is half-done.
     PIN flow) is shelved**: Dan doesn't want a dependency on plex.tv
     (2026-10-20). Naming and scanning already follow Plex's conventions
     (Plex edition tags, "Plex Versions" folders skipped).
+  - **Usenet, Part A (SABnzbd): done** (2026-10-22, on `main`). A Usenet
+    client next to the torrent client (its own settings group,
+    `usenetClient`), migration 23 (`downloads.protocol`), Usenet releases
+    win only ties, cleanup removes imported jobs at once and replaces
+    failed ones. Tested end to end against the dev stack's fakenews.
+    Part B (NZBGet) is next.

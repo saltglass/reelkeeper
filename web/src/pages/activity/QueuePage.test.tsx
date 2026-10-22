@@ -158,6 +158,9 @@ describe("queue page", () => {
     expect(screen.getAllByText("WEBDL-1080p · NZBIndexer · Usenet")).toHaveLength(3);
     // Seeds mean nothing on Usenet: only the torrent says how many.
     expect(screen.getAllByText(/connected to/)).toHaveLength(1);
+    // Repairing has no percentage to show, and a failed job's would mislead.
+    expect(screen.getAllByText("42%")).toHaveLength(2);
+    expect(screen.queryByText("99%")).not.toBeInTheDocument();
     // Only the job still in SABnzbd's queue can be paused; a repairing or
     // failed one can't.
     expect(screen.getAllByRole("button", { name: "Pause" })).toHaveLength(2);

@@ -42,8 +42,7 @@ func (s *newsServer) handle(conn net.Conn) {
 		return w.Flush() == nil
 	}
 	if s.down.Load() {
-		reply("502 service unavailable (fakenews is switched off)")
-		return
+		return // no greeting: the connection just drops, as an unreachable server's does
 	}
 	if !reply("200 fakenews ready (posting prohibited)") {
 		return

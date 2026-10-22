@@ -18,8 +18,9 @@ import (
 // matches when every word of the query is in its name.
 type indexer struct {
 	data string
-	// base is the address clients fetch .nzb files from (e.g.
-	// http://fakenews:8080), which is the address SABnzbd reaches it at.
+	// base is the address .nzb links point at; empty means the address the
+	// search came to (Reelkeeper fetches the .nzb itself and hands it to
+	// SABnzbd, so the links must work from where Reelkeeper runs).
 	base string
 	news *newsServer
 	log  *slog.Logger
@@ -127,7 +128,11 @@ func (ix *indexer) search(w http.ResponseWriter, r *http.Request) {
 		if !inCategories(rel.Category, cats) || !matches(rel.Name, terms) {
 			continue
 		}
-		link := fmt.Sprintf("%s/api?t=get&id=%s&apikey=%s", ix.base, rel.Name, q.Get("apikey"))
+		base := ix.base
+		if base == "" {
+			base = "http://" + r.Host
+		}
+		link := fmt.Sprintf("%s/api?t=get&id=%s&apikey=%s", base, rel.Name, q.Get("apikey"))
 		items = append(items, rssItem{
 			Title: rel.Name, GUID: rssGUID{IsPermaLink: false, ID: "fakenews-" + rel.Name}, Link: link,
 			PubDate: rel.Posted.Format(time.RFC1123Z), Category: strconv.Itoa(rel.Category),
