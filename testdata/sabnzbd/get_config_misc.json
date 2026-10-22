@@ -1,0 +1,14 @@
+{
+  "config": {
+    "misc": {
+      "download_dir": "Downloads/incomplete",
+      "complete_dir": "/mnt/downloads/usenet",
+      "no_dupes": 0,
+      "no_series_dupes": 0,
+      "no_smart_dupes": 0,
+      "history_retention": "",
+      "history_retention_option": "all",
+      "history_retention_number": 0
+    }
+  }
+}

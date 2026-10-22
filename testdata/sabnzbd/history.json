@@ -1,0 +1,240 @@
+{
+    "history": {
+        "total_size": "1.5 G",
+        "month_size": "1.5 G",
+        "week_size": "1.5 G",
+        "day_size": "1.5 G",
+        "slots": [
+            {
+                "completed": 1792693188,
+                "name": "Made.Up.Film.2024.1080p.WEB-DL.x264-FAKE",
+                "nzb_name": "Made.Up.Film.2024.1080p.WEB-DL.x264-FAKE.nzb",
+                "category": "reelkeeper-movies",
+                "pp": "D",
+                "script": "None",
+                "report": "",
+                "url": null,
+                "status": "Completed",
+                "nzo_id": "d5e51097-0891-4587-bd60-5b0a53863d38",
+                "storage": "/mnt/downloads/usenet/reelkeeper-movies/Made.Up.Film.2024.1080p.WEB-DL.x264-FAKE/Made.Up.Film.2024.1080p.WEB-DL.x264-FAKE.mkv",
+                "path": "/config/Downloads/incomplete/Made.Up.Film.2024.1080p.WEB-DL.x264-FAKE",
+                "script_line": "",
+                "download_time": 0,
+                "postproc_time": 0,
+                "stage_log": [
+                    {
+                        "name": "Source",
+                        "actions": [
+                            "Made.Up.Film.2024.1080p.WEB-DL.x264-FAKE.nzb"
+                        ]
+                    },
+                    {
+                        "name": "Download",
+                        "actions": [
+                            ""
+                        ]
+                    },
+                    {
+                        "name": "Servers",
+                        "actions": [
+                            "fakenews=21.5 MB"
+                        ]
+                    },
+                    {
+                        "name": "Repair",
+                        "actions": [
+                            "[Made.Up.Film.2024.1080p.WEB-DL.x264-FAKE] Quick Check OK",
+                            "Trying RAR renamer"
+                        ]
+                    }
+                ],
+                "downloaded": 22502878,
+                "completeness": null,
+                "fail_message": "",
+                "url_info": "",
+                "bytes": 22502878,
+                "meta": null,
+                "series": null,
+                "md5sum": "377e70831e1a10c529ffc797cbf60f23",
+                "password": null,
+                "duplicate_key": "made up film",
+                "archive": false,
+                "time_added": 1792693187,
+                "size": "21.5 MB",
+                "action_line": "",
+                "loaded": false,
+                "retry": false
+            },
+            {
+                "completed": 1792693188,
+                "name": "Broken.Film.2022.1080p.WEB-DL.x264-FAKE",
+                "nzb_name": "Broken.Film.2022.1080p.WEB-DL.x264-FAKE.nzb",
+                "category": "reelkeeper-movies",
+                "pp": "D",
+                "script": "None",
+                "report": "",
+                "url": null,
+                "status": "Failed",
+                "nzo_id": "2f8a658d-0915-46e0-b42d-cf84e3988cf5",
+                "storage": "/config/Downloads/incomplete/Broken.Film.2022.1080p.WEB-DL.x264-FAKE",
+                "path": "/config/Downloads/incomplete/Broken.Film.2022.1080p.WEB-DL.x264-FAKE",
+                "script_line": "",
+                "download_time": 0,
+                "postproc_time": 0,
+                "stage_log": [
+                    {
+                        "name": "Source",
+                        "actions": [
+                            "Broken.Film.2022.1080p.WEB-DL.x264-FAKE.nzb"
+                        ]
+                    },
+                    {
+                        "name": "Download",
+                        "actions": [
+                            "Downloaded in 0 seconds at an average of 486.0 MB/s<br/>Age: 16m<br/>12 articles were missing"
+                        ]
+                    },
+                    {
+                        "name": "Servers",
+                        "actions": [
+                            "fakenews=5.5 MB"
+                        ]
+                    }
+                ],
+                "downloaded": 6537031,
+                "completeness": null,
+                "fail_message": "Aborted, cannot be completed - https://sabnzbd.org/not-complete",
+                "url_info": "",
+                "bytes": 6537031,
+                "meta": null,
+                "series": null,
+                "md5sum": "964cd2634e26fbe248a32636425da36b",
+                "password": null,
+                "duplicate_key": "broken film",
+                "archive": false,
+                "time_added": 1792693187,
+                "size": "6.2 MB",
+                "action_line": "",
+                "loaded": false,
+                "retry": true
+            },
+            {
+                "completed": 1792693188,
+                "name": "Harbor.Lights.S01E04.1080p.WEB-DL.x264-FAKE",
+                "nzb_name": "h.nzb",
+                "category": "reelkeeper-tv",
+                "pp": "D",
+                "script": "None",
+                "report": "",
+                "url": null,
+                "status": "Completed",
+                "nzo_id": "793398e9-ff97-4fe4-ac47-dabb05654a82",
+                "storage": "/mnt/downloads/usenet/reelkeeper-tv/Harbor.Lights.S01E04.1080p.WEB-DL.x264-FAKE/Harbor.Lights.S01E04.1080p.WEB-DL.x264-FAKE.mkv",
+                "path": "/config/Downloads/incomplete/Harbor.Lights.S01E04.1080p.WEB-DL.x264-FAKE",
+                "script_line": "",
+                "download_time": 0,
+                "postproc_time": 0,
+                "stage_log": [
+                    {
+                        "name": "Source",
+                        "actions": [
+                            "h.nzb"
+                        ]
+                    },
+                    {
+                        "name": "Download",
+                        "actions": [
+                            "Downloaded in 0 seconds at an average of 486.0 MB/s<br/>Age: 16m"
+                        ]
+                    },
+                    {
+                        "name": "Servers",
+                        "actions": [
+                            "fakenews=11.1 MB"
+                        ]
+                    },
+                    {
+                        "name": "Repair",
+                        "actions": [
+                            "[Harbor.Lights.S01E04.1080p.WEB-DL.x264-FAKE] Quick Check OK",
+                            "Trying RAR renamer"
+                        ]
+                    }
+                ],
+                "downloaded": 11678615,
+                "completeness": null,
+                "fail_message": "",
+                "url_info": "",
+                "bytes": 11678615,
+                "meta": null,
+                "series": null,
+                "md5sum": "dfa36206bc0e893783822fe6519a985f",
+                "password": null,
+                "duplicate_key": "harbor lights/1/4",
+                "archive": false,
+                "time_added": 1792693187,
+                "size": "11.1 MB",
+                "action_line": "",
+                "loaded": false,
+                "retry": false
+            },
+            {
+                "completed": 1792693188,
+                "name": "Broken.Show.S02E01.720p.WEB-DL.x264-FAKE",
+                "nzb_name": "b.nzb",
+                "category": "reelkeeper-tv",
+                "pp": "D",
+                "script": "None",
+                "report": "",
+                "url": null,
+                "status": "Failed",
+                "nzo_id": "7635fca8-a7b3-4d94-8cca-617efee92259",
+                "storage": "/config/Downloads/incomplete/Broken.Show.S02E01.720p.WEB-DL.x264-FAKE",
+                "path": "/config/Downloads/incomplete/Broken.Show.S02E01.720p.WEB-DL.x264-FAKE",
+                "script_line": "",
+                "download_time": 0,
+                "postproc_time": 0,
+                "stage_log": [
+                    {
+                        "name": "Source",
+                        "actions": [
+                            "b.nzb"
+                        ]
+                    },
+                    {
+                        "name": "Download",
+                        "actions": [
+                            "Downloaded in 0 seconds at an average of 486.0 MB/s<br/>Age: 0m<br/>11 articles were missing"
+                        ]
+                    },
+                    {
+                        "name": "Servers",
+                        "actions": [
+                            "fakenews=834 KB"
+                        ]
+                    }
+                ],
+                "downloaded": 853824,
+                "completeness": null,
+                "fail_message": "Aborted, cannot be completed - https://sabnzbd.org/not-complete",
+                "url_info": "",
+                "bytes": 853824,
+                "meta": null,
+                "series": null,
+                "md5sum": "a18f984765d0556fcf60a9f2f08bf236",
+                "password": null,
+                "duplicate_key": "broken show/2/1",
+                "archive": false,
+                "time_added": 1792693187,
+                "size": "834 KB",
+                "action_line": "",
+                "loaded": false,
+                "retry": true
+            }
+        ],
+        "ppslots": 0,
+        "noofslots": 4,
+        "last_history_update": 142,
+        "version": "5.1.3"
+    }
+}

@@ -52,6 +52,7 @@ type Service struct {
 
 	downloadClient DownloadClient
 	downloadMove   DownloadMove
+	usenetClient   UsenetClient
 	cleanup        Cleanup
 	backups        Backups
 	// sealedKeep holds encrypted values that couldn't be decrypted (the
@@ -103,6 +104,9 @@ func New(ctx context.Context, db *store.Store, box *secrets.Box, logger *slog.Lo
 		return nil, err
 	}
 	if err := s.loadDownloadMove(ctx); err != nil {
+		return nil, err
+	}
+	if err := s.loadUsenetClient(ctx); err != nil {
 		return nil, err
 	}
 

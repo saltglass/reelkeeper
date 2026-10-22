@@ -46,6 +46,13 @@ const (
 	KindKnaben    = "knaben"
 )
 
+// The protocols a release downloads over. A release's comes from its
+// indexer's kind: Newznab feeds are Usenet, everything else torrents.
+const (
+	ProtocolTorrent = "torrent"
+	ProtocolUsenet  = "usenet"
+)
+
 // Indexer is one configured indexer, as stored.
 type Indexer struct {
 	bun.BaseModel `bun:"table:indexers"`
@@ -111,6 +118,10 @@ type Service struct {
 	draftTests map[string]draftTest
 	// lastFeed is when each solver-backed indexer's feed was last read.
 	lastFeed map[int64]time.Time
+	// usenetOn says whether a Usenet client is set up (SetUsenet); Usenet
+	// indexers aren't searched without one, since nothing could download
+	// what they find. nil means they are (tests).
+	usenetOn func() bool
 }
 
 type cached struct {
@@ -516,6 +527,15 @@ func (ix *Indexer) CategoryList() []int {
 	return out
 }
 
+// Protocol is what the indexer's releases download over: ProtocolUsenet for
+// a Newznab feed, ProtocolTorrent for everything else.
+func (ix *Indexer) Protocol() string {
+	if ix.Kind == KindNewznab {
+		return ProtocolUsenet
+	}
+	return ProtocolTorrent
+}
+
 // SettingsMap decodes an indexer's non-secret settings.
 func (ix *Indexer) SettingsMap() map[string]string { return decodeMap(ix.Settings) }
 
@@ -616,6 +636,13 @@ const (
 
 // SetNotifier connects notifications (an indexer failing for a day).
 func (s *Service) SetNotifier(fn func(ctx context.Context, ev notify.Event)) { s.notify = fn }
+
+// SetUsenet connects the check for a Usenet client (see Service.usenetOn).
+func (s *Service) SetUsenet(on func() bool) { s.usenetOn = on }
+
+// UsenetOff says whether Usenet indexers are left out of searches because no
+// Usenet client is set up.
+func (s *Service) UsenetOff() bool { return s.usenetOn != nil && !s.usenetOn() }
 
 // record notes the outcome of a request to an indexer.
 func (s *Service) record(ctx context.Context, ix *Indexer, took time.Duration, failure error, kind usageKind) {
@@ -735,7 +762,13 @@ type Release struct {
 	IndexerID int64
 	Indexer   string
 	Priority  int
+	// Protocol is ProtocolTorrent or ProtocolUsenet (the indexer's). Empty
+	// means a torrent.
+	Protocol string
 }
+
+// Usenet reports whether the release downloads over Usenet.
+func (r Release) Usenet() bool { return r.Protocol == ProtocolUsenet }
 
 // IndexerError is one indexer's failure during a search.
 type IndexerError struct {
@@ -791,6 +824,9 @@ func (s *Service) Search(ctx context.Context, q core.Query, opt SearchOptions) (
 		if len(q.Categories) > 0 && !overlaps(ix.CategoryList(), q.Categories) {
 			continue
 		}
+		if ix.Protocol() == ProtocolUsenet && s.UsenetOff() {
+			continue
+		}
 		if s.overLimit(ctx, &ix) {
 			continue
 		}
@@ -833,7 +869,7 @@ func (s *Service) Search(ctx context.Context, q core.Query, opt SearchOptions) (
 				return
 			}
 			for _, r := range found {
-				releases = append(releases, Release{Release: r, IndexerID: ix.ID, Indexer: ix.Name, Priority: ix.Priority})
+				releases = append(releases, Release{Release: r, IndexerID: ix.ID, Indexer: ix.Name, Priority: ix.Priority, Protocol: ix.Protocol()})
 			}
 		}()
 	}

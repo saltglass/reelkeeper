@@ -268,7 +268,7 @@ func (s *Service) mapProwlarr(p prowlarrIndexer, solverTags map[int]bool) Prowla
 		pi.Reason = fmt.Sprintf("Prowlarr's built-in %s indexer has no Reelkeeper equivalent yet.", p.Implementation)
 	}
 	if strings.EqualFold(p.Protocol, "usenet") && pi.Supported {
-		pi.Notes = append(pi.Notes, "A Usenet indexer: imported, but Reelkeeper can't download from Usenet yet.")
+		pi.Notes = append(pi.Notes, "A Usenet indexer: it's searched once a Usenet client is set up (Settings → Download Client).")
 	}
 	pi.Input = in
 	return pi

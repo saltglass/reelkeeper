@@ -1,8 +1,10 @@
-// Package torrent holds Reelkeeper's own list of torrent states. Each download
-// client (qBittorrent today) reports states in its own words and translates
-// them into these; everything else in Reelkeeper (cleanup, the Queue page, the
+// Package torrent holds Reelkeeper's own list of download states. Each download
+// client reports states in its own words and translates them into these;
+// everything else in Reelkeeper (cleanup, the Queue page, the
 // Radarr/Sonarr-compatible API) reads only these, so it doesn't depend on
-// which client is in use.
+// which client is in use. Usenet jobs (2.0) use the same list: the torrent
+// states that mean the same thing (downloading, queued, paused, checking,
+// moving), plus a few of their own at the end.
 package torrent
 
 // State is what a torrent is doing right now.
@@ -36,4 +38,17 @@ const (
 	MissingFiles State = "missing-files"
 	// Unknown: the client's state isn't one Reelkeeper recognises.
 	Unknown State = "unknown"
+
+	// Usenet jobs only.
+	//
+	// Repairing: downloaded; the Usenet client is checking the files with
+	// their par2 repair files, and repairing them if articles were missing.
+	Repairing State = "repairing"
+	// Unpacking: downloaded and checked; the files are being unpacked.
+	Unpacking State = "unpacking"
+	// Completed: finished, with nothing to seed.
+	Completed State = "completed"
+	// Failed: the Usenet client gave up on it (too many missing articles, a
+	// failed repair or unpack, ...); the download's message says why.
+	Failed State = "failed"
 )
