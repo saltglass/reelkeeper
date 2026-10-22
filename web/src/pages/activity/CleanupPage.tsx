@@ -44,6 +44,8 @@ const ruleLabels: Record<string, string> = {
   missing: "Files missing",
   "import-failed": "Import failed",
   "replaced-files": "Replaced files",
+  "usenet-imported": "Imported (Usenet)",
+  "usenet-failed": "Usenet download failed",
 };
 
 export function ruleLabel(rule: string) {

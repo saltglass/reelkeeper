@@ -95,7 +95,9 @@ func newznabError(w http.ResponseWriter, code int, msg string) {
 
 var nonWord = regexp.MustCompile(`[^a-z0-9]+`)
 
-func words(s string) []string { return strings.Fields(nonWord.ReplaceAllString(strings.ToLower(s), " ")) }
+func words(s string) []string {
+	return strings.Fields(nonWord.ReplaceAllString(strings.ToLower(s), " "))
+}
 
 func (ix *indexer) search(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()

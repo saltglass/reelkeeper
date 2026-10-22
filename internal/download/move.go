@@ -10,6 +10,7 @@ import (
 	"github.com/uptrace/bun"
 
 	"github.com/saltglass/reelkeeper/internal/grab"
+	"github.com/saltglass/reelkeeper/internal/indexer"
 	"github.com/saltglass/reelkeeper/internal/jobs"
 	"github.com/saltglass/reelkeeper/internal/settings"
 )
@@ -119,7 +120,7 @@ type MovePreview struct {
 func (s *Service) candidates(ctx context.Context) ([]Download, error) {
 	var ds []Download
 	err := s.db.DB.NewSelect().Model(&ds).Where("status IN (?)", bun.List(activeStatuses)).
-		Where("move_state = ''").Order("id").Scan(ctx)
+		Where("move_state = ''").Where("protocol <> ?", indexer.ProtocolUsenet).Order("id").Scan(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -216,12 +217,14 @@ func (s *Service) PlanMove(ctx context.Context, old, next settings.DownloadClien
 	if !old.Configured() {
 		// The old client was removed, so Reelkeeper no longer knows how to
 		// reach it: downloads in the Queue can't be taken along.
-		n, err := s.QueueSize(ctx)
+		n, err := s.db.DB.NewSelect().Model((*Download)(nil)).
+			Where("status IN (?)", bun.List([]string{StatusDownloading, StatusImportFailed})).
+			Where("protocol <> ?", indexer.ProtocolUsenet).Count(ctx)
 		if err != nil || n == 0 {
 			return err
 		}
 		return fmt.Errorf("the download client was removed, so Reelkeeper can't reach the %s in the Queue to move %s: set the old client up again, or finish or remove them first",
-			plural(n, "download"), pluralThem(n))
+			plural(int(n), "download"), pluralThem(int(n)))
 	}
 	n, err := s.countToMove(ctx, leaveSeeding)
 	if err != nil || n == 0 {
@@ -331,7 +334,10 @@ func (s *Service) ClientChanged(ctx context.Context, oldName, newName string) (i
 	s.syncMu.Lock()
 	s.clientFailures = 0
 	var ds []Download
-	err := s.db.DB.NewSelect().Model(&ds).Where("status = ?", StatusImported).Where("move_state = ''").Order("id").Scan(ctx)
+	// Usenet downloads aren't in any torrent client: a change of torrent
+	// client never touches them.
+	err := s.db.DB.NewSelect().Model(&ds).Where("status = ?", StatusImported).Where("move_state = ''").
+		Where("protocol <> ?", indexer.ProtocolUsenet).Order("id").Scan(ctx)
 	if err != nil {
 		s.syncMu.Unlock()
 		return 0, err

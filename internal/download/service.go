@@ -78,8 +78,12 @@ type Download struct {
 
 	// Client is the type of download client holding the torrent
 	// (settings.ClientQBittorrent, ClientTransmission or ClientDeluge). It is
-	// empty on downloads from before 1.3: the client that is set up.
+	// empty on downloads from before 1.3: the client that is set up. For a
+	// Usenet download it is the Usenet client's type (settings.UsenetSABnzbd).
 	Client string `bun:"client"`
+	// Protocol is indexer.ProtocolTorrent or indexer.ProtocolUsenet. A Usenet
+	// download's Hash is the Usenet client's ID for its job (see usenet.go).
+	Protocol string `bun:"protocol"`
 	// The Move fields say how far a move to another client has got (see
 	// move.go); MoveState is empty when the download isn't moving.
 	MoveState     string `bun:"move_state"`
@@ -158,6 +162,10 @@ type Service struct {
 	// NewClient builds the client for the current settings (tests swap
 	// in a fake).
 	NewClient func(settings.DownloadClient) Client
+	// usenetCfg is the Usenet client's settings (SetUsenet), and NewUsenet
+	// builds the client for them (tests swap in a fake).
+	usenetCfg func() settings.UsenetClient
+	NewUsenet func(settings.UsenetClient) UsenetClient
 	// builtin runs the built-in client's engine (SetBuiltin); nil when the
 	// server doesn't have one.
 	builtin *BuiltinHost
@@ -172,8 +180,9 @@ type Service struct {
 	// notify tells the media servers, email and webhooks what happened (SetNotifier).
 	notify func(ctx context.Context, ev notify.Event)
 	// clientFailures counts checks in a row that couldn't reach the
-	// download client.
+	// download client, and usenetFailures the Usenet client.
 	clientFailures int
+	usenetFailures int
 	// vis tracks finished downloads Reelkeeper can't see yet (visible.go).
 	vis visibility
 	// exists reports whether a download's path is on disk (tests swap it).
@@ -219,7 +228,7 @@ func NewService(db *store.Store, cfg func() settings.DownloadClient, idx Fetcher
 	s := &Service{
 		db: db, settings: cfg, idx: idx, lib: lib, history: history, logger: logger, now: time.Now,
 		vis: visibility{missingSince: map[int64]time.Time{}}, exists: onDisk, freeSpace: library.FreeSpace,
-		rename: os.Rename, moveTiming: defaultMoveTiming,
+		rename: os.Rename, moveTiming: defaultMoveTiming, NewUsenet: newUsenet,
 	}
 	s.NewClient = func(c settings.DownloadClient) Client {
 		if c.ClientType() == settings.ClientBuiltin {
@@ -327,10 +336,19 @@ func (s *Service) Test(ctx context.Context, cfg settings.DownloadClient) (string
 // Grab sends a chosen release to the download client and starts tracking
 // it.
 func (s *Service) Grab(ctx context.Context, g grab.Grabbed) error {
-	if s.Moving() {
-		return grab.ErrMoving
+	usenet := g.Release.Usenet()
+	var (
+		c   Client
+		err error
+	)
+	if usenet {
+		c, err = s.usenetClient()
+	} else {
+		if s.Moving() {
+			return grab.ErrMoving
+		}
+		c, err = s.client()
 	}
-	c, err := s.client()
 	if err != nil {
 		return err
 	}
@@ -340,7 +358,12 @@ func (s *Service) Grab(ctx context.Context, g grab.Grabbed) error {
 		category, label = settings.TVCategory, g.TV.Label
 		tid, vid = g.TV.Title.ID, g.TV.Version.ID
 	}
-	if err := s.checkRoom(ctx, c, g.Release.Size); err != nil {
+	if usenet {
+		err = s.checkUsenetRoom(ctx, g.Release.Size)
+	} else {
+		err = s.checkRoom(ctx, c, g.Release.Size)
+	}
+	if err != nil {
 		return err
 	}
 	f, err := s.idx.Fetch(ctx, g.Release)
@@ -355,24 +378,26 @@ func (s *Service) Grab(ctx context.Context, g grab.Grabbed) error {
 		tags = append(tags, "requested")
 	}
 	hash, err := c.Add(ctx, Add{
-		Magnet: f.Magnet, Torrent: f.Torrent, Category: category,
+		Magnet: f.Magnet, Torrent: f.Torrent, NZB: f.NZB, Name: g.Release.Title, Top: g.Requested, Category: category,
 		Tags: tags, SavePath: s.settings().Folder,
 	})
 	if err != nil {
 		return err
 	}
 	// Something somebody asked for (Seerr) goes to the front of the
-	// client's queue. Not worth failing the grab over.
-	if g.Requested {
+	// client's queue. Not worth failing the grab over. (A Usenet job was
+	// added at the front already.)
+	if g.Requested && !usenet {
 		if err := c.TopPriority(ctx, category, []string{hash}); err != nil {
 			s.logger.Warn("couldn't move a requested download to the top of the download client's queue", "client", c.Name(), "error", err)
 		}
 	}
 	// Reelkeeper's cleanup decides when its torrents stop seeding, not
 	// qBittorrent's global limits (which could stop them before a
-	// tracker's minimum). Retried by cleanup if this fails.
-	limitsSet := false
-	if s.cleanupCfg != nil && s.cleanupCfg().Mode != settings.CleanupOff {
+	// tracker's minimum). Retried by cleanup if this fails. Usenet has no
+	// seeding.
+	limitsSet := usenet
+	if s.cleanupCfg != nil && s.cleanupCfg().Mode != settings.CleanupOff && !usenet {
 		if err := c.NoShareLimits(ctx, category, []string{hash}); err != nil {
 			s.logger.Warn("couldn't lift the download client's seeding limits for a new download; cleanup will retry", "client", c.Name(), "error", err)
 		} else {
@@ -385,18 +410,25 @@ func (s *Service) Grab(ctx context.Context, g grab.Grabbed) error {
 		ReleaseTitle: g.Release.Title, Indexer: g.Release.Indexer, Quality: g.Quality,
 		Score: g.Score, Size: g.Release.Size, Upgrade: g.Upgrade, Status: StatusDownloading,
 		CleanupTrack: "{}", LimitsSet: limitsSet, EpisodesLabel: label, Client: s.settings().ClientType(), Requested: g.Requested,
+		Protocol: indexer.ProtocolTorrent,
+	}
+	if usenet {
+		d.Client, d.Protocol = s.usenetSettings().ClientType(), indexer.ProtocolUsenet
 	}
 	// The tracker's seeding rules as they are now: cleanup (M5) keeps the
-	// torrent until they're met, even if the rules change later.
+	// torrent until they're met, even if the rules change later. Usenet has
+	// none.
 	if ix, err := s.idx.Get(ctx, iid); err == nil && iid != 0 {
 		d.IndexerID = &iid
-		d.SeedRatio, d.SeedTimeMinutes = ix.SeedRatio, ix.SeedTimeMinutes
+		if !usenet {
+			d.SeedRatio, d.SeedTimeMinutes = ix.SeedRatio, ix.SeedTimeMinutes
+		}
 	}
-	if g.Release.MinimumRatio > 0 && (d.SeedRatio == nil || *d.SeedRatio < g.Release.MinimumRatio) {
+	if g.Release.MinimumRatio > 0 && !usenet && (d.SeedRatio == nil || *d.SeedRatio < g.Release.MinimumRatio) {
 		r := g.Release.MinimumRatio
 		d.SeedRatio = &r
 	}
-	if m := int(g.Release.MinimumSeedTime / 60); m > 0 && (d.SeedTimeMinutes == nil || *d.SeedTimeMinutes < m) {
+	if m := int(g.Release.MinimumSeedTime / 60); m > 0 && !usenet && (d.SeedTimeMinutes == nil || *d.SeedTimeMinutes < m) {
 		d.SeedTimeMinutes = &m
 	}
 	var id int64
@@ -430,7 +462,11 @@ func (s *Service) Grab(ctx context.Context, g grab.Grabbed) error {
 	}
 	// What was sent is kept while the torrent is active, so another client
 	// can be given the same torrent (see sources.go). Failing to keep it
-	// doesn't fail the grab: the torrent is already in the client.
+	// doesn't fail the grab: the torrent is already in the client. Usenet
+	// jobs never move.
+	if usenet {
+		return nil
+	}
 	if err := s.keepSource(ctx, d.Hash, Source{Torrent: f.Torrent, Magnet: f.Magnet}); err != nil {
 		s.logger.Warn("couldn't keep the torrent for a later move to another download client", "release", d.ReleaseTitle, "error", err)
 	}
@@ -474,6 +510,7 @@ func upsertDownload(ctx context.Context, db bun.IDB, d *Download) error {
 		Set("episodes_label = EXCLUDED.episodes_label").
 		Set("requested = EXCLUDED.requested").
 		Set("client = EXCLUDED.client").
+		Set("protocol = EXCLUDED.protocol").
 		Set("move_state = ''").
 		Set("move_to = ''").
 		Set("move_old_bytes = 0").
@@ -641,6 +678,23 @@ func (s *Service) liveTorrents(ctx context.Context, ds []Download) (map[string]T
 			continue
 		}
 		asked[typ] = true
+		if ds[i].Usenet() {
+			c, err := s.usenetClient()
+			var ts []Torrent
+			if err == nil {
+				ts, err = ourTorrents(ctx, c)
+			}
+			if err != nil {
+				if first == nil {
+					first = err
+				}
+				continue
+			}
+			for _, t := range ts {
+				live[typ+"/"+t.Hash] = t
+			}
+			continue
+		}
 		conf, ok := clients[typ]
 		if !ok || !conf.Configured() {
 			if typ == cfg.ClientType() && first == nil {
@@ -706,21 +760,57 @@ func (s *Service) QueueCounts(ctx context.Context) (QueueCount, error) {
 // "still downloading" (no import, failure, removal or unseen file), so the
 // run isn't worth listing.
 func (s *Service) Check(ctx context.Context) (msg string, quiet bool, err error) {
-	if s.Moving() {
-		return "Paused while torrents move to another download client.", true, nil
-	}
 	s.syncMu.Lock()
 	defer s.syncMu.Unlock()
 	var ds []Download
 	if err := s.db.DB.NewSelect().Model(&ds).Where("status = ?", StatusDownloading).Order("id").Scan(ctx); err != nil {
 		return "", false, err
 	}
-	if len(ds) == 0 {
-		return "Nothing is downloading.", true, nil
+	var torrents, usenet []Download
+	for _, d := range ds {
+		if d.Usenet() {
+			usenet = append(usenet, d)
+		} else {
+			torrents = append(torrents, d)
+		}
 	}
+	moving := s.Moving()
+	switch {
+	case len(ds) == 0:
+		return "Nothing is downloading.", true, nil
+	case moving && len(usenet) == 0:
+		return "Paused while torrents move to another download client.", true, nil
+	}
+	var parts []string
+	var errs []error
+	quiet = true
+	if len(torrents) > 0 && moving {
+		parts = append(parts, "torrents paused while they move to another download client")
+	} else if len(torrents) > 0 {
+		p, q, err := s.checkTorrents(ctx, torrents)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		parts, quiet = append(parts, p...), quiet && q
+	}
+	if len(usenet) > 0 {
+		p, q, err := s.checkUsenet(ctx, usenet)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		parts, quiet = append(parts, p...), quiet && q
+	}
+	if len(errs) > 0 {
+		return "", false, errors.Join(errs...)
+	}
+	return capitalizeFirst(strings.Join(parts, ", ")) + ".", quiet, nil
+}
+
+// checkTorrents is Check downloads for torrents.
+func (s *Service) checkTorrents(ctx context.Context, ds []Download) (parts []string, quiet bool, err error) {
 	c, err := s.client()
 	if err != nil {
-		return "", false, err
+		return nil, false, err
 	}
 	ts, err := ourTorrents(ctx, c)
 	if err != nil {
@@ -731,7 +821,7 @@ func (s *Service) Check(ctx context.Context) (msg string, quiet bool, err error)
 			s.tell(ctx, notify.Event{Kind: notify.KindClientUnreachable, Title: sentenceName(c.Name()),
 				Message: "Reelkeeper can't reach " + c.Name() + ", so downloads aren't being checked or imported: " + err.Error()})
 		}
-		return "", false, err
+		return nil, false, err
 	}
 	s.clientFailures = 0
 	live := map[string]Torrent{}
@@ -760,7 +850,7 @@ func (s *Service) Check(ctx context.Context) (msg string, quiet bool, err error)
 			}
 		}
 	}
-	parts := []string{fmt.Sprintf("%d downloading", waiting)}
+	parts = []string{fmt.Sprintf("%d downloading", waiting)}
 	if unseen > 0 {
 		parts = append(parts, fmt.Sprintf("%d finished but not visible to Reelkeeper yet", unseen))
 	}
@@ -774,7 +864,7 @@ func (s *Service) Check(ctx context.Context) (msg string, quiet bool, err error)
 		parts = append(parts, fmt.Sprintf("%d removed outside Reelkeeper", gone))
 	}
 	// Quiet means nothing happened: downloads are still going, and that's all.
-	return strings.Join(parts, ", ") + ".", imported+failed+gone+unseen == 0, nil
+	return parts, imported+failed+gone+unseen == 0, nil
 }
 
 // importOne imports a finished download and records the outcome.
@@ -794,7 +884,7 @@ func (s *Service) importOne(ctx context.Context, d *Download, t Torrent) bool {
 	if d.Category == settings.TVCategory {
 		return s.importEpisodes(ctx, d, t)
 	}
-	res, err := s.lib.ImportMovie(ctx, library.ImportRequest{VersionID: *d.VersionID, Source: t.ContentPath, ReleaseName: d.ReleaseTitle, ClientName: s.ClientName()})
+	res, err := s.lib.ImportMovie(ctx, library.ImportRequest{VersionID: *d.VersionID, Source: t.ContentPath, ReleaseName: d.ReleaseTitle, ClientName: s.clientNameFor(d)})
 	if err != nil {
 		s.finish(ctx, d, StatusImportFailed, "Import failed: "+err.Error(), grab.EventImportFailed)
 		s.tell(ctx, notify.Event{Kind: notify.KindImportFailed, Title: s.movieName(d), TitleID: ptrVal(d.TitleID),
@@ -826,7 +916,7 @@ func (s *Service) importEpisodes(ctx context.Context, d *Download, t Torrent) bo
 		return false
 	}
 	res, err := s.lib.ImportEpisodes(ctx, library.EpisodeImportRequest{
-		VersionID: *d.VersionID, Source: t.ContentPath, ReleaseName: d.ReleaseTitle, ClientName: s.ClientName(), EpisodeIDs: ids,
+		VersionID: *d.VersionID, Source: t.ContentPath, ReleaseName: d.ReleaseTitle, ClientName: s.clientNameFor(d), EpisodeIDs: ids,
 		// A TV download marked as an upgrade is a fix (a REPACK or PROPER
 		// of the files already there), which replaces them.
 		Replace: d.Upgrade,
@@ -988,19 +1078,19 @@ func (s *Service) record(ctx context.Context, d *Download, event, message string
 
 // RetryImport tries a failed import again.
 func (s *Service) RetryImport(ctx context.Context, id int64) error {
-	if s.Moving() {
-		return errors.New("imports wait while torrents move to another download client (System → Tasks)")
-	}
 	s.syncMu.Lock()
 	defer s.syncMu.Unlock()
 	d, err := s.get(ctx, id)
 	if err != nil {
 		return err
 	}
+	if s.Moving() && !d.Usenet() {
+		return errors.New("imports wait while torrents move to another download client (System → Tasks)")
+	}
 	if d.Status != StatusImportFailed {
 		return errors.New("only a failed import can be retried")
 	}
-	c, err := s.client()
+	c, err := s.clientFor(d)
 	if err != nil {
 		return err
 	}
@@ -1104,7 +1194,7 @@ func (s *Service) unfinished(ctx context.Context, id int64) (Client, *Download, 
 	default:
 		return nil, nil, Torrent{}, errors.New("this download has already finished")
 	}
-	c, err := s.client()
+	c, err := s.clientFor(d)
 	if err != nil {
 		return nil, nil, Torrent{}, err
 	}
@@ -1157,7 +1247,7 @@ func (s *Service) Remove(ctx context.Context, id int64, opt RemoveOptions) (*Dow
 	if d.Status != StatusDownloading && d.Status != StatusImportFailed {
 		return nil, errors.New("only downloads still in the queue can be removed")
 	}
-	c, err := s.client()
+	c, err := s.clientFor(d)
 	if err != nil {
 		return nil, err
 	}
@@ -1218,10 +1308,14 @@ func (s *Service) removeWhere(ctx context.Context, where string, arg int64) erro
 var _ bun.BeforeAppendModelHook = (*Download)(nil)
 
 // BeforeAppendModel fills in the JSON column when a record is written
-// without it (Postgres refuses an empty string as JSON).
+// without it (Postgres refuses an empty string as JSON), and the protocol:
+// a record written without one is a torrent's.
 func (d *Download) BeforeAppendModel(_ context.Context, _ bun.Query) error {
 	if d.CleanupTrack == "" {
 		d.CleanupTrack = "{}"
+	}
+	if d.Protocol == "" {
+		d.Protocol = indexer.ProtocolTorrent
 	}
 	return nil
 }

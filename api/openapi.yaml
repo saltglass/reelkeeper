@@ -1967,6 +1967,73 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /settings/usenet-client:
+    get:
+      tags: [settings]
+      operationId: getUsenetClient
+      summary: The Usenet download client connection (never the API key)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UsenetClient" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    put:
+      tags: [settings]
+      operationId: putUsenetClient
+      summary: Save the Usenet download client connection
+      description: |
+        Separate from the torrent client: either, both or neither can be set up. Leaving `apiKey` out keeps the stored one. An empty
+        `url` removes the Usenet client; Usenet indexers are then left out of searches.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UsenetClientUpdate" }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UsenetClient" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /settings/usenet-client/test:
+    post:
+      tags: [settings]
+      operationId: testUsenetClient
+      summary: Try a Usenet client connection without saving it
+      description: |
+        Leaving `apiKey` out uses the stored one. Besides connecting, the test reads the client's settings: some only make Reelkeeper work
+        less well (`warnings`), others stop it working (the test fails, `message` says what to change).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UsenetClientUpdate" }
+      responses:
+        "200":
+          description: Connected.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version, warnings]
+                properties:
+                  version: { type: string, description: The Usenet client's version. }
+                  warnings:
+                    type: array
+                    items: { type: string }
+                    description: Settings in the Usenet client worth changing, in plain English.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422":
+          description: The values are invalid, or the Usenet client couldn't be reached or refused them. `message` says why in plain English.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /settings/notifications:
     get:
       tags: [settings]
@@ -3552,6 +3619,27 @@ components:
         ip: { type: string }
         country: { type: string, description: "Two-letter country code, or empty." }
 
+    UsenetClientType:
+      type: string
+      enum: [sabnzbd]
+      description: Which Usenet client it is.
+
+    UsenetClient:
+      type: object
+      required: [type, url, apiKeySet]
+      properties:
+        type: { $ref: "#/components/schemas/UsenetClientType" }
+        url: { type: string, description: "SABnzbd's address, like http://192.168.1.20:8080. Empty: no Usenet client." }
+        apiKeySet: { type: boolean }
+
+    UsenetClientUpdate:
+      type: object
+      required: [url]
+      properties:
+        type: { $ref: "#/components/schemas/UsenetClientType" }
+        url: { type: string }
+        apiKey: { type: string, format: password, description: "SABnzbd's API key (Config → General → Security). Leave out to keep the stored one." }
+
     DownloadClientUpdate:
       type: object
       required: [url, username]
@@ -3740,7 +3828,10 @@ components:
         `seeding` (finished and sharing, or waiting its turn to); `seeding-stalled` (finished, nobody to share with);
         `seeding-paused` (finished and stopped); `error`; `missing-files` (the client can't find its files);
         `unknown` (a state Reelkeeper doesn't recognise).
-      enum: [downloading, stalled, metadata, queued, paused, checking, moving, seeding, seeding-stalled, seeding-paused, error, missing-files, unknown]
+        Usenet jobs use the same words where they mean the same (`downloading`, `queued`, `paused`, `checking`, `moving`), plus their own:
+        `repairing` (downloaded; checking the files and repairing missing pieces), `unpacking`, `completed` (finished, nothing to seed)
+        and `failed` (the Usenet client gave up on it; `message` says why).
+      enum: [downloading, stalled, metadata, queued, paused, checking, moving, seeding, seeding-stalled, seeding-paused, error, missing-files, unknown, repairing, unpacking, completed, failed]
 
     SeedingTorrent:
       type: object
@@ -3813,13 +3904,15 @@ components:
         seeds: { type: integer, description: Seeds the download client is connected to right now. }
         swarmSeeds: { type: integer, description: "Seeds the tracker reports in the whole swarm; 0 when unknown." }
         peers: { type: integer }
+        message: { type: string, description: "What the client says about it, when it says something: an error (Deluge), why a Usenet job failed, or what post-processing is doing (\"Repairing: 68%\")." }
 
     QueueItem:
       type: object
-      required: [id, createdAt, movie, mediaType, episodes, versionId, profile, releaseTitle, indexer, quality, score, size, upgrade, status, message, torrent, movingTo]
+      required: [id, createdAt, movie, mediaType, episodes, versionId, profile, releaseTitle, indexer, quality, score, size, upgrade, status, message, torrent, movingTo, protocol]
       properties:
         id: { type: integer, format: int64 }
         createdAt: { type: string, format: date-time }
+        protocol: { type: string, enum: [torrent, usenet], description: "A Usenet download is in the Usenet client (`torrent` then describes its job there)." }
         movie: { allOf: [{ $ref: "#/components/schemas/MovieRef" }], nullable: true, description: The movie or series; null if it's gone from Reelkeeper. }
         mediaType: { type: string, enum: [movie, series] }
         episodes: { type: string, description: 'For a TV download, the episodes it''s for ("S02E05", "season 2 (8 wanted episodes)"); empty for movies.' }
@@ -3833,7 +3926,7 @@ components:
         upgrade: { type: boolean }
         status: { type: string, enum: [downloading, import-failed] }
         message: { type: string }
-        torrent: { allOf: [{ $ref: "#/components/schemas/QueueTorrent" }], nullable: true, description: Null if the download client doesn't have it. }
+        torrent: { allOf: [{ $ref: "#/components/schemas/QueueTorrent" }], nullable: true, description: Null if the download client (or, for Usenet, the Usenet client) doesn't have it. }
         movingTo: { type: string, nullable: true, description: 'The name of the download client it is moving to ("Transmission"), while a move runs; null otherwise. Its buttons are refused meanwhile.' }
 
     UpcomingMovie:
@@ -3906,11 +3999,12 @@ components:
 
     Queue:
       type: object
-      required: [items, clientError, clientName, limit, full, builtinState]
+      required: [items, clientError, clientName, usenetClientName, limit, full, builtinState]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/QueueItem" }
+        usenetClientName: { type: string, nullable: true, description: "The Usenet client's name (SABnzbd) when one is set up; Usenet items are in it. Null when none is." }
         builtinState:
           type: string
           nullable: true
@@ -3919,7 +4013,7 @@ components:
         clientName: { type: string, description: "The download client's name, such as qBittorrent, for the page's wording. \"the download client\" when none is set up." }
         limit: { type: integer, description: The queue limit in Settings → Download Client (0 = no limit). }
         full: { type: boolean, description: Grabbing is On for movies or TV and the queue is at or over the limit, so nothing new is grabbed automatically (Seerr requests still go through). }
-        clientError: { type: string, nullable: true, description: Why the download client couldn't be asked (the list then shows only what Reelkeeper knows). }
+        clientError: { type: string, nullable: true, description: "Why the download client (or the Usenet client) couldn't be asked; the message names which. The list then shows only what Reelkeeper knows." }
 
     BlocklistItem:
       type: object
@@ -4125,6 +4219,7 @@ components:
         quality: { type: string }
         indexer: { type: string }
         seeders: { type: integer }
+        usenet: { type: boolean, description: A Usenet release (it has no seeders). }
         reasons:
           type: array
           description: Why the profile turned it down, in plain English.
@@ -4158,6 +4253,7 @@ components:
         rejections:
           type: array
           items: { type: string }
+        usenet: { type: boolean, description: A Usenet release (it has no seeders). }
 
     HistoryData:
       type: object

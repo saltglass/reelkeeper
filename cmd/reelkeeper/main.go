@@ -391,6 +391,10 @@ func openApp(ctx context.Context, cfg config.Config, logger *slog.Logger, servin
 	dl := download.NewService(db, st.DownloadClient, idx, lib, hist, logger)
 	dl.SetSecrets(box)
 	dl.SetMoves(st)
+	// Usenet (2.0): the Usenet client sits next to the torrent client, and
+	// each protocol's indexers are searched only while a client for it is.
+	dl.SetUsenet(st.UsenetClient)
+	idx.SetSearchable(dl.Searchable)
 	// The built-in client's engine runs only while serving (serve starts it).
 	var builtinHost *download.BuiltinHost
 	if serving {

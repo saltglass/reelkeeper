@@ -150,6 +150,9 @@ func (h *Handlers) GetBackfillOptions(w http.ResponseWriter, r *http.Request, id
 				Token: o.Token, Title: o.Title, Size: o.Size, Quality: o.Quality, Indexer: o.Indexer, Seeders: o.Seeders,
 				Reasons: o.Reasons,
 			}
+			if o.Usenet {
+				unit.Options[j].Usenet = &o.Usenet
+			}
 		}
 		out.Units[i] = unit
 	}

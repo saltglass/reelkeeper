@@ -15,6 +15,7 @@ import (
 
 	"github.com/saltglass/reelkeeper/internal/cleanup"
 	"github.com/saltglass/reelkeeper/internal/grab"
+	"github.com/saltglass/reelkeeper/internal/indexer"
 	"github.com/saltglass/reelkeeper/internal/notify"
 	"github.com/saltglass/reelkeeper/internal/settings"
 )
@@ -68,9 +69,6 @@ func (s *Service) Cleanup(ctx context.Context) (msg string, quiet bool, err erro
 	if cfg.Mode == settings.CleanupOff {
 		return "Cleanup is off (Settings → Cleanup).", true, nil
 	}
-	if s.Moving() {
-		return "Paused while torrents move to another download client.", true, nil
-	}
 	dry := cfg.Mode == settings.CleanupDryRun
 	s.syncMu.Lock()
 	defer s.syncMu.Unlock()
@@ -81,16 +79,56 @@ func (s *Service) Cleanup(ctx context.Context) (msg string, quiet bool, err erro
 		Order("id").Scan(ctx); err != nil {
 		return "", false, err
 	}
-	if len(ds) == 0 {
+	var torrents, usenet []Download
+	for _, d := range ds {
+		if d.Usenet() {
+			usenet = append(usenet, d)
+		} else {
+			torrents = append(torrents, d)
+		}
+	}
+	moving := s.Moving()
+	switch {
+	case moving && len(usenet) == 0:
+		return "Paused while torrents move to another download client.", true, nil
+	case len(ds) == 0:
 		return "Nothing to clean up.", true, nil
 	}
+	var parts []string
+	var errs []error
+	quiet = true
+	if len(torrents) > 0 && moving {
+		parts = append(parts, "torrents paused while they move to another download client")
+	} else if len(torrents) > 0 {
+		p, q, err := s.cleanupTorrents(ctx, cfg, dry, torrents)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		parts, quiet = append(parts, p...), quiet && q
+	}
+	if len(usenet) > 0 {
+		p, q, err := s.cleanupUsenet(ctx, cfg, dry, usenet)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		parts, quiet = append(parts, p...), quiet && q
+	}
+	if len(errs) > 0 {
+		return "", false, errors.Join(errs...)
+	}
+	return capitalizeFirst(strings.Join(parts, ", ")) + ".", quiet, nil
+}
+
+// cleanupTorrents runs the torrent rules: seeding goals, stuck downloads and
+// making room on the download disk.
+func (s *Service) cleanupTorrents(ctx context.Context, cfg settings.Cleanup, dry bool, ds []Download) (parts []string, quiet bool, err error) {
 	c, err := s.client()
 	if err != nil {
-		return "", false, err
+		return nil, false, err
 	}
 	ts, err := ourTorrents(ctx, c)
 	if err != nil {
-		return "", false, err
+		return nil, false, err
 	}
 	live := map[string]Torrent{}
 	for _, t := range ts {
@@ -122,7 +160,7 @@ func (s *Service) Cleanup(ctx context.Context) (msg string, quiet bool, err erro
 			s.logger.Warn("couldn't lift the download client's seeding limits", "client", c.Name(), "category", cat, "error", err)
 		} else if _, err := s.db.DB.NewUpdate().Model((*Download)(nil)).Set("limits_set = TRUE").
 			Where("hash IN (?)", bun.List(hashes)).Exec(ctx); err != nil {
-			return "", false, err
+			return nil, false, err
 		} else {
 			lifted += len(hashes)
 		}
@@ -159,7 +197,7 @@ func (s *Service) Cleanup(ctx context.Context) (msg string, quiet bool, err erro
 		}, obs, tr, cfg, now)
 		if b, err := json.Marshal(next); err == nil && string(b) != d.CleanupTrack {
 			if _, err := s.db.DB.NewUpdate().Model(d).Set("cleanup_track = ?", string(b)).WherePK().Exec(ctx); err != nil {
-				return "", false, err
+				return nil, false, err
 			}
 		}
 		if v.Action == cleanup.Keep {
@@ -169,7 +207,7 @@ func (s *Service) Cleanup(ctx context.Context) (msg string, quiet bool, err erro
 		if dry {
 			recorded, err := s.recordOnce(ctx, d, ActionWouldRemove, v)
 			if err != nil {
-				return "", false, err
+				return nil, false, err
 			}
 			if recorded {
 				would++
@@ -209,7 +247,7 @@ func (s *Service) Cleanup(ctx context.Context) (msg string, quiet bool, err erro
 			if dry {
 				recorded, err := s.recordOnce(ctx, d, ActionWouldRemove, v)
 				if err != nil {
-					return "", false, err
+					return nil, false, err
 				}
 				if recorded {
 					would++
@@ -228,7 +266,6 @@ func (s *Service) Cleanup(ctx context.Context) (msg string, quiet bool, err erro
 		}
 	}
 
-	var parts []string
 	if dry {
 		parts = append(parts, fmt.Sprintf("Dry run: %d newly marked \"would remove\"", would))
 	} else {
@@ -236,7 +273,70 @@ func (s *Service) Cleanup(ctx context.Context) (msg string, quiet bool, err erro
 	}
 	parts = append(parts, fmt.Sprintf("%d kept", kept))
 	// Quiet: nothing removed, nothing newly marked, no limits lifted.
-	return strings.Join(parts, ", ") + ".", !changed && acted == 0 && would == 0, nil
+	return parts, !changed && acted == 0 && would == 0, nil
+}
+
+// cleanupUsenet runs the Usenet rules (cleanup.EvaluateUsenet): an imported
+// download's copy goes from the Usenet client at once, and a job the client
+// gave up on is removed, blocklisted and searched again. Dry run only
+// records what it would do, as for torrents.
+func (s *Service) cleanupUsenet(ctx context.Context, cfg settings.Cleanup, dry bool, ds []Download) (parts []string, quiet bool, err error) {
+	c, err := s.usenetClient()
+	if err != nil {
+		return nil, false, err
+	}
+	jobs, err := ourTorrents(ctx, c)
+	if err != nil {
+		return nil, false, err
+	}
+	live := map[string]Torrent{}
+	for _, t := range jobs {
+		live[t.Hash] = t
+	}
+	now := s.now().UTC()
+	changed, acted, would, kept := false, 0, 0, 0
+	for i := range ds {
+		d := &ds[i]
+		t, ok := live[d.Hash]
+		if !ok {
+			// As for torrents: Check marks a download in progress removed; an
+			// imported one whose job was removed in the client by hand is done.
+			if d.Status == StatusImported {
+				s.finish(ctx, d, StatusSeeded, "Its job was removed from "+c.Name()+" outside Reelkeeper after it was imported.", grab.EventRemoved)
+				changed = true
+			}
+			continue
+		}
+		v := cleanup.EvaluateUsenet(cleanup.Download{
+			Imported: d.Status == StatusImported, ImportFail: d.Status == StatusImportFailed, CompletedAt: d.CompletedAt,
+		}, cleanup.Torrent{State: t.State, ClientName: c.Name(), Done: t.Done(), Left: t.Left, Message: t.Message}, cfg, now)
+		if v.Action == cleanup.Keep {
+			kept++
+			continue
+		}
+		if dry {
+			recorded, err := s.recordOnce(ctx, d, ActionWouldRemove, v)
+			if err != nil {
+				return nil, false, err
+			}
+			if recorded {
+				would++
+			}
+			continue
+		}
+		if err := s.act(ctx, c, d, v); err != nil {
+			s.logger.Error("cleanup couldn't remove a Usenet download", "release", d.ReleaseTitle, "error", err)
+			continue
+		}
+		acted++
+	}
+	if dry {
+		parts = append(parts, fmt.Sprintf("Usenet dry run: %d newly marked \"would remove\"", would))
+	} else {
+		parts = append(parts, fmt.Sprintf("%d removed from %s", acted, c.Name()))
+	}
+	parts = append(parts, fmt.Sprintf("%d kept in %s", kept, c.Name()))
+	return parts, !changed && acted == 0 && would == 0, nil
 }
 
 // act removes a download, and for a stuck one blocklists it and searches
@@ -477,7 +577,8 @@ type SeedingItem struct {
 // Seeding lists imported downloads still seeding.
 func (s *Service) Seeding(ctx context.Context) ([]SeedingItem, error) {
 	var ds []Download
-	if err := s.db.DB.NewSelect().Model(&ds).Where("status = ?", StatusImported).Order("id").Scan(ctx); err != nil {
+	if err := s.db.DB.NewSelect().Model(&ds).Where("status = ?", StatusImported).
+		Where("protocol <> ?", indexer.ProtocolUsenet).Order("id").Scan(ctx); err != nil {
 		return nil, err
 	}
 	if len(ds) == 0 {

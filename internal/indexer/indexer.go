@@ -118,10 +118,10 @@ type Service struct {
 	draftTests map[string]draftTest
 	// lastFeed is when each solver-backed indexer's feed was last read.
 	lastFeed map[int64]time.Time
-	// usenetOn says whether a Usenet client is set up (SetUsenet); Usenet
-	// indexers aren't searched without one, since nothing could download
-	// what they find. nil means they are (tests).
-	usenetOn func() bool
+	// searchable says whether indexers of a protocol are searched now
+	// (SetSearchable): not while nothing could download what they find. nil
+	// means every protocol is (tests).
+	searchable func(protocol string) bool
 }
 
 type cached struct {
@@ -637,12 +637,15 @@ const (
 // SetNotifier connects notifications (an indexer failing for a day).
 func (s *Service) SetNotifier(fn func(ctx context.Context, ev notify.Event)) { s.notify = fn }
 
-// SetUsenet connects the check for a Usenet client (see Service.usenetOn).
-func (s *Service) SetUsenet(on func() bool) { s.usenetOn = on }
+// SetSearchable connects the check for whether a protocol's indexers are
+// searched (see Service.searchable).
+func (s *Service) SetSearchable(fn func(protocol string) bool) { s.searchable = fn }
 
-// UsenetOff says whether Usenet indexers are left out of searches because no
-// Usenet client is set up.
-func (s *Service) UsenetOff() bool { return s.usenetOn != nil && !s.usenetOn() }
+// Searchable says whether indexers of a protocol (ProtocolTorrent or
+// ProtocolUsenet) are searched now.
+func (s *Service) Searchable(protocol string) bool {
+	return s.searchable == nil || s.searchable(protocol)
+}
 
 // record notes the outcome of a request to an indexer.
 func (s *Service) record(ctx context.Context, ix *Indexer, took time.Duration, failure error, kind usageKind) {
@@ -824,7 +827,7 @@ func (s *Service) Search(ctx context.Context, q core.Query, opt SearchOptions) (
 		if len(q.Categories) > 0 && !overlaps(ix.CategoryList(), q.Categories) {
 			continue
 		}
-		if ix.Protocol() == ProtocolUsenet && s.UsenetOff() {
+		if !s.Searchable(ix.Protocol()) {
 			continue
 		}
 		if s.overLimit(ctx, &ix) {

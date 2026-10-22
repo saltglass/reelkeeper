@@ -3,7 +3,8 @@
 // in dry run, records them), and only ever for torrents in Reelkeeper's own
 // category.
 //
-// Two kinds of removal:
+// Two kinds of removal (Usenet downloads have their own, simpler rules: see
+// EvaluateUsenet):
 //
 //   - Seeded: an imported torrent has met the tracker's own minimum AND
 //     the user's seeding goal. Never before the tracker's minimum: that's
@@ -70,6 +71,9 @@ type Torrent struct {
 	// Unregistered is set when a tracker says the torrent no longer
 	// exists (only asked about when it looks stuck).
 	Unregistered bool
+	// Message is what the client says is wrong (a failed Usenet job's
+	// reason).
+	Message string
 }
 
 // Action is what to do.
@@ -86,7 +90,8 @@ const (
 type Verdict struct {
 	Action Action
 	// Rule names the rule ("seeded", "stalled", "slow", "metadata",
-	// "unregistered", "missing", "import-failed").
+	// "unregistered", "missing", "import-failed", and for Usenet
+	// "usenet-imported" and "usenet-failed").
 	Rule   string
 	Reason string
 }
@@ -109,6 +114,28 @@ func Evaluate(d Download, t Torrent, tr Track, cfg settings.Cleanup, now time.Ti
 		return Verdict{}, tr // finished, waiting to import
 	}
 	return stuck(t, tr, cfg, now)
+}
+
+// EvaluateUsenet decides about one Usenet download. There is no seeding, so
+// an imported one's downloaded copy goes straight away; a job the Usenet
+// client gave up on (missing articles, a failed repair or unpack) is stuck
+// for good, so it is removed, blocklisted and searched again at once, with
+// the client's reason. A failed import waits as long as a torrent's does.
+// A job refused as a duplicate isn't the release's fault: it stays (the
+// Queue says to turn duplicate detection off), never blocklisted.
+func EvaluateUsenet(d Download, t Torrent, cfg settings.Cleanup, now time.Time) Verdict {
+	switch {
+	case d.Imported:
+		return Verdict{RemoveSeeded, "usenet-imported", "Imported, and a Usenet download has nothing to seed."}
+	case d.ImportFail:
+		v, _ := Evaluate(d, t, Track{}, cfg, now)
+		return v
+	case t.State == torrent.Failed && strings.Contains(strings.ToLower(t.Message), "duplicate"):
+		return Verdict{}
+	case t.State == torrent.Failed:
+		return Verdict{RemoveStuck, "usenet-failed", fmt.Sprintf("%s couldn't download it: %s.", t.clientName(), strings.TrimSuffix(t.Message, "."))}
+	}
+	return Verdict{}
 }
 
 // seeded checks the tracker's minimum (real seeding time: that's what a

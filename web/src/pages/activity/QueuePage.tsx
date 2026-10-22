@@ -38,9 +38,14 @@ export function isPaused(state: TorrentState): boolean {
   return state === "paused";
 }
 
-/** A torrent's state in plain English; `clientName` is the download client's name. */
+/** A download's state in plain English; `clientName` is the name of the client holding it. */
 export function stateLabel(state: TorrentState, clientName: string): string {
   if (state === "downloading") return "Downloading";
+  // Usenet jobs' own states.
+  if (state === "repairing") return "Checking and repairing files";
+  if (state === "unpacking") return "Unpacking";
+  if (state === "completed") return "Downloaded, waiting to import";
+  if (state === "failed") return `${atSentenceStart(clientName)} couldn't download it`;
   if (state === "stalled") return "Stalled (no peers sending)";
   if (state === "metadata") return "Getting torrent details";
   if (state === "queued") return `Queued in ${clientName}`;
@@ -58,9 +63,12 @@ export type BarKind = "active" | "stalled" | "fetching" | "done";
 
 /** Which look the progress bar gets for a torrent state. */
 export function barKind(state: TorrentState, progress: number): BarKind {
-  if (state === "metadata") return "fetching";
-  if (state === "stalled" || state === "error" || state === "missing-files") return "stalled";
-  if (progress >= 1 || state === "seeding" || state === "seeding-stalled") return "done";
+  // Repairing and unpacking take as long as they take: no percentage to show.
+  if (state === "metadata" || state === "repairing" || state === "unpacking") return "fetching";
+  if (state === "stalled" || state === "error" || state === "missing-files" || state === "failed")
+    return "stalled";
+  if (progress >= 1 || state === "seeding" || state === "seeding-stalled" || state === "completed")
+    return "done";
   return "active";
 }
 
@@ -85,7 +93,7 @@ export function QueuePage() {
         title="Queue"
         description={
           data &&
-          `What Reelkeeper has sent to ${data.clientName} and is waiting for, and downloads that finished but couldn't be imported.`
+          `What Reelkeeper has sent to ${data.usenetClientName ? `${data.clientName} and ${data.usenetClientName}` : data.clientName} and is waiting for, and downloads that finished but couldn't be imported.`
         }
         actions={
           totalSpeed > 0 && (
@@ -131,8 +139,8 @@ export function QueuePage() {
           )}
           {data.clientError && (
             <Alert variant="warning">
-              Couldn't ask {data.clientName} how things are going: {data.clientError} The list below
-              shows only what Reelkeeper remembers.
+              Couldn't ask how downloads are going: {data.clientError} The list below shows only
+              what Reelkeeper remembers.
             </Alert>
           )}
           {rows.length === 0 ? (
@@ -150,7 +158,7 @@ export function QueuePage() {
                   <QueueRow
                     key={item.id}
                     item={item}
-                    clientName={data.clientName}
+                    clientName={rowClient(item, data)}
                     index={i}
                     leaving={leaving}
                     poster={
@@ -166,13 +174,22 @@ export function QueuePage() {
       )}
       <RemoveDialog
         item={removing?.item}
-        clientName={data?.clientName ?? "the download client"}
+        clientName={removing && data ? rowClient(removing.item, data) : "the download client"}
         onClose={() => setRemoving(undefined)}
         onRemoved={() => removing && leave(removing.item, removing.index)}
       />
     </div>
   );
 }
+
+/** The name of the client holding a download: the Usenet client's for a Usenet one. */
+function rowClient(item: QueueItem, data: { clientName: string; usenetClientName: string | null }) {
+  if (item.protocol === "usenet") return data.usenetClientName ?? "the Usenet client";
+  return data.clientName;
+}
+
+/** Usenet jobs can be paused, resumed and moved only while still in the client's queue. */
+const usenetQueueStates: TorrentState[] = ["downloading", "queued", "paused"];
 
 function QueueRow({
   item: it,
@@ -205,7 +222,13 @@ function QueueRow({
   // client didn't report.
   // A download on its way to another client can't be touched until it arrives.
   const moving = it.movingTo != null;
-  const canControl = it.status === "downloading" && t != null && t.progress < 1 && !moving;
+  const usenet = it.protocol === "usenet";
+  const canControl =
+    it.status === "downloading" &&
+    t != null &&
+    t.progress < 1 &&
+    !moving &&
+    (!usenet || usenetQueueStates.includes(t.state));
   const paused = t != null && isPaused(t.state);
   const actions = [pause, resume, top];
   const busy = moving || retry.isPending || actions.some((m) => m.isPending);
@@ -260,7 +283,7 @@ function QueueRow({
           {it.releaseTitle}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {[it.quality, it.indexer].filter(Boolean).join(" · ")}
+          {[it.quality, it.indexer, usenet && "Usenet"].filter(Boolean).join(" · ")}
         </p>
         {failed && (
           <p className="mt-2 text-sm break-words text-destructive">{retryError ?? it.message}</p>
@@ -269,6 +292,17 @@ function QueueRow({
         {/* A note while it waits, e.g. finished but the download folder can't be seen. */}
         {!failed && it.message && (
           <p className="mt-2 text-sm break-words text-muted-foreground">{it.message}</p>
+        )}
+        {/* What the client says: why a Usenet job failed, or how its repair is going. */}
+        {t?.message && !failed && (
+          <p
+            className={cn(
+              "mt-2 text-sm break-words",
+              t.state === "failed" ? "text-destructive" : "text-muted-foreground",
+            )}
+          >
+            {t.message}
+          </p>
         )}
         {t ? (
           <>
@@ -297,20 +331,23 @@ function QueueRow({
               {failed && <span>{stateLabel(t.state, clientName)}</span>}
               {t.speed > 0 && <span>{formatBytes(t.speed)}/s</span>}
               {t.etaSeconds != null && <span>{shortDuration(t.etaSeconds)} left</span>}
-              <span>
-                {/* The tracker's swarm count is often stale and misses seeds found
-                    through DHT, so it can be lower than the connected count. */}
-                {t.swarmSeeds && t.swarmSeeds > t.seeds
-                  ? `connected to ${t.seeds} of ${t.swarmSeeds} seeds`
-                  : `connected to ${t.seeds} seeds`}{" "}
-                · {t.peers} peers
-              </span>
+              {!usenet && (
+                <span>
+                  {/* The tracker's swarm count is often stale and misses seeds found
+                      through DHT, so it can be lower than the connected count. */}
+                  {t.swarmSeeds && t.swarmSeeds > t.seeds
+                    ? `connected to ${t.seeds} of ${t.swarmSeeds} seeds`
+                    : `connected to ${t.seeds} seeds`}{" "}
+                  · {t.peers} peers
+                </span>
+              )}
               <span>{formatBytes(t.size)}</span>
             </p>
           </>
         ) : (
           <p className="mt-2 text-xs text-muted-foreground">
-            {atSentenceStart(clientName)} didn't report this torrent just now.
+            {atSentenceStart(clientName)} didn't report this {usenet ? "download" : "torrent"} just
+            now.
           </p>
         )}
       </div>

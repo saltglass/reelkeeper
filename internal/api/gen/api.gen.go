@@ -727,6 +727,24 @@ func (e QueueItemMediaType) Valid() bool {
 	}
 }
 
+// Defines values for QueueItemProtocol.
+const (
+	Torrent QueueItemProtocol = "torrent"
+	Usenet  QueueItemProtocol = "usenet"
+)
+
+// Valid indicates whether the value is a known member of the QueueItemProtocol enum.
+func (e QueueItemProtocol) Valid() bool {
+	switch e {
+	case Torrent:
+		return true
+	case Usenet:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for QueueItemStatus.
 const (
 	QueueItemStatusDownloading  QueueItemStatus = "downloading"
@@ -931,18 +949,22 @@ func (e SystemStatusDatabaseEngine) Valid() bool {
 // Defines values for TorrentState.
 const (
 	TorrentStateChecking       TorrentState = "checking"
+	TorrentStateCompleted      TorrentState = "completed"
 	TorrentStateDownloading    TorrentState = "downloading"
 	TorrentStateError          TorrentState = "error"
+	TorrentStateFailed         TorrentState = "failed"
 	TorrentStateMetadata       TorrentState = "metadata"
 	TorrentStateMissingFiles   TorrentState = "missing-files"
 	TorrentStateMoving         TorrentState = "moving"
 	TorrentStatePaused         TorrentState = "paused"
 	TorrentStateQueued         TorrentState = "queued"
+	TorrentStateRepairing      TorrentState = "repairing"
 	TorrentStateSeeding        TorrentState = "seeding"
 	TorrentStateSeedingPaused  TorrentState = "seeding-paused"
 	TorrentStateSeedingStalled TorrentState = "seeding-stalled"
 	TorrentStateStalled        TorrentState = "stalled"
 	TorrentStateUnknown        TorrentState = "unknown"
+	TorrentStateUnpacking      TorrentState = "unpacking"
 )
 
 // Valid indicates whether the value is a known member of the TorrentState enum.
@@ -950,9 +972,13 @@ func (e TorrentState) Valid() bool {
 	switch e {
 	case TorrentStateChecking:
 		return true
+	case TorrentStateCompleted:
+		return true
 	case TorrentStateDownloading:
 		return true
 	case TorrentStateError:
+		return true
+	case TorrentStateFailed:
 		return true
 	case TorrentStateMetadata:
 		return true
@@ -964,6 +990,8 @@ func (e TorrentState) Valid() bool {
 		return true
 	case TorrentStateQueued:
 		return true
+	case TorrentStateRepairing:
+		return true
 	case TorrentStateSeeding:
 		return true
 	case TorrentStateSeedingPaused:
@@ -973,6 +1001,8 @@ func (e TorrentState) Valid() bool {
 	case TorrentStateStalled:
 		return true
 	case TorrentStateUnknown:
+		return true
+	case TorrentStateUnpacking:
 		return true
 	default:
 		return false
@@ -994,6 +1024,21 @@ func (e UpcomingMovieKind) Valid() bool {
 	case InCinemas:
 		return true
 	case Physical:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UsenetClientType.
+const (
+	Sabnzbd UsenetClientType = "sabnzbd"
+)
+
+// Valid indicates whether the value is a known member of the UsenetClientType enum.
+func (e UsenetClientType) Valid() bool {
+	switch e {
+	case Sabnzbd:
 		return true
 	default:
 		return false
@@ -1249,6 +1294,9 @@ type BackfillOption struct {
 
 	// Token Sent back to grab it. Valid for 15 minutes.
 	Token string `json:"token"`
+
+	// Usenet A Usenet release (it has no seeders).
+	Usenet *bool `json:"usenet,omitempty"`
 }
 
 // BackfillOptions defines model for BackfillOptions.
@@ -2014,6 +2062,9 @@ type HistoryVerdict struct {
 	Seeders    int       `json:"seeders"`
 	Size       int64     `json:"size"`
 	Upgrade    *bool     `json:"upgrade,omitempty"`
+
+	// Usenet A Usenet release (it has no seeders).
+	Usenet *bool `json:"usenet,omitempty"`
 }
 
 // Indexer defines model for Indexer.
@@ -2542,6 +2593,9 @@ type OrphanTorrent struct {
 	// `seeding` (finished and sharing, or waiting its turn to); `seeding-stalled` (finished, nobody to share with);
 	// `seeding-paused` (finished and stopped); `error`; `missing-files` (the client can't find its files);
 	// `unknown` (a state Reelkeeper doesn't recognise).
+	// Usenet jobs use the same words where they mean the same (`downloading`, `queued`, `paused`, `checking`, `moving`), plus their own:
+	// `repairing` (downloaded; checking the files and repairing missing pieces), `unpacking`, `completed` (finished, nothing to seed)
+	// and `failed` (the Usenet client gave up on it; `message` says why).
 	State TorrentState `json:"state"`
 }
 
@@ -2814,7 +2868,7 @@ type Queue struct {
 	// BuiltinState The built-in client's VPN state (see `GET /settings/download-client/builtin/status`) while it is the download client; null for the other clients. `connecting`, `down` and `held` mean its downloads are stopped.
 	BuiltinState *QueueBuiltinState `json:"builtinState"`
 
-	// ClientError Why the download client couldn't be asked (the list then shows only what Reelkeeper knows).
+	// ClientError Why the download client (or the Usenet client) couldn't be asked; the message names which. The list then shows only what Reelkeeper knows.
 	ClientError *string `json:"clientError"`
 
 	// ClientName The download client's name, such as qBittorrent, for the page's wording. "the download client" when none is set up.
@@ -2826,6 +2880,9 @@ type Queue struct {
 
 	// Limit The queue limit in Settings → Download Client (0 = no limit).
 	Limit int `json:"limit"`
+
+	// UsenetClientName The Usenet client's name (SABnzbd) when one is set up; Usenet items are in it. Null when none is.
+	UsenetClientName *string `json:"usenetClientName"`
 }
 
 // QueueBuiltinState The built-in client's VPN state (see `GET /settings/download-client/builtin/status`) while it is the download client; null for the other clients. `connecting`, `down` and `held` mean its downloads are stopped.
@@ -2849,14 +2906,17 @@ type QueueItem struct {
 	MovingTo *string `json:"movingTo"`
 
 	// Profile The quality profile of the version.
-	Profile      *string         `json:"profile"`
-	Quality      string          `json:"quality"`
-	ReleaseTitle string          `json:"releaseTitle"`
-	Score        int             `json:"score"`
-	Size         int64           `json:"size"`
-	Status       QueueItemStatus `json:"status"`
+	Profile *string `json:"profile"`
 
-	// Torrent Null if the download client doesn't have it.
+	// Protocol A Usenet download is in the Usenet client (`torrent` then describes its job there).
+	Protocol     QueueItemProtocol `json:"protocol"`
+	Quality      string            `json:"quality"`
+	ReleaseTitle string            `json:"releaseTitle"`
+	Score        int               `json:"score"`
+	Size         int64             `json:"size"`
+	Status       QueueItemStatus   `json:"status"`
+
+	// Torrent Null if the download client (or
 	Torrent   *QueueTorrent `json:"torrent"`
 	Upgrade   bool          `json:"upgrade"`
 	VersionId *int64        `json:"versionId"`
@@ -2864,6 +2924,9 @@ type QueueItem struct {
 
 // QueueItemMediaType defines model for QueueItem.MediaType.
 type QueueItemMediaType string
+
+// QueueItemProtocol A Usenet download is in the Usenet client (`torrent` then describes its job there).
+type QueueItemProtocol string
 
 // QueueItemStatus defines model for QueueItem.Status.
 type QueueItemStatus string
@@ -2873,7 +2936,10 @@ type QueueTorrent struct {
 	// EtaSeconds Null when unknown.
 	EtaSeconds *int  `json:"etaSeconds"`
 	Left       int64 `json:"left"`
-	Peers      int   `json:"peers"`
+
+	// Message What the client says about it, when it says something: an error (Deluge), why a Usenet job failed, or what post-processing is doing ("Repairing: 68%").
+	Message *string `json:"message,omitempty"`
+	Peers   int     `json:"peers"`
 
 	// Progress 0 to 1.
 	Progress float64 `json:"progress"`
@@ -2891,6 +2957,9 @@ type QueueTorrent struct {
 	// `seeding` (finished and sharing, or waiting its turn to); `seeding-stalled` (finished, nobody to share with);
 	// `seeding-paused` (finished and stopped); `error`; `missing-files` (the client can't find its files);
 	// `unknown` (a state Reelkeeper doesn't recognise).
+	// Usenet jobs use the same words where they mean the same (`downloading`, `queued`, `paused`, `checking`, `moving`), plus their own:
+	// `repairing` (downloaded; checking the files and repairing missing pieces), `unpacking`, `completed` (finished, nothing to seed)
+	// and `failed` (the Usenet client gave up on it; `message` says why).
 	State TorrentState `json:"state"`
 
 	// SwarmSeeds Seeds the tracker reports in the whole swarm; 0 when unknown.
@@ -3162,6 +3231,9 @@ type SeedingTorrent struct {
 	// `seeding` (finished and sharing, or waiting its turn to); `seeding-stalled` (finished, nobody to share with);
 	// `seeding-paused` (finished and stopped); `error`; `missing-files` (the client can't find its files);
 	// `unknown` (a state Reelkeeper doesn't recognise).
+	// Usenet jobs use the same words where they mean the same (`downloading`, `queued`, `paused`, `checking`, `moving`), plus their own:
+	// `repairing` (downloaded; checking the files and repairing missing pieces), `unpacking`, `completed` (finished, nothing to seed)
+	// and `failed` (the Usenet client gave up on it; `message` says why).
 	State TorrentState `json:"state"`
 }
 
@@ -3491,6 +3563,9 @@ type TestReleaseResult struct {
 // `seeding` (finished and sharing, or waiting its turn to); `seeding-stalled` (finished, nobody to share with);
 // `seeding-paused` (finished and stopped); `error`; `missing-files` (the client can't find its files);
 // `unknown` (a state Reelkeeper doesn't recognise).
+// Usenet jobs use the same words where they mean the same (`downloading`, `queued`, `paused`, `checking`, `moving`), plus their own:
+// `repairing` (downloaded; checking the files and repairing missing pieces), `unpacking`, `completed` (finished, nothing to seed)
+// and `failed` (the Usenet client gave up on it; `message` says why).
 type TorrentState string
 
 // UpcomingEpisode defines model for UpcomingEpisode.
@@ -3524,6 +3599,30 @@ type UpcomingMovie struct {
 
 // UpcomingMovieKind Which release date this is.
 type UpcomingMovieKind string
+
+// UsenetClient defines model for UsenetClient.
+type UsenetClient struct {
+	ApiKeySet bool `json:"apiKeySet"`
+
+	// Type Which Usenet client it is.
+	Type UsenetClientType `json:"type"`
+
+	// Url SABnzbd's address, like http://192.168.1.20:8080. Empty: no Usenet client.
+	Url string `json:"url"`
+}
+
+// UsenetClientType Which Usenet client it is.
+type UsenetClientType string
+
+// UsenetClientUpdate defines model for UsenetClientUpdate.
+type UsenetClientUpdate struct {
+	// ApiKey SABnzbd's API key (Config → General → Security). Leave out to keep the stored one.
+	ApiKey *string `json:"apiKey,omitempty"`
+
+	// Type Which Usenet client it is.
+	Type *UsenetClientType `json:"type,omitempty"`
+	Url  string            `json:"url"`
+}
 
 // User defines model for User.
 type User struct {
@@ -4220,6 +4319,12 @@ type PutSolverSettingsJSONRequestBody = SolverSettings
 // CheckSolverJSONRequestBody defines body for CheckSolver for application/json ContentType.
 type CheckSolverJSONRequestBody CheckSolverJSONBody
 
+// PutUsenetClientJSONRequestBody defines body for PutUsenetClient for application/json ContentType.
+type PutUsenetClientJSONRequestBody = UsenetClientUpdate
+
+// TestUsenetClientJSONRequestBody defines body for TestUsenetClient for application/json ContentType.
+type TestUsenetClientJSONRequestBody = UsenetClientUpdate
+
 // SearchWantedJSONRequestBody defines body for SearchWanted for application/json ContentType.
 type SearchWantedJSONRequestBody = WantedSearchRequest
 
@@ -4627,6 +4732,15 @@ type ServerInterface interface {
 	// CheckSolver Check the solver answers (the given address, or the saved one)
 	// (POST /settings/solver/check)
 	CheckSolver(w http.ResponseWriter, r *http.Request)
+	// GetUsenetClient The Usenet download client connection (never the API key)
+	// (GET /settings/usenet-client)
+	GetUsenetClient(w http.ResponseWriter, r *http.Request)
+	// PutUsenetClient Save the Usenet download client connection
+	// (PUT /settings/usenet-client)
+	PutUsenetClient(w http.ResponseWriter, r *http.Request)
+	// TestUsenetClient Try a Usenet client connection without saving it
+	// (POST /settings/usenet-client/test)
+	TestUsenetClient(w http.ResponseWriter, r *http.Request)
 	// ListSkippedFolders Folders scans leave alone (from movies deleted with "keep the files")
 	// (GET /skipped-folders)
 	ListSkippedFolders(w http.ResponseWriter, r *http.Request)
@@ -5437,6 +5551,24 @@ func (_ Unimplemented) PutSolverSettings(w http.ResponseWriter, r *http.Request)
 // CheckSolver Check the solver answers (the given address, or the saved one)
 // (POST /settings/solver/check)
 func (_ Unimplemented) CheckSolver(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetUsenetClient The Usenet download client connection (never the API key)
+// (GET /settings/usenet-client)
+func (_ Unimplemented) GetUsenetClient(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PutUsenetClient Save the Usenet download client connection
+// (PUT /settings/usenet-client)
+func (_ Unimplemented) PutUsenetClient(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// TestUsenetClient Try a Usenet client connection without saving it
+// (POST /settings/usenet-client/test)
+func (_ Unimplemented) TestUsenetClient(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -8419,6 +8551,48 @@ func (siw *ServerInterfaceWrapper) CheckSolver(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// GetUsenetClient operation middleware
+func (siw *ServerInterfaceWrapper) GetUsenetClient(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetUsenetClient(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutUsenetClient operation middleware
+func (siw *ServerInterfaceWrapper) PutUsenetClient(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutUsenetClient(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// TestUsenetClient operation middleware
+func (siw *ServerInterfaceWrapper) TestUsenetClient(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TestUsenetClient(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListSkippedFolders operation middleware
 func (siw *ServerInterfaceWrapper) ListSkippedFolders(w http.ResponseWriter, r *http.Request) {
 
@@ -9042,6 +9216,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/settings/download-client/test", wrapper.TestDownloadClient)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/settings/usenet-client", wrapper.GetUsenetClient)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/settings/usenet-client", wrapper.PutUsenetClient)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/settings/usenet-client/test", wrapper.TestUsenetClient)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/settings/notifications", wrapper.GetNotifications)

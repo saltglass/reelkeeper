@@ -24,7 +24,8 @@ func (h *Handlers) PutGrabbingSettings(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &body) {
 		return
 	}
-	if !h.Settings.DownloadClient().Configured() {
+	// Either client will do: one that downloads torrents, or Usenet.
+	if !h.Settings.DownloadClient().Configured() && !h.Settings.UsenetClient().Configured() {
 		fields := map[string]string{}
 		if body.Mode == gen.GrabbingSettingsModeOn {
 			fields["mode"] = "Set up the download client first (below)."

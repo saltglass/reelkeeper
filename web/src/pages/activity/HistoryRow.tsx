@@ -270,7 +270,7 @@ function ReleaseTable({ releases }: { releases: HistoryVerdict[] }) {
               </td>
               <td className="px-2 py-1.5">{r.indexer}</td>
               <td className="px-2 py-1.5 whitespace-nowrap">{formatBytes(r.size)}</td>
-              <td className="px-2 py-1.5">{r.seeders}</td>
+              <td className="px-2 py-1.5">{r.usenet ? "Usenet" : r.seeders}</td>
               <td className="px-2 py-1.5">{r.quality}</td>
               <td className="px-2 py-1.5">{r.score}</td>
               <td className="px-2 py-1.5">

@@ -346,7 +346,9 @@ function Options({
                 <li key={o.token} className="rounded-lg border bg-muted/30 p-3">
                   <p className="font-mono text-xs break-all">{o.title}</p>
                   <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    <Badge variant="info">{plural(o.seeders, "seeder")}</Badge>
+                    <Badge variant="info">
+                      {o.usenet ? "Usenet" : plural(o.seeders, "seeder")}
+                    </Badge>
                     <span>{formatBytes(o.size)}</span>
                     <span>{o.quality}</span>
                     <span>{o.indexer}</span>

@@ -654,6 +654,8 @@ type BackfillOption struct {
 	Quality string
 	Indexer string
 	Seeders int
+	// Usenet marks a Usenet release (it has no seeders).
+	Usenet bool
 	// Reasons are why the profile turned it down, in plain English.
 	Reasons []string
 }
@@ -689,8 +691,9 @@ type pickedOption struct {
 
 // BackfillOptions searches once more for each missing unit of a show and
 // offers, for each, the releases with the most seeders that the profile
-// turned down. Never offered: blocklisted releases, releases nobody seeds,
-// and releases for the wrong show, season or episode. Nothing is stored
+// turned down, Usenet ones first (they have no seeders, and download as well
+// as any). Never offered: blocklisted releases, torrents nobody seeds, and
+// releases for the wrong show, season or episode. Nothing is stored
 // except the short-lived tokens that let the user take one.
 func (s *Service) BackfillOptions(ctx context.Context, id int64) (*BackfillOptionList, error) {
 	row, err := s.backfillRow(ctx, id)
@@ -765,12 +768,20 @@ func (s *Service) BackfillOptions(ctx context.Context, id int64) (*BackfillOptio
 		var offered []*tvCandidate
 		for i := range cs {
 			c := &cs[i]
-			if c.d.Accepted || c.d.WrongContent || c.rel.Seeders <= 0 || blocked(c.rel.Title, c.rel.InfoHash) {
+			if c.d.Accepted || c.d.WrongContent || (c.rel.Seeders <= 0 && !c.rel.Usenet()) || blocked(c.rel.Title, c.rel.InfoHash) {
 				continue
 			}
 			offered = append(offered, c)
 		}
-		slices.SortStableFunc(offered, func(a, b *tvCandidate) int { return b.rel.Seeders - a.rel.Seeders })
+		slices.SortStableFunc(offered, func(a, b *tvCandidate) int {
+			if a.rel.Usenet() != b.rel.Usenet() {
+				if a.rel.Usenet() {
+					return -1
+				}
+				return 1
+			}
+			return b.rel.Seeders - a.rel.Seeders
+		})
 		unit := BackfillUnit{Label: u.label(), EpisodeIDs: u.episodeIDs(), Options: []BackfillOption{}}
 		for _, c := range offered[:min(len(offered), optionsPerUnit)] {
 			ids, ok := forIDs[c]
@@ -785,7 +796,7 @@ func (s *Service) BackfillOptions(ctx context.Context, id int64) (*BackfillOptio
 			}
 			unit.Options = append(unit.Options, BackfillOption{
 				Token: token, Title: c.rel.Title, Size: c.rel.Size, Quality: c.d.Quality.Name, Indexer: c.rel.Indexer,
-				Seeders: c.rel.Seeders, Reasons: c.d.Rejections,
+				Seeders: c.rel.Seeders, Usenet: c.rel.Usenet(), Reasons: c.d.Rejections,
 			})
 		}
 		out.Units = append(out.Units, unit)

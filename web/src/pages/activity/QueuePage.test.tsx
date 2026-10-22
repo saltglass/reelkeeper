@@ -74,6 +74,10 @@ describe("queue page", () => {
       error: "Transmission reports an error",
       "missing-files": "Transmission reports an error",
       unknown: "Unknown",
+      repairing: "Checking and repairing files",
+      unpacking: "Unpacking",
+      completed: "Downloaded, waiting to import",
+      failed: "Transmission couldn't download it",
     };
     for (const [state, label] of Object.entries(labels))
       expect(stateLabel(state as TorrentState, "Transmission")).toBe(label);
@@ -97,7 +101,9 @@ describe("queue page", () => {
     expect(
       await screen.findByText(/What Reelkeeper has sent to Transmission and is waiting for/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Couldn't ask Transmission how things are going/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Couldn't ask how downloads are going: Can't reach Transmission/),
+    ).toBeInTheDocument();
     expect(screen.getByText("Queued in Transmission")).toBeInTheDocument();
     expect(
       screen.getByText(/Transmission didn't report this torrent just now/),
@@ -111,6 +117,56 @@ describe("queue page", () => {
       await screen.findByText("Remove from Transmission and delete what was downloaded?"),
     ).toBeInTheDocument();
     expect(screen.queryByText(/qBittorrent/)).not.toBeInTheDocument();
+  });
+
+  it("shows Usenet downloads in the Usenet client's words", async () => {
+    const usenet = {
+      ...item,
+      id: 3,
+      protocol: "usenet",
+      indexer: "NZBIndexer",
+      torrent: { ...item.torrent, state: "queued", seeds: 0, swarmSeeds: 0, peers: 0 },
+    };
+    const repairing = {
+      ...usenet,
+      id: 4,
+      torrent: { ...usenet.torrent, state: "repairing", progress: 0.99, message: "Repairing: 68%" },
+    };
+    const failed = {
+      ...usenet,
+      id: 5,
+      torrent: {
+        ...usenet.torrent,
+        state: "failed",
+        message: "Aborted, cannot be completed - https://sabnzbd.org/not-complete",
+      },
+    };
+    open({
+      items: [{ ...item, protocol: "torrent" }, usenet, repairing, failed],
+      clientError: null,
+      clientName: "qBittorrent",
+      usenetClientName: "SABnzbd",
+    });
+    expect(
+      await screen.findByText(/What Reelkeeper has sent to qBittorrent and SABnzbd and is waiting/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Queued in SABnzbd")).toBeInTheDocument();
+    expect(screen.getByText("Checking and repairing files")).toBeInTheDocument();
+    expect(screen.getByText("Repairing: 68%")).toBeInTheDocument();
+    expect(screen.getByText("SABnzbd couldn't download it")).toBeInTheDocument();
+    expect(screen.getByText(/Aborted, cannot be completed/)).toBeInTheDocument();
+    expect(screen.getAllByText("WEBDL-1080p · NZBIndexer · Usenet")).toHaveLength(3);
+    // Seeds mean nothing on Usenet: only the torrent says how many.
+    expect(screen.getAllByText(/connected to/)).toHaveLength(1);
+    // Only the job still in SABnzbd's queue can be paused; a repairing or
+    // failed one can't.
+    expect(screen.getAllByRole("button", { name: "Pause" })).toHaveLength(2);
+    // Removing a Usenet download names SABnzbd.
+    const removes = screen.getAllByRole("button", { name: "Remove" });
+    await userEvent.click(removes[1] as HTMLElement);
+    expect(
+      await screen.findByText("Remove from SABnzbd and delete what was downloaded?"),
+    ).toBeInTheDocument();
   });
 
   it("warns when the queue is full, and links to the limit", async () => {

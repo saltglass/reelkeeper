@@ -1506,6 +1506,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/usenet-client": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The Usenet download client connection (never the API key) */
+        get: operations["getUsenetClient"];
+        /**
+         * Save the Usenet download client connection
+         * @description Separate from the torrent client: either, both or neither can be set up. Leaving `apiKey` out keeps the stored one. An empty
+         *     `url` removes the Usenet client; Usenet indexers are then left out of searches.
+         */
+        put: operations["putUsenetClient"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/usenet-client/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Try a Usenet client connection without saving it
+         * @description Leaving `apiKey` out uses the stored one. Besides connecting, the test reads the client's settings: some only make Reelkeeper work
+         *     less well (`warnings`), others stop it working (the test fails, `message` says what to change).
+         */
+        post: operations["testUsenetClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings/notifications": {
         parameters: {
             query?: never;
@@ -2810,6 +2853,26 @@ export interface components {
             /** @description Two-letter country code, or empty. */
             country: string;
         };
+        /**
+         * @description Which Usenet client it is.
+         * @enum {string}
+         */
+        UsenetClientType: "sabnzbd";
+        UsenetClient: {
+            type: components["schemas"]["UsenetClientType"];
+            /** @description SABnzbd's address, like http://192.168.1.20:8080. Empty: no Usenet client. */
+            url: string;
+            apiKeySet: boolean;
+        };
+        UsenetClientUpdate: {
+            type?: components["schemas"]["UsenetClientType"];
+            url: string;
+            /**
+             * Format: password
+             * @description SABnzbd's API key (Config → General → Security). Leave out to keep the stored one.
+             */
+            apiKey?: string;
+        };
         DownloadClientUpdate: {
             type?: components["schemas"]["DownloadClientType"];
             url: string;
@@ -2996,9 +3059,12 @@ export interface components {
          *     `seeding` (finished and sharing, or waiting its turn to); `seeding-stalled` (finished, nobody to share with);
          *     `seeding-paused` (finished and stopped); `error`; `missing-files` (the client can't find its files);
          *     `unknown` (a state Reelkeeper doesn't recognise).
+         *     Usenet jobs use the same words where they mean the same (`downloading`, `queued`, `paused`, `checking`, `moving`), plus their own:
+         *     `repairing` (downloaded; checking the files and repairing missing pieces), `unpacking`, `completed` (finished, nothing to seed)
+         *     and `failed` (the Usenet client gave up on it; `message` says why).
          * @enum {string}
          */
-        TorrentState: "downloading" | "stalled" | "metadata" | "queued" | "paused" | "checking" | "moving" | "seeding" | "seeding-stalled" | "seeding-paused" | "error" | "missing-files" | "unknown";
+        TorrentState: "downloading" | "stalled" | "metadata" | "queued" | "paused" | "checking" | "moving" | "seeding" | "seeding-stalled" | "seeding-paused" | "error" | "missing-files" | "unknown" | "repairing" | "unpacking" | "completed" | "failed";
         SeedingTorrent: {
             /** Format: double */
             ratio: number;
@@ -3081,12 +3147,19 @@ export interface components {
             /** @description Seeds the tracker reports in the whole swarm; 0 when unknown. */
             swarmSeeds?: number;
             peers: number;
+            /** @description What the client says about it, when it says something: an error (Deluge), why a Usenet job failed, or what post-processing is doing ("Repairing: 68%"). */
+            message?: string;
         };
         QueueItem: {
             /** Format: int64 */
             id: number;
             /** Format: date-time */
             createdAt: string;
+            /**
+             * @description A Usenet download is in the Usenet client (`torrent` then describes its job there).
+             * @enum {string}
+             */
+            protocol: "torrent" | "usenet";
             /** @description The movie or series; null if it's gone from Reelkeeper. */
             movie: components["schemas"]["MovieRef"] | null;
             /** @enum {string} */
@@ -3107,7 +3180,7 @@ export interface components {
             /** @enum {string} */
             status: "downloading" | "import-failed";
             message: string;
-            /** @description Null if the download client doesn't have it. */
+            /** @description Null if the download client (or */
             torrent: components["schemas"]["QueueTorrent"] | null;
             /** @description The name of the download client it is moving to ("Transmission"), while a move runs; null otherwise. Its buttons are refused meanwhile. */
             movingTo: string | null;
@@ -3180,6 +3253,8 @@ export interface components {
         };
         Queue: {
             items: components["schemas"]["QueueItem"][];
+            /** @description The Usenet client's name (SABnzbd) when one is set up; Usenet items are in it. Null when none is. */
+            usenetClientName: string | null;
             /**
              * @description The built-in client's VPN state (see `GET /settings/download-client/builtin/status`) while it is the download client; null for the other clients. `connecting`, `down` and `held` mean its downloads are stopped.
              * @enum {string|null}
@@ -3191,7 +3266,7 @@ export interface components {
             limit: number;
             /** @description Grabbing is On for movies or TV and the queue is at or over the limit */
             full: boolean;
-            /** @description Why the download client couldn't be asked (the list then shows only what Reelkeeper knows). */
+            /** @description Why the download client (or the Usenet client) couldn't be asked; the message names which. The list then shows only what Reelkeeper knows. */
             clientError: string | null;
         };
         BlocklistItem: {
@@ -3403,6 +3478,8 @@ export interface components {
             quality: string;
             indexer: string;
             seeders: number;
+            /** @description A Usenet release (it has no seeders). */
+            usenet?: boolean;
             /** @description Why the profile turned it down, in plain English. */
             reasons: string[];
         };
@@ -3424,6 +3501,8 @@ export interface components {
             accepted: boolean;
             upgrade?: boolean;
             rejections?: string[];
+            /** @description A Usenet release (it has no seeders). */
+            usenet?: boolean;
         };
         HistoryData: {
             /** @description What started a search: "manual", "added", "scheduled", "rss", "backfill", "picked" (a release the user chose) or "request" (Seerr asked for it). */
@@ -7141,6 +7220,92 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             /** @description The values are invalid, or the download client couldn't be reached or refused them. `message` says why in plain English. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getUsenetClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsenetClient"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    putUsenetClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UsenetClientUpdate"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsenetClient"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    testUsenetClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UsenetClientUpdate"];
+            };
+        };
+        responses: {
+            /** @description Connected. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description The Usenet client's version. */
+                        version: string;
+                        /** @description Settings in the Usenet client worth changing, in plain English. */
+                        warnings: string[];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description The values are invalid, or the Usenet client couldn't be reached or refused them. `message` says why in plain English. */
             422: {
                 headers: {
                     [name: string]: unknown;

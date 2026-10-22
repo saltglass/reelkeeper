@@ -313,3 +313,40 @@ func TestMakeRoom(t *testing.T) {
 		t.Errorf("turned off: picked %v", p)
 	}
 }
+
+func TestEvaluateUsenet(t *testing.T) {
+	cfg := settings.DefaultCleanup()
+	now := time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
+	done := now.Add(-time.Hour)
+	sab := func(state torrent.State, msg string) Torrent {
+		return Torrent{State: state, ClientName: "SABnzbd", Message: msg}
+	}
+	for _, c := range []struct {
+		name   string
+		d      Download
+		t      Torrent
+		action Action
+		rule   string
+		reason string
+	}{
+		{"imported goes at once", Download{Imported: true, CompletedAt: &done}, sab(torrent.Completed, ""), RemoveSeeded, "usenet-imported", "nothing to seed"},
+		{"failed in SABnzbd", Download{}, sab(torrent.Failed, "Aborted, cannot be completed - https://sabnzbd.org/not-complete"),
+			RemoveStuck, "usenet-failed", "SABnzbd couldn't download it: Aborted, cannot be completed"},
+		{"a duplicate isn't the release's fault", Download{}, sab(torrent.Failed, "Duplicate NZB"), Keep, "", ""},
+		{"still downloading", Download{}, sab(torrent.Downloading, ""), Keep, "", ""},
+		{"repairing", Download{}, sab(torrent.Repairing, ""), Keep, "", ""},
+		{"finished, waiting to import", Download{}, sab(torrent.Completed, ""), Keep, "", ""},
+		{"a fresh failed import waits", Download{ImportFail: true, CompletedAt: &done}, sab(torrent.Completed, ""), Keep, "", ""},
+	} {
+		v := EvaluateUsenet(c.d, c.t, cfg, now)
+		if v.Action != c.action || v.Rule != c.rule || !strings.Contains(v.Reason, c.reason) {
+			t.Errorf("%s: %+v", c.name, v)
+		}
+	}
+	old := now.Add(-time.Duration(cfg.ImportFailedDays+1) * 24 * time.Hour)
+	if cfg.ImportFailedDays > 0 {
+		if v := EvaluateUsenet(Download{ImportFail: true, CompletedAt: &old}, sab(torrent.Completed, ""), cfg, now); v.Rule != "import-failed" {
+			t.Errorf("an old failed import: %+v", v)
+		}
+	}
+}

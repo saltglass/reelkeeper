@@ -259,9 +259,25 @@ func safeFileName(name string) string {
 
 type sabQueue struct {
 	Queue struct {
-		KBPerSec string        `json:"kbpersec"`
-		Slots    []sabQueueJob `json:"slots"`
+		KBPerSec string `json:"kbpersec"`
+		// DiskSpace2 is the space free in the completed folder, in GB.
+		DiskSpace2 string        `json:"diskspace2"`
+		Slots      []sabQueueJob `json:"slots"`
 	} `json:"queue"`
+}
+
+// FreeSpace is the space free in SABnzbd's completed folder (where jobs are
+// unpacked), as SABnzbd reports it; -1 when it doesn't say.
+func (s *SABnzbd) FreeSpace(ctx context.Context) (int64, error) {
+	var q sabQueue
+	if err := s.call(ctx, "list its queue", url.Values{"mode": {"queue"}, "limit": {"1"}}, nil, &q); err != nil {
+		return -1, err
+	}
+	gb, err := strconv.ParseFloat(strings.TrimSpace(q.Queue.DiskSpace2), 64)
+	if err != nil {
+		return -1, nil
+	}
+	return int64(gb * (1 << 30)), nil
 }
 
 type sabQueueJob struct {

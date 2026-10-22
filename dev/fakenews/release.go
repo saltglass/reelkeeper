@@ -67,7 +67,7 @@ type MakeOptions struct {
 // tvName says a release is TV (S01E02, S01).
 var tvName = regexp.MustCompile(`(?i)\bS\d{1,2}(E\d{1,3})?\b`)
 
-func releaseDir(data, name string) string  { return filepath.Join(data, "releases", name) }
+func releaseDir(data, name string) string { return filepath.Join(data, "releases", name) }
 func articlePath(data, msgID string) string {
 	sum := sha1.Sum([]byte(msgID))
 	h := hex.EncodeToString(sum[:])

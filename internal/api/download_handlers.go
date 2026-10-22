@@ -335,6 +335,10 @@ func (h *Handlers) GetQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := gen.Queue{Items: make([]gen.QueueItem, 0, len(items)), ClientName: h.Downloads.ClientName()}
+	if u := h.Settings.UsenetClient(); u.Configured() {
+		name := u.ClientName()
+		out.UsenetClientName = &name
+	}
 	if st := h.Downloads.BuiltinState(); st != "" {
 		bs := gen.QueueBuiltinState(st)
 		out.BuiltinState = &bs
@@ -351,7 +355,10 @@ func (h *Handlers) GetQueue(w http.ResponseWriter, r *http.Request) {
 			Id: d.ID, CreatedAt: d.CreatedAt, VersionId: d.VersionID, ReleaseTitle: d.ReleaseTitle,
 			Indexer: d.Indexer, Quality: d.Quality, Score: d.Score, Size: d.Size, Upgrade: d.Upgrade,
 			Status: gen.QueueItemStatus(d.Status), Message: d.Message,
-			MediaType: gen.QueueItemMediaTypeMovie, Episodes: d.EpisodesLabel,
+			MediaType: gen.QueueItemMediaTypeMovie, Episodes: d.EpisodesLabel, Protocol: gen.Torrent,
+		}
+		if d.Usenet() {
+			q.Protocol = gen.Usenet
 		}
 		if to := d.MovingTo(); to != "" {
 			q.MovingTo = &to
@@ -373,6 +380,9 @@ func (h *Handlers) GetQueue(w http.ResponseWriter, r *http.Request) {
 			qt := &gen.QueueTorrent{
 				State: gen.TorrentState(t.State), Progress: t.Progress, Size: t.Size, Left: t.Left, Speed: t.Speed,
 				Seeds: t.Seeds, SwarmSeeds: &t.SwarmSeeds, Peers: t.Peers,
+			}
+			if t.Message != "" {
+				qt.Message = &t.Message
 			}
 			if t.ETA > 0 {
 				eta := int(t.ETA / time.Second)

@@ -82,6 +82,13 @@ func (t Torrent) Stopped() bool { return t.State == torrent.Paused || t.State ==
 type Add struct {
 	Magnet  string
 	Torrent []byte
+	// NZB is an .nzb file's contents, for a Usenet client (which takes
+	// nothing else), and Name the name its job gets there.
+	NZB  []byte
+	Name string
+	// Top puts a Usenet job ahead of the client's other jobs (a torrent goes
+	// to the top with TopPriority after it is added).
+	Top bool
 	// Category puts it in one of Reelkeeper's categories.
 	Category string
 	// Tags are extra labels, such as the indexer's name.

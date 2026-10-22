@@ -128,13 +128,13 @@ func TestSearchSkipsUsenetWithoutAClient(t *testing.T) {
 		q := core.Query{Type: "movie-search", Keywords: "Heat", Categories: []int{2000}}
 
 		on := false
-		f.svc.SetUsenet(func() bool { return on })
+		f.svc.SetSearchable(func(p string) bool { return p == ProtocolTorrent || on })
 		res, _, err := f.svc.Search(ctx, q, SearchOptions{})
 		if err != nil || len(res) != 1 || res[0].Indexer != "Tracker" || res[0].Usenet() || asked.Load() != 0 {
 			t.Fatalf("without a Usenet client: %+v, %v (feed asked %d times)", res, err, asked.Load())
 		}
-		if !f.svc.UsenetOff() {
-			t.Error("UsenetOff")
+		if f.svc.Searchable(ProtocolUsenet) || !f.svc.Searchable(ProtocolTorrent) {
+			t.Error("Searchable")
 		}
 
 		on = true

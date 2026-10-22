@@ -151,6 +151,8 @@ func newApp(t *testing.T, db *store.Store, urlBase string) *app {
 	dl := download.NewService(db, st.DownloadClient, idx, lib, hist, logger)
 	dl.SetSecrets(box)
 	dl.SetMoves(st)
+	dl.SetUsenet(st.UsenetClient)
+	idx.SetSearchable(dl.Searchable)
 	dl.RegisterTasks(mgr)
 	gs.SetDownloads(dl, dl)
 	dl.SetWantedTitles(gs.WantedTitleIDs)

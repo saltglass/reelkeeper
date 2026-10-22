@@ -60,6 +60,7 @@ describe("download client settings", () => {
     expect(tv().getByRole("radio", { name: /^Off/ })).toBeChecked();
     expect(movies().getByRole("radio", { name: /^On/ })).toBeDisabled();
     expect(tv().getByRole("radio", { name: /^On/ })).toBeDisabled();
+    expect(movies().getByText("Set up a download client above first.")).toBeInTheDocument();
   });
 
   it("saves a changed mode, minimum seeders and queue limit", async () => {
@@ -146,7 +147,7 @@ describe("download client settings", () => {
     await screen.findByRole("group", { name: "Movies" });
     expect(movies().getByRole("radio", { name: /^On/ })).toBeEnabled();
     expect(tv().getByRole("radio", { name: /^On/ })).toBeEnabled();
-    expect(screen.queryByText("Set up the download client above first.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Set up a download client above first.")).not.toBeInTheDocument();
   });
 
   it("keeps On selectable when it is already saved", async () => {

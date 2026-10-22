@@ -13,6 +13,8 @@ export type Blocklist = components["schemas"]["Blocklist"];
 export type DownloadMovePreview = components["schemas"]["DownloadMovePreview"];
 export type BuiltinStatus = components["schemas"]["BuiltinStatus"];
 export type VpnSummary = components["schemas"]["VpnSummary"];
+export type UsenetClient = components["schemas"]["UsenetClient"];
+export type UsenetClientUpdate = components["schemas"]["UsenetClientUpdate"];
 
 /** What changing the download client would move (asked just before saving a change of type). */
 export const downloadMovePreviewQuery = queryOptions({
@@ -135,6 +137,33 @@ export function useStartWithoutVpn() {
       qc.invalidateQueries({ queryKey: builtinStatusQuery.queryKey });
       qc.invalidateQueries({ queryKey: queueQuery.queryKey });
     },
+  });
+}
+
+/** The Usenet client (SABnzbd), set up next to the torrent client. */
+export const usenetClientQuery = queryOptions({
+  queryKey: ["settings", "usenet-client"],
+  queryFn: () => unwrap(api.GET("/settings/usenet-client")),
+});
+
+export function useSaveUsenetClient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UsenetClientUpdate) => unwrap(api.PUT("/settings/usenet-client", { body })),
+    onSuccess: (data) => {
+      qc.setQueryData(usenetClientQuery.queryKey, data);
+      // Whether Usenet indexers are searched, and whether Grabbing can be On, follow it.
+      qc.invalidateQueries({ queryKey: grabbingQuery.queryKey });
+      qc.invalidateQueries({ queryKey: queueQuery.queryKey });
+      qc.invalidateQueries({ queryKey: ["indexers"] });
+    },
+  });
+}
+
+export function useTestUsenetClient() {
+  return useMutation({
+    mutationFn: (body: UsenetClientUpdate) =>
+      unwrap(api.POST("/settings/usenet-client/test", { body })),
   });
 }
 

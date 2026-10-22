@@ -6,13 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { downloadClientQuery, isClientSet } from "@/hooks/downloads";
+import { downloadClientQuery, isClientSet, usenetClientQuery } from "@/hooks/downloads";
 import { useDraft } from "@/hooks/draft";
 import { type GrabbingSettings, grabbingQuery, useSaveGrabbing } from "@/hooks/grab";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/pages/PageHeader";
 import { DownloadClientCard } from "./DownloadClientCard";
 import { SaveBar } from "./SaveBar";
+import { UsenetClientCard } from "./UsenetClientCard";
 
 const modes: { value: GrabbingSettings["mode"]; label: string; help: string }[] = [
   {
@@ -96,7 +97,7 @@ function ModeGroup({
               <span className="block text-sm text-muted-foreground">{m.help}</span>
               {disabled && (
                 <span className="block text-sm text-warning">
-                  Set up the download client above first.
+                  Set up a download client above first.
                 </span>
               )}
             </span>
@@ -111,7 +112,11 @@ function ModeGroup({
 function GrabbingCard() {
   const { data, error } = useQuery(grabbingQuery);
   const client = useQuery(downloadClientQuery);
-  const clientSaved = Boolean(client.data && isClientSet(client.data));
+  const usenet = useQuery(usenetClientQuery);
+  // Either client will do: one for torrents, or Usenet.
+  const clientSaved = Boolean(
+    (client.data && isClientSet(client.data)) || (usenet.data && usenet.data.url !== ""),
+  );
   const save = useSaveGrabbing();
   const { draft: form, setDraft: setForm, dirty, reset, commit } = useDraft(data, sameGrabbing);
 
@@ -158,7 +163,7 @@ function GrabbingCard() {
           <Field
             id="min-seeders"
             label="Minimum seeders"
-            help="Releases with fewer seeders are skipped. 1 skips only dead torrents."
+            help="Releases with fewer seeders are skipped. 1 skips only dead torrents. Usenet releases have no seeders: this doesn't apply to them."
             error={err?.fields.minSeeders}
           >
             <Input
@@ -200,6 +205,7 @@ export function DownloadClientPage() {
         description="How Reelkeeper finds and downloads the movies and TV you want."
       />
       <DownloadClientCard />
+      <UsenetClientCard />
       <GrabbingCard />
     </div>
   );

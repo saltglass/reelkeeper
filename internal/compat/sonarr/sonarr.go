@@ -927,11 +927,16 @@ func (h *handler) queue(w http.ResponseWriter, r *http.Request) {
 func (h *handler) queueRecord(it download.Item, ps *library.ProfileSeries, e library.Episode) map[string]any {
 	d := it.Download
 	q, _ := qualityOf(d.Quality)
+	// A Usenet download is in the Usenet client, which Seerr shows by name.
+	protocol, client := "torrent", h.Downloads.ClientName()
+	if d.Usenet() {
+		protocol, client = "usenet", d.UsenetClientName()
+	}
 	rec := map[string]any{
 		// Unique per download and episode, as Sonarr's ids are per record.
 		"id": d.ID*1_000_000 + e.ID, "seriesId": ps.Version.ID, "episodeId": e.ID, "seasonNumber": *e.Season,
 		"title": d.ReleaseTitle, "downloadId": strings.ToUpper(d.Hash),
-		"protocol": "torrent", "downloadClient": h.Downloads.ClientName(), "downloadClientHasPostImportCategory": false,
+		"protocol": protocol, "downloadClient": client, "downloadClientHasPostImportCategory": false,
 		"indexer": d.Indexer, "added": sonarrTime(d.CreatedAt), "size": d.Size, "sizeleft": d.Size,
 		"languages":     []language{{decision.LanguageEnglish, "English"}},
 		"quality":       qualityModel{Quality: q, Revision: revision{Version: 1}},
