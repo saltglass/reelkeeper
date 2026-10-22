@@ -81,6 +81,7 @@ test-clients: dev-stack
     REELKEEPER_TEST_TRANSMISSION_URL=http://localhost:9092 REELKEEPER_TEST_TRANSMISSION_USER=reelkeeper REELKEEPER_TEST_TRANSMISSION_PASS=reelkeeper \
     REELKEEPER_TEST_DELUGE_URL=http://localhost:8112 REELKEEPER_TEST_DELUGE_PASS=reelkeeper \
     REELKEEPER_TEST_SABNZBD_URL=http://localhost:8085 \
+    REELKEEPER_TEST_NZBGET_URL=http://localhost:6790 REELKEEPER_TEST_NZBGET_USER=reelkeeper REELKEEPER_TEST_NZBGET_PASS=reelkeeper \
     go test ./internal/download -run 'TestReal' -count=1 -v -timeout 60m
 
 # Stop the dev stack (keeps its data volumes)
