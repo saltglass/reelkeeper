@@ -102,9 +102,10 @@ does the same job, and uses the fact that everything lives together:
 - **qBittorrent, Transmission 4.0+ or Deluge 2.1+.** Reelkeeper only ever
   touches torrents in its own categories (labels in Transmission and
   Deluge).
-- **Usenet through SABnzbd 4.0+ (from 2.0)**, next to a torrent client or
-  instead of one. Your quality profile decides; Usenet only wins a tie with
-  an equally good torrent. Failed downloads are replaced automatically.
+- **Usenet through SABnzbd 4.0+ or NZBGet 21+ (from 2.0)**, next to a
+  torrent client or instead of one. Your quality profile decides; Usenet only
+  wins a tie with an equally good torrent. Failed downloads are replaced
+  automatically.
 - **Or its own built-in client (experimental)**: Reelkeeper downloads the
   torrents itself, with no other app to run. Limits on how many torrents
   download and seed at once, optional speed caps, and the same cleanup and
@@ -221,9 +222,9 @@ happy.
 Reelkeeper deliberately leaves out subtitles (use Bazarr), music and books,
 playing media, request management (that's Seerr's job), and solving
 Cloudflare challenges itself. Anime-specific numbering isn't supported yet;
-it's planned for 2.0, along with Usenet through SABnzbd and library updates
-for Jellyfin and Plex (all three already on the 2.0 branch; Emby is supported
-today).
+it's planned for 2.0, along with Usenet through SABnzbd and NZBGet and
+library updates for Jellyfin and Plex (all three already on the 2.0 branch;
+Emby is supported today).
 
 ## Development
 

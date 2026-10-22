@@ -57,8 +57,8 @@ all mediocre" app.
   indexers are imported with the indexers milestone.
 
 **Later**: design for these now, but don't build them yet:
-- Usenet: SABnzbd is done on `main` (2.0, Part A of the Usenet plan,
-  2026-10-22); NZBGet is Part B, next.
+- Usenet: SABnzbd (Part A) and NZBGet (Part B) are done on `main` (2.0,
+  2026-10-22).
 - Anime (absolute numbering, XEM scene mapping)
 - Other torrent clients beyond Transmission and Deluge (both shipped,
   as 1.2/1.4, see Roadmap). Only clients users ask for, e.g.
@@ -131,14 +131,14 @@ together.
 - `just image`: build the container image for amd64 and arm64
 - `just image-local`: build the image for this machine and load it
 - `just dev-stack` / `just dev-stack-down`: local docker compose (Colima)
-  with Postgres, qBittorrent, Transmission, Deluge, SABnzbd, fakenews (a
-  made-up Usenet) and Seerr for integration testing (peer discovery
+  with Postgres, qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, fakenews
+  (a made-up Usenet) and Seerr for integration testing (peer discovery
   permanently off; never on the internet)
 - `just test-clients`: the real-client tests against the dev stack (~40 min),
   including moves between a real Transmission and the built-in client (that
   one runs a throwaway Transmission with no network, in the repo's git-ignored
-  `tmp/` folder), and Usenet downloads end to end through the dev SABnzbd
-  and fakenews
+  `tmp/` folder), and Usenet downloads end to end through the dev SABnzbd and
+  NZBGet and fakenews
 - `docker exec reelkeeper-dev-fakenews fakenews make [-missing N] NAME`: a
   made-up Usenet release in the dev stack's fake Usenet (`dev/fakenews`, its
   own Go module: a news server, a release maker with par2, and a Newznab
@@ -173,8 +173,8 @@ together.
 - `internal/grab/`: automatic search, RSS sync and the scheduled pass;
   History
 - `internal/download/`: the qBittorrent, Transmission and Deluge clients,
-  SABnzbd (`sabnzbd.go`) and what Usenet downloads do differently
-  (`usenet.go`),
+  SABnzbd (`sabnzbd.go`), NZBGet (`nzbget.go`) and what Usenet downloads do
+  differently (`usenet.go`),
   the adapter for the built-in client (`builtin.go`, with the host that runs
   its engine), moving torrents between them, Reelkeeper's downloads table and
   queue, blocklist, and the "Check downloads" task that triggers imports
@@ -575,6 +575,26 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
 - **A Usenet job is finished only at "Completed" in SABnzbd's history**: it
   leaves the queue as soon as it is downloaded and is checked, repaired and
   unpacked in the history first.
+- **NZBGet differs from SABnzbd** (`nzbget.go`, checked against 26.3, 24.0 and
+  21.1; recorded answers in `testdata/nzbget`):
+  - A job stays in NZBGet's *queue* while it is repaired and unpacked, and is
+    finished only when it is in its *history* (`SUCCESS/*`; `FAILURE/*`,
+    `DELETED/*` and most `WARNING/*` count as failed).
+  - Reelkeeper never creates categories there: NZBGet files an unknown
+    category under `DestDir/<category>/<job>`. Its `saveconfig` replaces the
+    whole config file (and `config`/`loadconfig` list read-only options that
+    must be dropped, or NZBGet pauses itself), and a change needs a
+    `reload`, so `nzbget.go` only reads settings. The dev-stack test setup is
+    the one place that saves them (`isolateNZBGet`).
+  - Jobs are added with `DupeMode` FORCE. Otherwise NZBGet's default duplicate
+    check takes a release it has seen into its history as `DELETED/COPY`
+    without downloading it.
+  - Neither `HistoryDelete` nor `HistoryFinalDelete` removes a completed job's
+    folder, so Reelkeeper does (`removeCompletedFolder`), then removes the
+    history entry with `HistoryFinalDelete` (`HistoryDelete` only hides it).
+    A job in the queue goes with `GroupFinalDelete`.
+  - KeepHistory 0 (finished jobs vanish) and AppendCategoryDir off (no
+    category folder to clean inside) make the connection test refuse.
 
 ## Open decisions
 
@@ -623,4 +643,8 @@ previous one is half-done.
     `usenetClient`), migration 23 (`downloads.protocol`), Usenet releases
     win only ties, cleanup removes imported jobs at once and replaces
     failed ones. Tested end to end against the dev stack's fakenews.
-    Part B (NZBGet) is next.
+  - **Usenet, Part B (NZBGet): done** (2026-10-22, on `main`). A second
+    Usenet client on the shared parts: type `nzbget` with a username and
+    sealed password in the same `usenetClient` setting (no migration), the
+    client in `download/nzbget.go`, a SABnzbd / NZBGet choice on the Usenet
+    card, and end-to-end tests against the dev NZBGet.
