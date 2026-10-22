@@ -433,6 +433,17 @@ func (s *Service) Grab(ctx context.Context, g grab.Grabbed) error {
 	}
 	var id int64
 	err = s.db.DB.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		// A Usenet client's job IDs can come round again (NZBGet's are small
+		// numbers that start over when its queue is wiped, or with another
+		// NZBGet), and a new job with an old ID is a different download, not
+		// a re-grab: the old record keeps its history under a retired ID
+		// instead of being overwritten.
+		if usenet {
+			if _, err := tx.NewUpdate().Model((*Download)(nil)).Set("hash = hash || '#' || CAST(id AS TEXT)").
+				Where("hash = ? AND protocol = ?", d.Hash, indexer.ProtocolUsenet).Exec(ctx); err != nil {
+				return err
+			}
+		}
 		if err := upsertDownload(ctx, tx, d); err != nil {
 			return err
 		}

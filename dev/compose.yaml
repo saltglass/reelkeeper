@@ -205,6 +205,9 @@ services:
       # Finished jobs go under /mnt/downloads, the same volume and path as
       # the other clients', as Reelkeeper expects of any download client.
       - downloads:/mnt/downloads
+      # Makes fakenews its only news server at every start (NZBGet's default
+      # config names a real one).
+      - ./nzbget-init:/custom-cont-init.d:ro
     depends_on:
       - fakenews
     healthcheck:

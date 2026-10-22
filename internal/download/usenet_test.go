@@ -3,6 +3,7 @@ package download
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -457,6 +458,34 @@ func TestSearchable(t *testing.T) {
 			if got := f.svc.Searchable(indexer.ProtocolUsenet); got != c.wantNews {
 				t.Errorf("torrent client %v, Usenet client %v: Usenet indexers searched = %v", c.torrent, c.usenet, got)
 			}
+		}
+	})
+}
+
+// A Usenet job ID that comes round again (NZBGet's start over when its queue
+// is wiped) is a new download: the old record is kept, not overwritten.
+func TestUsenetReusedJobIDKeepsTheOldRecord(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newUFix(t, db)
+		old := f.grabUsenet(t, false)
+		f.news.finish(old.Hash, "/mnt/downloads/usenet/reelkeeper-movies/Ronin/Ronin.mkv")
+		if _, _, err := f.svc.Check(ctx); err != nil {
+			t.Fatal(err)
+		}
+		// The client hands out the same ID again.
+		f.news.next--
+		delete(f.news.jobs, old.Hash)
+		again := f.grabUsenet(t, false)
+		if again.Hash != old.Hash || again.ID == old.ID || again.Status != StatusDownloading {
+			t.Fatalf("new download = %+v (old id %d)", again, old.ID)
+		}
+		var kept Download
+		if err := db.DB.NewSelect().Model(&kept).Where("id = ?", old.ID).Scan(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if kept.Status != StatusImported || kept.Hash != fmt.Sprintf("%s#%d", old.Hash, old.ID) {
+			t.Errorf("old record = %s %q", kept.Status, kept.Hash)
 		}
 	})
 }
