@@ -1032,12 +1032,15 @@ func (e UpcomingMovieKind) Valid() bool {
 
 // Defines values for UsenetClientType.
 const (
+	Nzbget  UsenetClientType = "nzbget"
 	Sabnzbd UsenetClientType = "sabnzbd"
 )
 
 // Valid indicates whether the value is a known member of the UsenetClientType enum.
 func (e UsenetClientType) Valid() bool {
 	switch e {
+	case Nzbget:
+		return true
 	case Sabnzbd:
 		return true
 	default:
@@ -3602,13 +3605,20 @@ type UpcomingMovieKind string
 
 // UsenetClient defines model for UsenetClient.
 type UsenetClient struct {
+	// ApiKeySet SABnzbd's API key is stored.
 	ApiKeySet bool `json:"apiKeySet"`
+
+	// PasswordSet NZBGet's password is stored.
+	PasswordSet bool `json:"passwordSet"`
 
 	// Type Which Usenet client it is.
 	Type UsenetClientType `json:"type"`
 
-	// Url SABnzbd's address, like http://192.168.1.20:8080. Empty: no Usenet client.
+	// Url The client's address, like http://192.168.1.20:8080 (SABnzbd) or http://192.168.1.20:6789 (NZBGet). Empty: no Usenet client.
 	Url string `json:"url"`
+
+	// Username NZBGet's username (its ControlUsername); empty for SABnzbd.
+	Username string `json:"username"`
 }
 
 // UsenetClientType Which Usenet client it is.
@@ -3619,9 +3629,15 @@ type UsenetClientUpdate struct {
 	// ApiKey SABnzbd's API key (Config → General → Security). Leave out to keep the stored one.
 	ApiKey *string `json:"apiKey,omitempty"`
 
+	// Password NZBGet's password (Settings → Security → ControlPassword). Leave out to keep the stored one.
+	Password *string `json:"password,omitempty"`
+
 	// Type Which Usenet client it is.
 	Type *UsenetClientType `json:"type,omitempty"`
 	Url  string            `json:"url"`
+
+	// Username NZBGet only (required for it): its ControlUsername. SABnzbd has none; whatever is sent for it is ignored.
+	Username *string `json:"username,omitempty"`
 }
 
 // User defines model for User.
@@ -4732,7 +4748,7 @@ type ServerInterface interface {
 	// CheckSolver Check the solver answers (the given address, or the saved one)
 	// (POST /settings/solver/check)
 	CheckSolver(w http.ResponseWriter, r *http.Request)
-	// GetUsenetClient The Usenet download client connection (never the API key)
+	// GetUsenetClient The Usenet download client connection (never the API key or password)
 	// (GET /settings/usenet-client)
 	GetUsenetClient(w http.ResponseWriter, r *http.Request)
 	// PutUsenetClient Save the Usenet download client connection
@@ -5554,7 +5570,7 @@ func (_ Unimplemented) CheckSolver(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// GetUsenetClient The Usenet download client connection (never the API key)
+// GetUsenetClient The Usenet download client connection (never the API key or password)
 // (GET /settings/usenet-client)
 func (_ Unimplemented) GetUsenetClient(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)

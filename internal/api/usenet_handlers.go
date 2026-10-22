@@ -10,20 +10,24 @@ import (
 )
 
 func toUsenetClient(u settings.UsenetClient) gen.UsenetClient {
-	return gen.UsenetClient{Type: gen.UsenetClientType(u.ClientType()), Url: u.URL, ApiKeySet: u.APIKey != ""}
+	return gen.UsenetClient{Type: gen.UsenetClientType(u.ClientType()), Url: u.URL, Username: u.Username, ApiKeySet: u.APIKey != "", PasswordSet: u.Password != ""}
 }
 
 // usenetUpdateFrom is what the request asks for. A request without a type
 // keeps the current one.
 func usenetUpdateFrom(b gen.UsenetClientUpdate) settings.UsenetClientUpdate {
-	u := settings.UsenetClientUpdate{URL: b.Url, APIKey: b.ApiKey}
+	u := settings.UsenetClientUpdate{URL: b.Url, APIKey: b.ApiKey, Password: b.Password}
 	if b.Type != nil {
 		u.Type = string(*b.Type)
+	}
+	if b.Username != nil {
+		u.Username = *b.Username
 	}
 	return u
 }
 
-// GetUsenetClient returns the Usenet client connection, without the API key.
+// GetUsenetClient returns the Usenet client connection, without the API key
+// or password.
 func (h *Handlers) GetUsenetClient(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, toUsenetClient(h.Settings.UsenetClient()))
 }
@@ -55,8 +59,8 @@ func (h *Handlers) TestUsenetClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !cfg.Configured() {
-		writeError(w, http.StatusUnprocessableEntity, "invalid", "Enter SABnzbd's address first.",
-			map[string]string{"url": "Enter SABnzbd's address, like http://192.168.1.20:8080."})
+		writeError(w, http.StatusUnprocessableEntity, "invalid", "Enter "+cfg.ClientName()+"'s address first.",
+			map[string]string{"url": cfg.AddressPrompt()})
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)

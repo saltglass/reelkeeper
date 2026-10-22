@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Segmented } from "@/components/ui/segmented";
 import {
   type UsenetClient,
+  type UsenetClientType,
   type UsenetClientUpdate,
   usenetClientQuery,
   useSaveUsenetClient,
@@ -18,12 +20,60 @@ import { useDraft } from "@/hooks/draft";
 import { BusyLabel, IconTile } from "./BusyLabel";
 import { SaveBar } from "./SaveBar";
 
-type Form = { url: string; apiKey: string };
+type Form = {
+  type: UsenetClientType;
+  url: string;
+  /** NZBGet's login. */
+  username: string;
+  password: string;
+  /** SABnzbd's API key. */
+  apiKey: string;
+};
 
-const sameForm = (a: Form, b: Form) => a.url === b.url && a.apiKey === b.apiKey;
+const sameForm = (a: Form, b: Form) =>
+  a.type === b.type &&
+  a.url === b.url &&
+  a.username === b.username &&
+  a.password === b.password &&
+  a.apiKey === b.apiKey;
 
-/** The form for the saved settings: the API key is never sent to the browser. */
-const formFrom = (u: UsenetClient): Form => ({ url: u.url, apiKey: "" });
+/** The form for the saved settings: the API key and password are never sent to the browser. */
+const formFrom = (u: UsenetClient): Form => ({
+  type: u.type,
+  url: u.url,
+  username: u.username,
+  password: "",
+  apiKey: "",
+});
+
+const clientNames: Record<UsenetClientType, string> = { sabnzbd: "SABnzbd", nzbget: "NZBGet" };
+const typeOptions = (Object.keys(clientNames) as UsenetClientType[]).map((value) => ({
+  value,
+  label: clientNames[value],
+}));
+
+/** What each Usenet client's address looks like and needs, and where to find its login. */
+const clientText: Record<
+  UsenetClientType,
+  { example: string; addressHelp: string; loginHelp: string; notes: string }
+> = {
+  sabnzbd: {
+    example: "http://192.168.1.10:8080",
+    addressHelp:
+      "Include the port. Needs SABnzbd 4.0 or newer. Leave empty to remove the Usenet client.",
+    loginHelp: "In SABnzbd: Config → General → Security.",
+    notes:
+      "Reelkeeper creates its own categories in SABnzbd, reelkeeper-movies and reelkeeper-tv, and never touches other jobs. SABnzbd's completed folder must be one Reelkeeper can see at the same path, like the torrent client's. Once a download is imported, Reelkeeper removes it from SABnzbd with its files (cleanup, so dry run applies); a download SABnzbd gives up on is blocklisted and searched again.",
+  },
+  nzbget: {
+    example: "http://192.168.1.10:6789",
+    addressHelp:
+      "Include the port. Needs NZBGet 21.0 or newer. Leave empty to remove the Usenet client.",
+    loginHelp: "In NZBGet: Settings → Security (ControlUsername and ControlPassword).",
+    notes:
+      "Reelkeeper's downloads use the categories reelkeeper-movies and reelkeeper-tv, which NZBGet files in their own folders under its DestDir (nothing to set up, and Reelkeeper never changes NZBGet's settings). NZBGet's DestDir must be a folder Reelkeeper can see at the same path, like the torrent client's. Once a download is imported, Reelkeeper removes it from NZBGet with its files (cleanup, so dry run applies); a download NZBGet gives up on is blocklisted and searched again.",
+  },
+};
 
 /**
  * The Usenet download client (Settings → Download Client). It is separate from
@@ -46,12 +96,20 @@ export function UsenetClientCard() {
     setDraft(next);
     test.reset();
   };
-  // An omitted key means "keep the stored one".
-  const body: UsenetClientUpdate = {
-    type: "sabnzbd",
-    url: form.url,
-    ...(form.apiKey ? { apiKey: form.apiKey } : {}),
-  };
+  const name = clientNames[form.type];
+  const text = clientText[form.type];
+  // A stored key or password is only kept for the client it was saved for.
+  const kept = data.type === form.type;
+  // An omitted key or password means "keep the stored one".
+  const body: UsenetClientUpdate =
+    form.type === "nzbget"
+      ? {
+          type: "nzbget",
+          url: form.url,
+          username: form.username,
+          ...(form.password ? { password: form.password } : {}),
+        }
+      : { type: "sabnzbd", url: form.url, ...(form.apiKey ? { apiKey: form.apiKey } : {}) };
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -66,7 +124,7 @@ export function UsenetClientCard() {
             <Newspaper />
           </IconTile>
           <div className="min-w-0 space-y-1">
-            <CardTitle>Usenet: SABnzbd</CardTitle>
+            <CardTitle>Usenet: {name}</CardTitle>
             <CardDescription>
               Optional. With a Usenet client, Reelkeeper also searches your Usenet (Newznab)
               indexers and sends what it picks there. Your quality profile still decides; between
@@ -76,47 +134,77 @@ export function UsenetClientCard() {
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
+          <Segmented
+            label="Usenet client"
+            options={typeOptions}
+            value={form.type}
+            onChange={(type) => change({ ...form, type })}
+          />
           {err && !Object.keys(err.fields).length && <Alert variant="error">{err.message}</Alert>}
           <div className="grid gap-5 sm:grid-cols-2">
             <Field
               id="usenet-url"
               label="Address"
-              help="Include the port. Needs SABnzbd 4.0 or newer. Leave empty to remove the Usenet client."
+              help={text.addressHelp}
               error={err?.fields.url ?? err?.fields.type}
             >
               <Input
                 id="usenet-url"
                 type="text"
                 inputMode="url"
-                placeholder="http://192.168.1.10:8080"
+                placeholder={text.example}
                 autoComplete="off"
                 value={form.url}
                 onChange={(e) => change({ ...form, url: e.target.value })}
               />
             </Field>
-            <Field
-              id="usenet-api-key"
-              label="API key"
-              help="In SABnzbd: Config → General → Security."
-              error={err?.fields.apiKey}
-            >
-              <Input
+            {form.type === "sabnzbd" ? (
+              <Field
                 id="usenet-api-key"
-                type="password"
-                autoComplete="new-password"
-                placeholder={data.apiKeySet ? "Saved — leave empty to keep it" : ""}
-                value={form.apiKey}
-                onChange={(e) => change({ ...form, apiKey: e.target.value })}
-              />
-            </Field>
+                label="API key"
+                help={text.loginHelp}
+                error={err?.fields.apiKey}
+              >
+                <Input
+                  id="usenet-api-key"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder={kept && data.apiKeySet ? "Saved — leave empty to keep it" : ""}
+                  value={form.apiKey}
+                  onChange={(e) => change({ ...form, apiKey: e.target.value })}
+                />
+              </Field>
+            ) : (
+              <>
+                <Field
+                  id="usenet-username"
+                  label="Username"
+                  help={text.loginHelp}
+                  error={err?.fields.username}
+                >
+                  <Input
+                    id="usenet-username"
+                    type="text"
+                    autoComplete="off"
+                    placeholder="nzbget"
+                    value={form.username}
+                    onChange={(e) => change({ ...form, username: e.target.value })}
+                  />
+                </Field>
+                <Field id="usenet-password" label="Password" error={err?.fields.password}>
+                  <Input
+                    id="usenet-password"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder={kept && data.passwordSet ? "Saved — leave empty to keep it" : ""}
+                    value={form.password}
+                    onChange={(e) => change({ ...form, password: e.target.value })}
+                  />
+                </Field>
+              </>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground">
-            Reelkeeper creates its own categories in SABnzbd, reelkeeper-movies and reelkeeper-tv,
-            and never touches other jobs. SABnzbd's completed folder must be one Reelkeeper can see
-            at the same path, like the torrent client's. Once a download is imported, Reelkeeper
-            removes it from SABnzbd with its files (cleanup, so dry run applies); a download SABnzbd
-            gives up on is blocklisted and searched again.
-          </p>
+          <p className="text-sm text-muted-foreground">{text.notes}</p>
           <div className="space-y-2" aria-live="polite">
             <Button
               type="button"
@@ -128,7 +216,11 @@ export function UsenetClientCard() {
                 {test.isPending ? "Testing…" : "Test"}
               </BusyLabel>
             </Button>
-            {test.data && <Alert variant="success">Connected to SABnzbd {test.data.version}</Alert>}
+            {test.data && (
+              <Alert variant="success">
+                Connected to {name} {test.data.version}
+              </Alert>
+            )}
             {test.data?.warnings.map((w) => (
               <Alert key={w} variant="warning">
                 {w}
@@ -136,7 +228,11 @@ export function UsenetClientCard() {
             ))}
             {testErr && (
               <Alert variant="error">
-                {testErr.fields.url ?? testErr.fields.apiKey ?? testErr.message}
+                {testErr.fields.url ??
+                  testErr.fields.apiKey ??
+                  testErr.fields.username ??
+                  testErr.fields.password ??
+                  testErr.message}
               </Alert>
             )}
           </div>

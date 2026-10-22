@@ -14,6 +14,7 @@ export type DownloadMovePreview = components["schemas"]["DownloadMovePreview"];
 export type BuiltinStatus = components["schemas"]["BuiltinStatus"];
 export type VpnSummary = components["schemas"]["VpnSummary"];
 export type UsenetClient = components["schemas"]["UsenetClient"];
+export type UsenetClientType = components["schemas"]["UsenetClientType"];
 export type UsenetClientUpdate = components["schemas"]["UsenetClientUpdate"];
 
 /** What changing the download client would move (asked just before saving a change of type). */
@@ -140,7 +141,7 @@ export function useStartWithoutVpn() {
   });
 }
 
-/** The Usenet client (SABnzbd), set up next to the torrent client. */
+/** The Usenet client (SABnzbd or NZBGet), set up next to the torrent client. */
 export const usenetClientQuery = queryOptions({
   queryKey: ["settings", "usenet-client"],
   queryFn: () => unwrap(api.GET("/settings/usenet-client")),

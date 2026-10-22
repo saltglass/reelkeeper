@@ -364,6 +364,42 @@ func TestUsenetTestConnection(t *testing.T) {
 	})
 }
 
+// The settings pick the client: SABnzbd unless it's NZBGet, with the login
+// each takes. The connection test works through either, and refuses what
+// breaks Reelkeeper.
+func TestNewUsenetPicksByType(t *testing.T) {
+	if c, ok := newUsenet(settings.UsenetClient{URL: "http://x", APIKey: "k"}).(*SABnzbd); !ok || c.APIKey != "k" || c.Name() != "SABnzbd" {
+		t.Errorf("no type: %#v", c)
+	}
+	n, ok := newUsenet(settings.UsenetClient{Type: settings.UsenetNZBGet, URL: "http://x", Username: "u", Password: "p"}).(*NZBGet)
+	if !ok || n.Username != "u" || n.Password != "p" || n.URL != "http://x" || n.Name() != "NZBGet" {
+		t.Errorf("nzbget: %#v", n)
+	}
+}
+
+func TestUsenetTestConnectionNZBGet(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		nz := newFakeNZBGet(t)
+		svc := newUFix(t, db).svc
+		svc.NewUsenet = newUsenet
+		cfg := settings.UsenetClient{Type: settings.UsenetNZBGet, URL: nz.srv.URL, Username: nzbgetUser, Password: nzbgetPass}
+		if v, w, err := svc.TestUsenet(context.Background(), cfg); err != nil || v != "26.3" || len(w) != 0 {
+			t.Errorf("test = %q %v %v", v, w, err)
+		}
+		cfg.Password = "wrong"
+		if _, _, err := svc.TestUsenet(context.Background(), cfg); !errors.Is(err, ErrLogin) {
+			t.Errorf("wrong password: %v", err)
+		}
+		cfg.Password = nzbgetPass
+		nz.mu.Lock()
+		nz.answers["config"] = `{"version":"1.1","id":1,"result":[{"Name":"KeepHistory","Value":"0"}]}`
+		nz.mu.Unlock()
+		if _, _, err := svc.TestUsenet(context.Background(), cfg); err == nil || !strings.Contains(err.Error(), "KeepHistory") {
+			t.Errorf("no history: %v", err)
+		}
+	})
+}
+
 // The adapter refuses everything a move between clients would ask.
 func TestUsenetAdapterRefusesMoves(t *testing.T) {
 	a := usenetAdapter{newMemUsenet()}

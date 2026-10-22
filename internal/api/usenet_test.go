@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -32,6 +33,76 @@ func fakeSABnzbd(t *testing.T, misc string) *httptest.Server {
 	}))
 	t.Cleanup(srv.Close)
 	return srv
+}
+
+// fakeNZBGet answers the calls the connection test makes, like NZBGet 26.3.
+func fakeNZBGet(t *testing.T, keepHistory string) *httptest.Server {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if u, p, ok := r.BasicAuth(); !ok || u != "nzbget" || p != "nzbpass" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		var call struct{ Method string }
+		_ = json.NewDecoder(r.Body).Decode(&call)
+		result := map[string]string{
+			"version":    `"26.3"`,
+			"status":     `{"DownloadPaused":false,"PostPaused":false,"FreeDiskSpaceLo":1,"FreeDiskSpaceHi":0}`,
+			"config":     `[{"Name":"KeepHistory","Value":"` + keepHistory + `"},{"Name":"AppendCategoryDir","Value":"yes"}]`,
+			"listgroups": `[]`,
+			"history":    `[]`,
+		}[call.Method]
+		_, _ = io.WriteString(w, `{"version":"1.1","id":1,"result":`+result+`}`)
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestNZBGetClientAPI(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		a := newApp(t, db, "")
+		a.setup()
+		nz := fakeNZBGet(t, "30")
+		// NZBGet needs a username and a password, not an API key.
+		if r := a.do("PUT", "/api/v1/settings/usenet-client", `{"type":"nzbget","url":"nzbget:6789"}`); r.status != 422 ||
+			!strings.Contains(r.raw, `"url"`) || !strings.Contains(r.raw, `"username"`) || !strings.Contains(r.raw, `"password"`) || strings.Contains(r.raw, `"apiKey"`) {
+			t.Errorf("validation: %d %s", r.status, r.raw)
+		}
+		r := a.do("PUT", "/api/v1/settings/usenet-client", `{"type":"nzbget","url":"`+nz.URL+`","username":"nzbget","password":"nzbpass"}`)
+		if r.status != 200 || r.body["type"] != "nzbget" || r.body["username"] != "nzbget" || r.body["passwordSet"] != true || r.body["apiKeySet"] != false || strings.Contains(r.raw, "nzbpass") {
+			t.Fatalf("save: %d %s", r.status, r.raw)
+		}
+		if r := a.do("GET", "/api/v1/settings/usenet-client", ""); r.status != 200 || r.body["passwordSet"] != true || strings.Contains(r.raw, "nzbpass") {
+			t.Errorf("get: %d %s", r.status, r.raw)
+		}
+		if !a.downloads.UsenetOn() {
+			t.Error("the download service doesn't see the Usenet client")
+		}
+		// Testing without the password uses the stored one.
+		if r := a.do("POST", "/api/v1/settings/usenet-client/test", `{"type":"nzbget","url":"`+nz.URL+`","username":"nzbget"}`); r.status != 200 || r.body["version"] != "26.3" {
+			t.Errorf("test: %d %s", r.status, r.raw)
+		}
+		if r := a.do("POST", "/api/v1/settings/usenet-client/test", `{"type":"nzbget","url":"`+nz.URL+`","username":"nzbget","password":"wrong"}`); r.status != 422 || !strings.Contains(r.raw, "username or password") {
+			t.Errorf("wrong password: %d %s", r.status, r.raw)
+		}
+		// A setting that would hide finished jobs fails the test, saying what to change.
+		forgets := fakeNZBGet(t, "0")
+		if r := a.do("POST", "/api/v1/settings/usenet-client/test", `{"type":"nzbget","url":"`+forgets.URL+`","username":"nzbget","password":"nzbpass"}`); r.status != 422 || !strings.Contains(r.raw, "KeepHistory") {
+			t.Errorf("history retention: %d %s", r.status, r.raw)
+		}
+		// An empty address on an untested NZBGet asks for NZBGet's.
+		if r := a.do("POST", "/api/v1/settings/usenet-client/test", `{"type":"nzbget","url":""}`); r.status != 422 || !strings.Contains(r.raw, "NZBGet") {
+			t.Errorf("no address: %d %s", r.status, r.raw)
+		}
+		// Back to SABnzbd: the NZBGet login is dropped, and the key is needed.
+		if r := a.do("PUT", "/api/v1/settings/usenet-client", `{"type":"sabnzbd","url":"http://sab:8080"}`); r.status != 422 || !strings.Contains(r.raw, `"apiKey"`) {
+			t.Errorf("back to SABnzbd: %d %s", r.status, r.raw)
+		}
+		sab := fakeSABnzbd(t, `{"no_dupes":0,"history_retention_option":"all"}`)
+		if r := a.do("PUT", "/api/v1/settings/usenet-client", `{"type":"sabnzbd","url":"`+sab.URL+`","apiKey":"sabkey"}`); r.status != 200 ||
+			r.body["passwordSet"] != false || r.body["username"] != "" || r.body["apiKeySet"] != true {
+			t.Errorf("SABnzbd: %d %s", r.status, r.raw)
+		}
+	})
 }
 
 func TestUsenetClientAPI(t *testing.T) {

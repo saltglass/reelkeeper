@@ -1971,7 +1971,7 @@ paths:
     get:
       tags: [settings]
       operationId: getUsenetClient
-      summary: The Usenet download client connection (never the API key)
+      summary: The Usenet download client connection (never the API key or password)
       responses:
         "200":
           description: OK
@@ -1984,8 +1984,8 @@ paths:
       operationId: putUsenetClient
       summary: Save the Usenet download client connection
       description: |
-        Separate from the torrent client: either, both or neither can be set up. Leaving `apiKey` out keeps the stored one. An empty
-        `url` removes the Usenet client; Usenet indexers are then left out of searches.
+        Separate from the torrent client: either, both or neither can be set up. Leaving `apiKey` (SABnzbd) or `password` (NZBGet) out keeps the stored one; changing `type`
+        drops the old client's secret. An empty `url` removes the Usenet client; Usenet indexers are then left out of searches.
       requestBody:
         required: true
         content:
@@ -2006,7 +2006,7 @@ paths:
       operationId: testUsenetClient
       summary: Try a Usenet client connection without saving it
       description: |
-        Leaving `apiKey` out uses the stored one. Besides connecting, the test reads the client's settings: some only make Reelkeeper work
+        Leaving `apiKey` or `password` out uses the stored one. Besides connecting, the test reads the client's settings: some only make Reelkeeper work
         less well (`warnings`), others stop it working (the test fails, `message` says what to change).
       requestBody:
         required: true
@@ -3621,16 +3621,18 @@ components:
 
     UsenetClientType:
       type: string
-      enum: [sabnzbd]
+      enum: [sabnzbd, nzbget]
       description: Which Usenet client it is.
 
     UsenetClient:
       type: object
-      required: [type, url, apiKeySet]
+      required: [type, url, username, apiKeySet, passwordSet]
       properties:
         type: { $ref: "#/components/schemas/UsenetClientType" }
-        url: { type: string, description: "SABnzbd's address, like http://192.168.1.20:8080. Empty: no Usenet client." }
-        apiKeySet: { type: boolean }
+        url: { type: string, description: "The client's address, like http://192.168.1.20:8080 (SABnzbd) or http://192.168.1.20:6789 (NZBGet). Empty: no Usenet client." }
+        username: { type: string, description: "NZBGet's username (its ControlUsername); empty for SABnzbd." }
+        apiKeySet: { type: boolean, description: "SABnzbd's API key is stored." }
+        passwordSet: { type: boolean, description: "NZBGet's password is stored." }
 
     UsenetClientUpdate:
       type: object
@@ -3638,7 +3640,9 @@ components:
       properties:
         type: { $ref: "#/components/schemas/UsenetClientType" }
         url: { type: string }
+        username: { type: string, description: "NZBGet only (required for it): its ControlUsername. SABnzbd has none; whatever is sent for it is ignored." }
         apiKey: { type: string, format: password, description: "SABnzbd's API key (Config → General → Security). Leave out to keep the stored one." }
+        password: { type: string, format: password, description: "NZBGet's password (Settings → Security → ControlPassword). Leave out to keep the stored one." }
 
     DownloadClientUpdate:
       type: object

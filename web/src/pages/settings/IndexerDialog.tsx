@@ -529,7 +529,7 @@ function IndexerForm({
           <Field
             id="ix-feedkind"
             label="Feed type"
-            help="Torznab is for torrents. Newznab is for Usenet, which Reelkeeper can't download yet."
+            help="Torznab is for torrents. Newznab is for Usenet, and needs a Usenet client (SABnzbd or NZBGet) under Settings → Download Client."
             error={fields.kind}
           >
             <select

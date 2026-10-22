@@ -14,7 +14,7 @@ import (
 	"github.com/saltglass/reelkeeper/internal/torrent"
 )
 
-// Usenet downloads (2.0) go to a Usenet client (SABnzbd) set up next to the
+// Usenet downloads (2.0) go to a Usenet client (SABnzbd or NZBGet) set up next to the
 // torrent client, in Reelkeeper's same two categories. A Usenet download's
 // record has Protocol "usenet", the client's job ID in Hash and the client's
 // type in Client. Its jobs are read as Torrents, so the Queue, Check
@@ -24,7 +24,7 @@ import (
 
 // UsenetClient is what Reelkeeper needs from a Usenet download client.
 type UsenetClient interface {
-	// Name is what messages call the client, such as "SABnzbd".
+	// Name is what messages call the client, such as "SABnzbd" or "NZBGet".
 	Name() string
 	Version(ctx context.Context) (string, error)
 	// Problems are the client's settings that stop Reelkeeper working well:
@@ -47,7 +47,10 @@ type UsenetClient interface {
 	FreeSpace(ctx context.Context) (int64, error)
 }
 
-var _ UsenetClient = (*SABnzbd)(nil)
+var (
+	_ UsenetClient = (*SABnzbd)(nil)
+	_ UsenetClient = (*NZBGet)(nil)
+)
 
 // ErrNoUsenetClient means a Usenet download needs a Usenet client and none
 // is set up.
@@ -62,6 +65,9 @@ func (s *Service) SetUsenet(cfg func() settings.UsenetClient) { s.usenetCfg = cf
 
 // newUsenet builds the Usenet client the settings choose.
 func newUsenet(c settings.UsenetClient) UsenetClient {
+	if c.ClientType() == settings.UsenetNZBGet {
+		return &NZBGet{URL: c.URL, Username: c.Username, Password: c.Password}
+	}
 	return &SABnzbd{URL: c.URL, APIKey: c.APIKey}
 }
 

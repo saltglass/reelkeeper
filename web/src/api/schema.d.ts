@@ -1513,12 +1513,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The Usenet download client connection (never the API key) */
+        /** The Usenet download client connection (never the API key or password) */
         get: operations["getUsenetClient"];
         /**
          * Save the Usenet download client connection
-         * @description Separate from the torrent client: either, both or neither can be set up. Leaving `apiKey` out keeps the stored one. An empty
-         *     `url` removes the Usenet client; Usenet indexers are then left out of searches.
+         * @description Separate from the torrent client: either, both or neither can be set up. Leaving `apiKey` (SABnzbd) or `password` (NZBGet) out keeps the stored one; changing `type`
+         *     drops the old client's secret. An empty `url` removes the Usenet client; Usenet indexers are then left out of searches.
          */
         put: operations["putUsenetClient"];
         post?: never;
@@ -1539,7 +1539,7 @@ export interface paths {
         put?: never;
         /**
          * Try a Usenet client connection without saving it
-         * @description Leaving `apiKey` out uses the stored one. Besides connecting, the test reads the client's settings: some only make Reelkeeper work
+         * @description Leaving `apiKey` or `password` out uses the stored one. Besides connecting, the test reads the client's settings: some only make Reelkeeper work
          *     less well (`warnings`), others stop it working (the test fails, `message` says what to change).
          */
         post: operations["testUsenetClient"];
@@ -2857,21 +2857,33 @@ export interface components {
          * @description Which Usenet client it is.
          * @enum {string}
          */
-        UsenetClientType: "sabnzbd";
+        UsenetClientType: "sabnzbd" | "nzbget";
         UsenetClient: {
             type: components["schemas"]["UsenetClientType"];
-            /** @description SABnzbd's address, like http://192.168.1.20:8080. Empty: no Usenet client. */
+            /** @description The client's address, like http://192.168.1.20:8080 (SABnzbd) or http://192.168.1.20:6789 (NZBGet). Empty: no Usenet client. */
             url: string;
+            /** @description NZBGet's username (its ControlUsername); empty for SABnzbd. */
+            username: string;
+            /** @description SABnzbd's API key is stored. */
             apiKeySet: boolean;
+            /** @description NZBGet's password is stored. */
+            passwordSet: boolean;
         };
         UsenetClientUpdate: {
             type?: components["schemas"]["UsenetClientType"];
             url: string;
+            /** @description NZBGet only (required for it): its ControlUsername. SABnzbd has none; whatever is sent for it is ignored. */
+            username?: string;
             /**
              * Format: password
              * @description SABnzbd's API key (Config → General → Security). Leave out to keep the stored one.
              */
             apiKey?: string;
+            /**
+             * Format: password
+             * @description NZBGet's password (Settings → Security → ControlPassword). Leave out to keep the stored one.
+             */
+            password?: string;
         };
         DownloadClientUpdate: {
             type?: components["schemas"]["DownloadClientType"];

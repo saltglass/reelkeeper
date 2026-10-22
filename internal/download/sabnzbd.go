@@ -545,21 +545,21 @@ func (s *SABnzbd) TopJobs(ctx context.Context, _ string, ids []string) error {
 	return nil
 }
 
-// removeCompletedFolder deletes a completed SABnzbd job's files. SABnzbd puts
-// them in <completed folder>/<category>/<job>, and history's storage is that
-// folder or, for one file, sometimes the file itself. Only the job's own
-// folder (the one inside the category folder) is ever deleted: never the
-// category folder or anything above it, and nothing outside a folder named
-// after the category.
+// removeCompletedFolder deletes a completed Usenet job's files. SABnzbd and
+// NZBGet put them in <completed folder>/<category>/<job>, and history's
+// storage is that folder or, for one file, sometimes the file itself (SABnzbd
+// only). Only the job's own folder (the one inside the category folder) is
+// ever deleted: never the category folder or anything above it, and nothing
+// outside a folder named after the category.
 func removeCompletedFolder(storage, category string) error {
 	p := filepath.Clean(storage)
 	if !filepath.IsAbs(p) {
-		return fmt.Errorf("SABnzbd's folder %q isn't a full path; left alone", storage)
+		return fmt.Errorf("the download client's folder %q isn't a full path; left alone", storage)
 	}
 	parts := strings.Split(p, string(filepath.Separator))
 	i := slices.Index(parts, category)
 	if i < 0 || i == len(parts)-1 {
-		return fmt.Errorf("SABnzbd's folder %s isn't inside a %s folder, so Reelkeeper left it alone", storage, category)
+		return fmt.Errorf("the download client's folder %s isn't inside a %s folder, so Reelkeeper left it alone", storage, category)
 	}
 	job := string(filepath.Separator) + filepath.Join(parts[:i+2]...)
 	if err := os.RemoveAll(job); err != nil {
