@@ -14,6 +14,9 @@
 #   Seerr        http://localhost:5055  (used from M5 for compat testing)
 #   SABnzbd      http://localhost:8085  (2.0 Usenet client; its API key is in
 #                /config/sabnzbd.ini, and its only news server is fakenews)
+#   NZBGet       http://localhost:6790  (2.0 Usenet client; JSON-RPC at /jsonrpc;
+#                user/password: reelkeeper/reelkeeper; its only news server is
+#                fakenews, without SSL)
 #   fakenews     http://localhost:8086  (a made-up Usenet: a Newznab indexer at
 #                /api, any API key, and a news server that only SABnzbd sees at
 #                fakenews:119. Make releases with
@@ -183,6 +186,33 @@ services:
       timeout: 5s
       retries: 20
 
+  nzbget:
+    # Pinned to an exact 26.x release (at least two weeks old), not latest.
+    image: lscr.io/linuxserver/nzbget:v26.3-ls266
+    container_name: reelkeeper-dev-nzbget
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: America/New_York
+      # Throwaway local-only login, like Postgres's.
+      NZBGET_USER: reelkeeper
+      NZBGET_PASS: reelkeeper
+    ports:
+      - "127.0.0.1:6790:6789"
+    volumes:
+      - nzbget-config:/config
+      # Finished jobs go under /mnt/downloads, the same volume and path as
+      # the other clients', as Reelkeeper expects of any download client.
+      - downloads:/mnt/downloads
+    depends_on:
+      - fakenews
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-u", "reelkeeper:reelkeeper", "-o", "/dev/null", "http://localhost:6789/"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
 volumes:
   postgres:
   qbittorrent-config:
@@ -192,4 +222,5 @@ volumes:
   seerr-config:
   fakenews-data:
   sabnzbd-config:
+  nzbget-config:
   downloads:
