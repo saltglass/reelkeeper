@@ -12,6 +12,13 @@
 #                1.4 Deluge client; web password: reelkeeper, no username. A fresh
 #                config volume starts with Deluge's default, "deluge")
 #   Seerr        http://localhost:5055  (used from M5 for compat testing)
+#   SABnzbd      http://localhost:8085  (2.0 Usenet client; its API key is in
+#                /config/sabnzbd.ini, and its only news server is fakenews)
+#   fakenews     http://localhost:8086  (a made-up Usenet: a Newznab indexer at
+#                /api, any API key, and a news server that only SABnzbd sees at
+#                fakenews:119. Make releases with
+#                `docker exec reelkeeper-dev-fakenews fakenews make NAME`; see
+#                dev/fakenews/main.go)
 #
 # Nothing here may reach the internet. The integration tests (internal/download,
 # `go test` with the REELKEEPER_TEST_* variables set) use only made-up private
@@ -135,6 +142,47 @@ services:
       timeout: 5s
       retries: 20
 
+  fakenews:
+    build: fakenews
+    image: reelkeeper-dev-fakenews
+    container_name: reelkeeper-dev-fakenews
+    restart: unless-stopped
+    ports:
+      # The indexer only; the news server (119) is for SABnzbd, inside the
+      # stack's network.
+      - "127.0.0.1:8086:8080"
+    volumes:
+      - fakenews-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  sabnzbd:
+    # Pinned to an exact 5.x release (at least two weeks old), not latest.
+    image: lscr.io/linuxserver/sabnzbd:5.1.3-ls276
+    container_name: reelkeeper-dev-sabnzbd
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: America/New_York
+    ports:
+      - "127.0.0.1:8085:8080"
+    volumes:
+      - sabnzbd-config:/config
+      # Finished jobs go under /mnt/downloads, the same volume and path as
+      # the torrent clients', as Reelkeeper expects of any download client.
+      - downloads:/mnt/downloads
+    depends_on:
+      - fakenews
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
 volumes:
   postgres:
   qbittorrent-config:
@@ -142,4 +190,6 @@ volumes:
   transmission-incomplete:
   deluge-config:
   seerr-config:
+  fakenews-data:
+  sabnzbd-config:
   downloads:
