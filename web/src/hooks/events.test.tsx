@@ -71,4 +71,20 @@ describe("live events", () => {
     act(() => FakeEventSource.last.send("task.updated", { ...job, status: "succeeded" }));
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["backups"] });
   });
+
+  it("refetches everything each time the stream reconnects", () => {
+    // The server ends the stream of a browser that falls behind instead of
+    // dropping events, counting on this to catch up.
+    vi.stubGlobal("EventSource", FakeEventSource);
+    const qc = new QueryClient();
+    const invalidate = vi.spyOn(qc, "invalidateQueries");
+    render(
+      <QueryClientProvider client={qc}>
+        <Probe />
+      </QueryClientProvider>,
+    );
+    act(() => FakeEventSource.last.send("open", {}));
+    act(() => FakeEventSource.last.send("open", {}));
+    expect(invalidate.mock.calls.filter((c) => c.length === 0)).toHaveLength(2);
+  });
 });
