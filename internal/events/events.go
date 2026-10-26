@@ -27,8 +27,9 @@ type Event struct {
 }
 
 // subscriberBuffer is how many events a slow browser may fall behind
-// before it misses some. Missing events is harmless: the UI refetches on
-// reconnect.
+// before it is disconnected. Dropping events quietly would leave its pages
+// stale, so instead its stream ends: the browser reconnects by itself and
+// refetches everything on reconnect (useLiveEvents' "open" handler).
 const subscriberBuffer = 32
 
 // keepAlive is how often a comment line is sent on an idle stream so
@@ -46,19 +47,29 @@ func NewBroker() *Broker {
 	return &Broker{subs: map[chan Event]struct{}{}}
 }
 
-// Publish sends ev to every subscriber without waiting for slow ones.
+// Publish sends ev to every subscriber without waiting for slow ones. A
+// subscriber whose buffer is full has fallen too far behind: it is dropped
+// and its channel closed, which ends its stream so the browser reconnects
+// and catches up.
 func (b *Broker) Publish(ev Event) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	for ch := range b.subs {
 		select {
 		case ch <- ev:
-		default: // subscriber is full; drop rather than block everyone
+		default:
+			// Only Publish closes, and only while holding mu and removing
+			// ch from subs, so nothing sends on a closed channel and no
+			// channel is closed twice.
+			delete(b.subs, ch)
+			close(ch)
 		}
 	}
 }
 
 // Subscribe returns a channel of events and a function to stop receiving.
+// The channel is closed if the subscriber falls too far behind (see
+// Publish); calling stop afterwards is still safe.
 func (b *Broker) Subscribe() (<-chan Event, func()) {
 	ch := make(chan Event, subscriberBuffer)
 	b.mu.Lock()
@@ -109,7 +120,12 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			flusher.Flush()
-		case ev := <-ch:
+		case ev, ok := <-ch:
+			if !ok {
+				// Fell behind and was dropped: end the stream so the
+				// browser reconnects and refetches.
+				return
+			}
 			data, err := json.Marshal(ev.Data)
 			if err != nil {
 				continue
