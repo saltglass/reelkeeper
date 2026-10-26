@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/uptrace/bun"
+
+	"github.com/saltglass/reelkeeper/internal/parser"
 )
 
 // Deleting a movie removes it from Reelkeeper: its versions, files' records,
@@ -22,8 +24,9 @@ import (
 //     the skip list, so the next scan doesn't add the movie straight back.
 //   - Delete the files: the movie's video files, and files named after
 //     them (subtitles and the like), are deleted for good. The movie's
-//     folder goes too, but only when no other video is left in it, so a
-//     folder holding something else never disappears with it. Only media
+//     folder goes too, but only when no other video (or link, or anything
+//     unreadable) is left anywhere in it, so a folder holding something
+//     else never disappears with it (keepFolder). Only media
 //     folders with "Manage files" on are touched; otherwise nothing is
 //     deleted at all.
 //
@@ -220,8 +223,8 @@ func (s *Service) deleteVersions(ctx context.Context, titleID, versionID int64, 
 			if err != nil || !st.IsDir() || filepath.Clean(dir) == filepath.Clean(p.root.Path) {
 				continue
 			}
-			if left := videosUnder(p.root.Path, p.unit, 0); len(left) > 0 {
-				s.logger.Info("kept a deleted movie's folder: other videos are in it", "folder", dir, "videos", len(left))
+			if why := keepFolder(dir); why != "" {
+				s.logger.Info("kept a deleted movie's folder", "folder", dir, "reason", why)
 				continue
 			}
 			if err := os.RemoveAll(dir); err != nil {
@@ -268,8 +271,97 @@ func (s *Service) deleteVersions(ctx context.Context, titleID, versionID int64, 
 	return res, nil
 }
 
+// movieExtrasDirs are the folders inside a movie's folder whose videos are
+// the movie's own extras (Plex/Emby/Jellyfin names), deleted with it. Other
+// folders the scanner skips (Plex Versions, lost+found, a recycle bin...)
+// aren't the movie's, so videos in them keep its folder.
+var movieExtrasDirs = map[string]bool{
+	"extras": true, "featurettes": true, "behind the scenes": true, "deleted scenes": true,
+	"interviews": true, "scenes": true, "shorts": true, "trailers": true, "other": true,
+	"subs": true, "subtitles": true, "sample": true, "samples": true,
+}
+
+// keepFolder says why a deleted movie's folder must stay, or "" when it
+// may go. It doesn't reuse the scanner, which skips hidden entries, stops
+// at a depth and ignores what it can't read (fine for finding a library,
+// not for proving a folder is safe to remove): it looks at everything, at
+// any depth, and says "keep" on anything it can't vouch for:
+//
+//   - any video other than the movie's own extras (a "-trailer" file, a
+//     small sample, anything in an extras folder such as Featurettes),
+//     and any hidden video or video in a hidden folder
+//   - any symbolic link, which is never followed: what it points to isn't
+//     the movie's to delete, and whoever made it may rely on it
+//   - the folder itself being a link
+//   - anything that couldn't be read
+func keepFolder(dir string) string {
+	st, err := os.Lstat(dir)
+	if err != nil {
+		return "couldn't check it: " + err.Error()
+	}
+	if st.Mode()&os.ModeSymlink != 0 {
+		return "it is a link to another folder"
+	}
+	why := ""
+	err = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			why = "couldn't check everything in it: " + err.Error()
+			return filepath.SkipAll
+		}
+		switch {
+		case d.Type()&os.ModeSymlink != 0:
+			why = "it holds a link: " + path
+		case d.IsDir() || !parser.IsVideo(d.Name()) || strings.HasPrefix(d.Name(), "._"): // "._" files are macOS metadata
+			return nil
+		default:
+			rel, err := filepath.Rel(dir, path)
+			if err != nil {
+				why = "couldn't check " + path + ": " + err.Error()
+				break
+			}
+			info, err := d.Info()
+			if err != nil {
+				why = "couldn't check " + path + ": " + err.Error()
+				break
+			}
+			if movieExtra(rel, info) {
+				return nil
+			}
+			why = "another video is in it: " + path
+		}
+		return filepath.SkipAll
+	})
+	if err != nil && why == "" {
+		why = "couldn't check everything in it: " + err.Error()
+	}
+	return why
+}
+
+// movieExtra reports whether a video at rel (inside a movie's folder) is
+// one of the movie's own extras: not hidden, and either in an extras
+// folder or named like an extra or a sample (as the scanner judges them).
+func movieExtra(rel string, info os.FileInfo) bool {
+	parts := strings.Split(filepath.ToSlash(rel), "/")
+	inExtras := false
+	for i, p := range parts {
+		if strings.HasPrefix(p, ".") {
+			return false
+		}
+		if i < len(parts)-1 && movieExtrasDirs[strings.ToLower(p)] {
+			inExtras = true
+		}
+	}
+	if inExtras {
+		return true
+	}
+	_, main := videoFile(info.Name(), info)
+	return !main
+}
+
 // deleteVideo deletes a video file and the files named after it in the
-// same folder (subtitles, .nfo...), returning what it deleted.
+// same folder (subtitles, .nfo...), returning what it deleted. Other videos
+// whose names start the same way ("Movie.2160p.mkv" next to "Movie.mkv")
+// are never touched, just as sidecars leaves them alone.
 func (s *Service) deleteVideo(root, rel string) ([]string, error) {
 	path := filepath.Join(root, rel)
 	stem := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
@@ -280,7 +372,10 @@ func (s *Service) deleteVideo(root, rel string) ([]string, error) {
 	var deleted []string
 	for _, e := range entries {
 		name := e.Name()
-		if e.IsDir() || (name != filepath.Base(path) && !strings.HasPrefix(name, stem+".")) {
+		if e.IsDir() {
+			continue
+		}
+		if name != filepath.Base(path) && (parser.IsVideo(name) || !strings.HasPrefix(name, stem+".")) {
 			continue
 		}
 		p := filepath.Join(filepath.Dir(path), name)
