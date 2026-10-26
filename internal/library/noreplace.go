@@ -1,10 +1,13 @@
 package library
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -31,17 +34,74 @@ var errNoAtomicRename = errors.New("no exclusive rename here")
 //   - When neither works, nothing is renamed (errNoSafeRename).
 //
 // A change of case only ("movie.mkv" to "Movie.mkv") on a filesystem that
-// ignores case finds the file itself at the new name; that one is renamed
-// normally, since the new name can't be anything but the file itself.
+// ignores case finds the file itself at the new name, so the exclusive
+// rename refuses it. Such a rename goes through a temporary name instead
+// (renameCaseOnly), each step exclusive too.
 func renameNoReplace(from, to string) error {
+	err := renameOnce(from, to)
+	// sameFile is only a hint that this may be a case-insensitive
+	// filesystem (two hard links look the same); renameCaseOnly's own steps
+	// are what keep anything from being overwritten.
+	if errors.Is(err, fs.ErrExist) && from != to && strings.EqualFold(from, to) && sameFile(from, to) {
+		return renameCaseOnly(from, to)
+	}
+	return err
+}
+
+// renameOnce is one exclusive rename: the system's own, or the hard-link
+// fallback where the filesystem doesn't have one.
+func renameOnce(from, to string) error {
 	err := renameExclusive(from, to)
 	if errors.Is(err, errNoAtomicRename) {
 		err = linkThenUnlink(from, to)
 	}
-	if errors.Is(err, fs.ErrExist) && strings.EqualFold(from, to) && sameFile(from, to) {
-		return os.Rename(from, to)
+	return err
+}
+
+// caseRenameStep, when set, is called between renameCaseOnly's two steps
+// (tests use it to change the folder at that moment).
+var caseRenameStep func(tmp string)
+
+// renameCaseOnly changes only the case of a file's name, in two exclusive
+// renames: to a temporary hidden name in the same folder, then to the new
+// name. If the second step is refused (the new name is a different file:
+// another hard link on a filesystem that minds case, or a file another
+// program created meanwhile), the file goes back to its old name, again
+// without overwriting anything; the answer is then fs.ErrExist. If even
+// that is refused, the file stays at the temporary name, and the error
+// says where it is.
+func renameCaseOnly(from, to string) error {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return err
+	}
+	tmp := filepath.Join(filepath.Dir(from), ".reelkeeper-rename-"+hex.EncodeToString(b[:]))
+	if err := renameOnce(from, tmp); err != nil {
+		return err
+	}
+	if caseRenameStep != nil {
+		caseRenameStep(tmp)
+	}
+	err := renameOnce(tmp, to)
+	if err == nil {
+		return nil
+	}
+	if rerr := renameOnce(tmp, from); rerr != nil {
+		return &strandedError{At: tmp, Want: to, Old: from, Err: err, UndoErr: rerr}
 	}
 	return err
+}
+
+// strandedError is a case-only rename that could neither finish nor be
+// undone: the file is safe, but at a temporary name.
+type strandedError struct {
+	At, Want, Old string
+	Err, UndoErr  error
+}
+
+func (e *strandedError) Error() string {
+	return fmt.Sprintf("couldn't rename it to %s (%v) or give it back its old name %s (%v); the file is safe at %s",
+		filepath.Base(e.Want), e.Err, filepath.Base(e.Old), e.UndoErr, e.At)
 }
 
 // linkThenUnlink renames by hard-linking to the new name and then removing

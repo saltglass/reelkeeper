@@ -316,7 +316,13 @@ func (s *Service) rename(from, to string) error {
 	if s.beforeRename != nil {
 		s.beforeRename(from, to)
 	}
-	return renameNoReplace(from, to)
+	err := renameNoReplace(from, to)
+	var stranded *strandedError
+	if errors.As(err, &stranded) {
+		s.logger.Error("a file was left at a temporary name: a change of case could neither finish nor be undone without overwriting another file",
+			"file", stranded.At, "wanted", to, "old", from, "error", stranded.Err, "undoError", stranded.UndoErr)
+	}
+	return err
 }
 
 // movieFacts is what the naming templates know about a movie.
