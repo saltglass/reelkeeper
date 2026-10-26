@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -393,6 +394,161 @@ func TestRenameUndoNeverOverwrites(t *testing.T) {
 		}
 		if !exists(filepath.Join(f.dir, raceNewVideo)) {
 			t.Error("the video is gone")
+		}
+	})
+}
+
+// ignoresCase reports whether dir's filesystem treats names differing only
+// in case as the same name (macOS and Windows by default; not Linux).
+func ignoresCase(t *testing.T, dir string) bool {
+	t.Helper()
+	p := filepath.Join(dir, "case-probe")
+	touch(t, dir, "case-probe", nil)
+	defer os.Remove(p)
+	return exists(filepath.Join(dir, "CASE-PROBE"))
+}
+
+// listNames lists a folder's entries by their exact names.
+func listNames(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	for _, e := range entries {
+		out = append(out, e.Name())
+	}
+	return out
+}
+
+// createNew writes a new file, never replacing one.
+func createNew(t *testing.T, path, content string) {
+	t.Helper()
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			return
+		}
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if _, err := f.WriteString(content); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("%s: %v", filepath.Base(path), err)
+	}
+	return string(b)
+}
+
+func TestRenameCaseOnlyRefusesAnotherHardLink(t *testing.T) {
+	dir := t.TempDir()
+	lower, upper := filepath.Join(dir, "movie.mkv"), filepath.Join(dir, "Movie.mkv")
+	createNew(t, lower, "the movie")
+	if ignoresCase(t, dir) {
+		t.Skip("this filesystem ignores case, so the two names can't both exist")
+	}
+	// Two names, one file: os.Rename "succeeds" here and changes nothing.
+	if err := os.Link(lower, upper); err != nil {
+		t.Skip("no hard links here:", err)
+	}
+	if err := renameNoReplace(lower, upper); !errors.Is(err, fs.ErrExist) {
+		t.Fatalf("renameNoReplace = %v, want fs.ErrExist", err)
+	}
+	if got := listNames(t, dir); !slices.Equal(got, []string{"Movie.mkv", "movie.mkv"}) {
+		t.Errorf("folder holds %v, want both names and nothing else", got)
+	}
+	if readFile(t, lower) != "the movie" || readFile(t, upper) != "the movie" {
+		t.Error("a name lost its contents")
+	}
+}
+
+func TestRenameCaseOnly(t *testing.T) {
+	setup := func(t *testing.T) (dir, from, to string) {
+		dir = t.TempDir()
+		from, to = filepath.Join(dir, "movie.mkv"), filepath.Join(dir, "Movie.mkv")
+		createNew(t, from, "the movie")
+		t.Cleanup(func() { caseRenameStep = nil })
+		return dir, from, to
+	}
+	// tmpOf finds the temporary name in a folder, or "".
+	tmpOf := func(t *testing.T, dir string) string {
+		for _, n := range listNames(t, dir) {
+			if strings.HasPrefix(n, ".reelkeeper-rename-") {
+				return filepath.Join(dir, n)
+			}
+		}
+		return ""
+	}
+
+	t.Run("succeeds, and the name really changes", func(t *testing.T) {
+		dir, from, to := setup(t)
+		if err := renameCaseOnly(from, to); err != nil {
+			t.Fatal(err)
+		}
+		if got := listNames(t, dir); !slices.Equal(got, []string{"Movie.mkv"}) {
+			t.Errorf("folder holds %v, want only Movie.mkv", got)
+		}
+		if readFile(t, to) != "the movie" {
+			t.Error("contents changed")
+		}
+	})
+
+	t.Run("the new name appears between the steps", func(t *testing.T) {
+		dir, from, to := setup(t)
+		caseRenameStep = func(string) { createNew(t, to, "someone else's") }
+		err := renameCaseOnly(from, to)
+		if readFile(t, to) != "someone else's" {
+			t.Error("the file that appeared was overwritten")
+		}
+		if ignoresCase(t, dir) {
+			// The newcomer also holds the old name: the file stays at the
+			// temporary name, and the error says where.
+			var se *strandedError
+			tmp := tmpOf(t, dir)
+			if !errors.As(err, &se) || tmp == "" || se.At != tmp || !strings.Contains(err.Error(), tmp) {
+				t.Fatalf("err = %v, temporary file = %q", err, tmp)
+			}
+			if readFile(t, tmp) != "the movie" {
+				t.Error("the movie lost its contents")
+			}
+			return
+		}
+		// The file goes back to its old name.
+		if !errors.Is(err, fs.ErrExist) {
+			t.Fatalf("err = %v, want fs.ErrExist", err)
+		}
+		if readFile(t, from) != "the movie" {
+			t.Error("the movie isn't back at its old name")
+		}
+		if got := listNames(t, dir); !slices.Equal(got, []string{"Movie.mkv", "movie.mkv"}) {
+			t.Errorf("folder holds %v, want the newcomer and the movie only", got)
+		}
+	})
+
+	t.Run("both names are taken between the steps", func(t *testing.T) {
+		dir, from, to := setup(t)
+		caseRenameStep = func(string) {
+			createNew(t, to, "someone else's")
+			createNew(t, from, "someone else's") // the same name where case is ignored
+		}
+		err := renameCaseOnly(from, to)
+		var se *strandedError
+		tmp := tmpOf(t, dir)
+		if !errors.As(err, &se) || tmp == "" || !strings.Contains(err.Error(), tmp) {
+			t.Fatalf("err = %v, temporary file = %q", err, tmp)
+		}
+		if errors.Is(err, fs.ErrExist) {
+			t.Error("a stranded file must not read as a plain \"name taken\", which hides where it is")
+		}
+		if readFile(t, tmp) != "the movie" || readFile(t, to) != "someone else's" || readFile(t, from) != "someone else's" {
+			t.Error("something was overwritten")
 		}
 	})
 }
