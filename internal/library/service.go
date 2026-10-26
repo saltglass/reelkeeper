@@ -44,6 +44,9 @@ type Service struct {
 	now      func() time.Time
 	onChange func()
 	naming   func() naming.Templates
+	// beforeRename, when set, is called just before each rename on disk
+	// (tests use it to change the folder at that moment).
+	beforeRename func(from, to string)
 }
 
 // New returns a library Service.

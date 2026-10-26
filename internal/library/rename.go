@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -23,7 +24,9 @@ import (
 //   - Files are renamed where they are (same folder), so nothing is copied
 //     and a rename can't half-finish.
 //   - Nothing is ever overwritten: if the new name is taken, that file is
-//     skipped with the reason.
+//     skipped with the reason. The rename itself refuses to replace a file,
+//     so one created by another program after the check is safe too
+//     (renameNoReplace).
 //   - Subtitles and other files sharing the video's name ("Movie.en.srt")
 //     are renamed with it, so players keep finding them.
 //   - Episode files Reelkeeper isn't sure about (any file with a note on the
@@ -262,20 +265,23 @@ func (s *Service) Rename(ctx context.Context, titleID int64) ([]VersionRename, e
 
 func (s *Service) renameFile(ctx context.Context, root string, f *FileRename) {
 	from, to := filepath.Join(root, f.From), filepath.Join(root, f.To)
-	// Checked again right before renaming: the folder may have changed
-	// since the plan was made.
-	if taken(from, to) {
-		f.Problem = "A file named " + filepath.Base(f.To) + " is already there; Reelkeeper never overwrites files."
-		return
-	}
-	if err := os.Rename(from, to); err != nil {
-		f.Problem = "Couldn't rename the file: " + err.Error()
+	// The plan checked that the new name was free, but the folder may have
+	// changed since. Checking again wouldn't help (another program could
+	// create the file right after), so the rename itself refuses to
+	// replace anything.
+	if err := s.rename(from, to); err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			f.Problem = "A file named " + filepath.Base(f.To) + " is already there; Reelkeeper never overwrites files."
+		} else {
+			f.Problem = "Couldn't rename the file: " + err.Error()
+		}
 		return
 	}
 	_, err := s.db.DB.NewUpdate().Model((*MediaFile)(nil)).Set("path = ?", f.To).Where("id = ?", f.FileID).Exec(ctx)
 	if err != nil {
-		// Put the file back so the library and the disk agree.
-		if rerr := os.Rename(to, from); rerr != nil {
+		// Put the file back so the library and the disk agree, unless
+		// something has taken its old name meanwhile.
+		if rerr := s.rename(to, from); rerr != nil {
 			s.logger.Error("renamed a file but couldn't record it or undo it; the next scan will pick it up",
 				"from", from, "to", to, "error", err, "undoError", rerr)
 		}
@@ -288,12 +294,12 @@ func (s *Service) renameFile(ctx context.Context, root string, f *FileRename) {
 	var failed []string
 	for _, x := range f.Extras {
 		xf, xt := filepath.Join(root, x.From), filepath.Join(root, x.To)
-		if taken(xf, xt) {
-			failed = append(failed, filepath.Base(x.From)+" (the new name is taken)")
-			continue
-		}
-		if err := os.Rename(xf, xt); err != nil {
-			failed = append(failed, filepath.Base(x.From)+" ("+err.Error()+")")
+		if err := s.rename(xf, xt); err != nil {
+			if errors.Is(err, fs.ErrExist) {
+				failed = append(failed, filepath.Base(x.From)+" (the new name is taken)")
+			} else {
+				failed = append(failed, filepath.Base(x.From)+" ("+err.Error()+")")
+			}
 			continue
 		}
 		s.logger.Info("renamed file", "from", xf, "to", xt, "reason", "goes with "+filepath.Base(f.To))
@@ -302,6 +308,15 @@ func (s *Service) renameFile(ctx context.Context, root string, f *FileRename) {
 		f.Problem = "The video was renamed, but these weren't: " + strings.Join(failed, ", ")
 		s.logger.Warn("some files that go with a renamed video kept their names", "video", to, "files", failed)
 	}
+}
+
+// rename renames a file on disk without ever replacing another
+// (renameNoReplace).
+func (s *Service) rename(from, to string) error {
+	if s.beforeRename != nil {
+		s.beforeRename(from, to)
+	}
+	return renameNoReplace(from, to)
 }
 
 // movieFacts is what the naming templates know about a movie.

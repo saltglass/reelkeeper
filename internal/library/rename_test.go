@@ -3,6 +3,8 @@ package library
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -228,4 +230,169 @@ func mustJSON(t *testing.T, v any) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+func TestRenameNoReplace(t *testing.T) {
+	for name, rename := range map[string]func(from, to string) error{
+		"renameNoReplace": renameNoReplace,
+		"linkThenUnlink":  linkThenUnlink, // the fallback for NFS and the like
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			touch(t, dir, "a.mkv", []byte("a"))
+			touch(t, dir, "b.mkv", []byte("b"))
+			a, b, c := filepath.Join(dir, "a.mkv"), filepath.Join(dir, "b.mkv"), filepath.Join(dir, "c.mkv")
+			if err := rename(a, b); !errors.Is(err, fs.ErrExist) {
+				t.Errorf("onto an existing file: %v, want fs.ErrExist", err)
+			}
+			for p, want := range map[string]string{a: "a", b: "b"} {
+				if got, _ := os.ReadFile(p); string(got) != want {
+					t.Errorf("%s holds %q, want %q", filepath.Base(p), got, want)
+				}
+			}
+			if err := rename(a, c); err != nil {
+				t.Fatal(err)
+			}
+			if got, _ := os.ReadFile(c); exists(a) || string(got) != "a" {
+				t.Errorf("after renaming: a there = %v, c = %q", exists(a), got)
+			}
+		})
+	}
+	// A change of case only works whether or not the filesystem ignores case.
+	dir := t.TempDir()
+	touch(t, dir, "movie.mkv", []byte("m"))
+	if err := renameNoReplace(filepath.Join(dir, "movie.mkv"), filepath.Join(dir, "Movie.mkv")); err != nil {
+		t.Fatal(err)
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 1 || entries[0].Name() != "Movie.mkv" {
+		t.Errorf("after a case-only rename the folder holds %v", entries)
+	}
+}
+
+// renameRace scans the fixture library with subtitles next to 28 Days
+// Later and lets Reelkeeper manage its files, ready for a rename.
+func renameRace(t *testing.T, db *store.Store) (*fixture, *Title) {
+	t.Helper()
+	f := newFixture(t, db)
+	touch(t, f.dir, raceSubs, []byte("subs"))
+	if _, err := f.svc.Scan(context.Background(), f.hd.ID, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.UpdateRootFolder(context.Background(), f.hd.ID, 1, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	return f, f.titleByTMDB(t, 170)
+}
+
+const (
+	raceVideo    = "28 Days Later (2002)/28.Days.Later.2002.1080p.BluRay.DDP5.1.x265.10bit-GRP.mkv"
+	raceSubs     = "28 Days Later (2002)/28.Days.Later.2002.1080p.BluRay.DDP5.1.x265.10bit-GRP.en.srt"
+	raceNewVideo = "28 Days Later (2002)/28 Days Later (2002) [Bluray-1080p]-GRP.mkv"
+	raceNewSubs  = "28 Days Later (2002)/28 Days Later (2002) [Bluray-1080p]-GRP.en.srt"
+)
+
+func TestRenameNeverOverwritesAFileThatAppearsMeanwhile(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f, movie := renameRace(t, db)
+		// Another program creates a file at the new name after the plan
+		// (and any check) but before the rename.
+		f.svc.beforeRename = func(from, to string) {
+			if to == filepath.Join(f.dir, raceNewVideo) && !exists(to) {
+				touch(t, f.dir, raceNewVideo, []byte("someone else's"))
+			}
+		}
+		done, err := f.svc.Rename(ctx, movie.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, fr := onlyFile(t, done); fr.Done || !strings.Contains(fr.Problem, "already there") {
+			t.Errorf("outcome = %+v", fr)
+		}
+		if got, _ := os.ReadFile(filepath.Join(f.dir, raceNewVideo)); string(got) != "someone else's" {
+			t.Errorf("the file that appeared now holds %q", got)
+		}
+		if !exists(filepath.Join(f.dir, raceVideo)) || !exists(filepath.Join(f.dir, raceSubs)) {
+			t.Error("the video or its subtitles moved anyway")
+		}
+		if files := f.filesOf(t, 170); len(files) != 1 || files[0].Path != raceVideo {
+			t.Errorf("library has %+v", files)
+		}
+	})
+}
+
+func TestRenameNeverOverwritesASidecarNameTakenMeanwhile(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f, movie := renameRace(t, db)
+		f.svc.beforeRename = func(from, to string) {
+			if to == filepath.Join(f.dir, raceNewSubs) && !exists(to) {
+				touch(t, f.dir, raceNewSubs, []byte("someone else's"))
+			}
+		}
+		done, err := f.svc.Rename(ctx, movie.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, fr := onlyFile(t, done); !fr.Done || !strings.Contains(fr.Problem, "the new name is taken") {
+			t.Errorf("outcome = %+v", fr)
+		}
+		if got, _ := os.ReadFile(filepath.Join(f.dir, raceNewSubs)); string(got) != "someone else's" {
+			t.Errorf("the file that appeared now holds %q", got)
+		}
+		if got, _ := os.ReadFile(filepath.Join(f.dir, raceSubs)); string(got) != "subs" {
+			t.Errorf("the subtitles now hold %q", got)
+		}
+		if !exists(filepath.Join(f.dir, raceNewVideo)) {
+			t.Error("the video wasn't renamed")
+		}
+	})
+}
+
+func TestRenameUndoNeverOverwrites(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		f, movie := renameRace(t, db)
+		// Recording the new name fails (the request is cancelled after the
+		// rename), so the rename is undone...
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		f.svc.beforeRename = func(from, to string) {
+			if to == filepath.Join(f.dir, raceNewVideo) {
+				cancel()
+			}
+		}
+		done, err := f.svc.Rename(ctx, movie.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, fr := onlyFile(t, done); fr.Done || !strings.Contains(fr.Problem, "Couldn't record") {
+			t.Errorf("outcome = %+v", fr)
+		}
+		if !exists(filepath.Join(f.dir, raceVideo)) || exists(filepath.Join(f.dir, raceNewVideo)) {
+			t.Error("the failed rename wasn't undone")
+		}
+
+		// ...unless another program has taken the old name meanwhile: then
+		// the video stays at its new name and the newcomer is left alone.
+		ctx, cancel = context.WithCancel(context.Background())
+		defer cancel()
+		f.svc.beforeRename = func(from, to string) {
+			switch to {
+			case filepath.Join(f.dir, raceNewVideo):
+				cancel()
+			case filepath.Join(f.dir, raceVideo):
+				touch(t, f.dir, raceVideo, []byte("someone else's"))
+			}
+		}
+		if _, err := f.svc.Rename(ctx, movie.ID); err != nil {
+			t.Fatal(err)
+		}
+		if got, _ := os.ReadFile(filepath.Join(f.dir, raceVideo)); string(got) != "someone else's" {
+			t.Errorf("undoing overwrote the newcomer: it holds %q", got)
+		}
+		if !exists(filepath.Join(f.dir, raceNewVideo)) {
+			t.Error("the video is gone")
+		}
+	})
 }
