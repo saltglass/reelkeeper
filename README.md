@@ -44,6 +44,10 @@ does the same job, and uses the fact that everything lives together:
 
 ### Library
 
+- A Home page that says at a glance whether anything needs you (a failing
+  indexer, a full download disk, downloads that couldn't be imported...),
+  each linking to where it's fixed, plus what's downloading, what was just
+  grabbed or imported, and what's due this week.
 - Movies and TV (standard and daily series) side by side, with poster and
   table views, sorting, filters and search. Select several titles (or all
   that a filter shows) to change monitoring, upgrades or which episodes are

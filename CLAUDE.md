@@ -404,6 +404,10 @@ These mirror Radarr's options, but cleaner:
 
 ### UI
 - **Navigation:**
+  - Home (where the app opens, Dan 2026-10-27): what needs attention
+    (each line links to its fix), a few numbers, downloads in progress,
+    recent grabs and imports, and what's due this week. Read-only: no
+    charts, no widgets, no start-page setting.
   - Movies
   - Series
   - Wanted

@@ -3211,6 +3211,8 @@ export interface components {
         };
         Queue: {
             items: components["schemas"]["QueueItem"][];
+            /** @description Why the download disk can't take another download, in plain words (its free space, less what downloads in progress still need, is below the space kept free in Settings → Cleanup); null when there's room or it can't be told. While it's short, grabs are skipped and the hourly search waits. */
+            diskShort: string | null;
             /**
              * @description The built-in client's VPN state (see `GET /settings/download-client/builtin/status`) while it is the download client; null for the other clients. `connecting`, `down` and `held` mean its downloads are stopped.
              * @enum {string|null}

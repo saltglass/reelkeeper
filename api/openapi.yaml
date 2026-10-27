@@ -3946,11 +3946,19 @@ components:
 
     Queue:
       type: object
-      required: [items, clientError, clientName, limit, full, builtinState]
+      required: [items, clientError, clientName, limit, full, builtinState, diskShort]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/QueueItem" }
+        diskShort:
+          type: string
+          nullable: true
+          description: >-
+            Why the download disk can't take another download, in plain words (its free
+            space, less what downloads in progress still need, is below the space kept free in
+            Settings → Cleanup); null when there's room or it can't be told. While it's short,
+            grabs are skipped and the hourly search waits.
         builtinState:
           type: string
           nullable: true

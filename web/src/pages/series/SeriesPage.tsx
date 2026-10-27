@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { CircleAlert, LayoutGrid, List, Plus, Search, Tv } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PosterCaption, PosterName, usePosterTitles } from "@/components/PosterTitle";
@@ -62,7 +62,10 @@ export function SeriesPage() {
   const review = useQuery(reviewQuery);
   const [q, setQ] = useState("");
   const [sort, setSortState] = useState<Sort>(() => read("reelkeeper-series-sort", "title"));
-  const [filter, setFilterState] = useState<Filter>(() => read("reelkeeper-series-filter", "all"));
+  const linked = useSearch({ from: "/app/series" }).filter;
+  const [filter, setFilterState] = useState<Filter>(
+    () => linked ?? read("reelkeeper-series-filter", "all"),
+  );
   const [view, setViewState] = useState<"posters" | "table">(() =>
     read("reelkeeper-series-view", "posters"),
   );

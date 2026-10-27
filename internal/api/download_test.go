@@ -1027,3 +1027,36 @@ func freeTCPPort(t *testing.T) int {
 	defer l.Close()
 	return l.Addr().(*net.TCPAddr).Port
 }
+
+// The queue says, in plain words, when the download disk is short of space
+// (the Home page's warning): free space less what downloads in progress
+// still need is below the space kept free.
+func TestQueueSaysWhenTheDiskIsShort(t *testing.T) {
+	db := storetest.Open(t, store.SQLite)
+	a := newApp(t, db, "")
+	a.setup()
+	ctx := context.Background()
+	f := &fakeQB{}
+	useFake(a, f)
+	if _, err := a.settings.SaveDownloadClient(ctx, settings.DownloadClientUpdate{
+		URL: "http://qb:8080", Username: "u", Password: ptr("secret"), Folder: t.TempDir()}); err != nil {
+		t.Fatal(err)
+	}
+	// As main wires it, so the space kept free comes from the settings.
+	a.downloads.SetCleanup(a.settings.Cleanup, nil, nil)
+	c := a.settings.Cleanup()
+	c.KeepFreeGB = 1
+	if _, err := a.settings.SaveCleanup(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+	f.torrents = []download.Torrent{{Hash: "abc", State: torrent.Downloading, Size: 100, Left: 50}}
+	if r := a.do("GET", "/api/v1/queue", ""); r.status != 200 || r.body["diskShort"] != nil {
+		t.Fatalf("room on the disk: %d %s", r.status, r.raw)
+	}
+	// A download still needing far more than any disk has.
+	f.torrents[0].Left = 1 << 60
+	r := a.do("GET", "/api/v1/queue", "")
+	if why := fmt.Sprint(r.body["diskShort"]); !strings.HasPrefix(why, "The download disk has ") || !strings.Contains(why, "kept free (Settings → Cleanup)") {
+		t.Errorf("short: %s", r.raw)
+	}
+}

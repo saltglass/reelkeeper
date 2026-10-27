@@ -2849,6 +2849,9 @@ type Queue struct {
 	// ClientName The download client's name, such as qBittorrent, for the page's wording. "the download client" when none is set up.
 	ClientName string `json:"clientName"`
 
+	// DiskShort Why the download disk can't take another download, in plain words (its free space, less what downloads in progress still need, is below the space kept free in Settings → Cleanup); null when there's room or it can't be told. While it's short, grabs are skipped and the hourly search waits.
+	DiskShort *string `json:"diskShort"`
+
 	// Full Grabbing is On for movies or TV and the queue is at or over the limit
 	Full  bool        `json:"full"`
 	Items []QueueItem `json:"items"`
