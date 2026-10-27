@@ -4340,7 +4340,8 @@ components:
         versionIds:
           type: array
           minItems: 1
-          maxItems: 50
+          maxItems: 10
+          description: At most 10, so one request doesn't flood the indexers (or a Cloudflare solver).
           items: { type: integer, format: int64 }
 
     WantedSearchResult:

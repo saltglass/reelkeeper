@@ -3567,6 +3567,7 @@ export interface components {
             airDate: string;
         };
         WantedSearchRequest: {
+            /** @description At most 10, so one request doesn't flood the indexers (or a Cloudflare solver). */
             versionIds: number[];
         };
         WantedSearchResult: {

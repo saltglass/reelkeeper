@@ -19,6 +19,7 @@ import { backfillQuery } from "@/hooks/backfill";
 import { toast } from "@/hooks/toast";
 import {
   missingTotal,
+  SEARCH_LIMIT,
   useSearchWanted,
   useUnmonitorWanted,
   type WantedItem,
@@ -159,14 +160,17 @@ export function WantedPage() {
   }
 
   async function searchFor(items: WantedItem[]) {
+    // The first SEARCH_LIMIT, in the order shown; the rest wait for the hourly search.
     const ids = [...new Set(items.map((i) => i.versionId))];
+    const left = Math.max(0, ids.length - SEARCH_LIMIT);
+    const later = left > 0 ? ` The other ${left} are left for the hourly search.` : "";
     try {
-      const r = await search.mutateAsync(ids);
+      const r = await search.mutateAsync(ids.slice(0, SEARCH_LIMIT));
       if (r.queued === 0) {
-        toast("Those searches were already waiting.", "ok");
+        toast(`Those searches were already waiting.${later}`, "ok");
       } else {
         toast(
-          `${plural(r.queued, "search", "searches")} queued. Results appear in each row as they finish.`,
+          `${plural(r.queued, "search", "searches")} queued. Results appear in each row as they finish.${later}`,
           "ok",
         );
       }
@@ -311,7 +315,11 @@ export function WantedPage() {
                 disabled={search.isPending}
                 onClick={() => searchFor(chosen)}
               >
-                {search.isPending ? "Searching…" : "Search"}
+                {search.isPending
+                  ? "Searching…"
+                  : new Set(chosen.map((i) => i.versionId)).size > SEARCH_LIMIT
+                    ? `Search first ${SEARCH_LIMIT}`
+                    : "Search"}
               </Button>
               <Button variant="outline" onClick={() => setConfirming(true)}>
                 Stop monitoring

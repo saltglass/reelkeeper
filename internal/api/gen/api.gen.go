@@ -3798,6 +3798,7 @@ type WantedList struct {
 
 // WantedSearchRequest defines model for WantedSearchRequest.
 type WantedSearchRequest struct {
+	// VersionIds At most 10, so one request doesn't flood the indexers (or a Cloudflare solver).
 	VersionIds []int64 `json:"versionIds"`
 }
 

@@ -22,10 +22,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { type MovieSummary, type SeriesSummary, useBulkEdit } from "@/hooks/library";
 import { toast } from "@/hooks/toast";
+import { SEARCH_LIMIT } from "@/hooks/wanted";
 import { cn } from "@/lib/utils";
 
-/** How many newly wanted titles one change searches at once (the server's limit). */
-export const SEARCHES_NOW = 10;
+/** How many newly wanted titles one change searches at once (the same limit as Wanted's Search). */
+const SEARCHES_NOW = SEARCH_LIMIT;
 
 export type BulkKind = "movie" | "series";
 type Title = MovieSummary | SeriesSummary;

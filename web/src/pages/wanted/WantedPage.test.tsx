@@ -278,6 +278,31 @@ describe("wanted page", () => {
     await waitFor(() => expect(bodies[1]).toEqual({ versionIds: [50] }));
   });
 
+  it("searches only the first 10 of a bigger selection", async () => {
+    const bodies: { versionIds: number[] }[] = [];
+    const many = Array.from({ length: 12 }, (_, i) => movie(i + 1, `Movie ${i + 1}`));
+    open({
+      "GET /wanted": json({
+        missing: many,
+        upgrades: [],
+        counts: { missingMovies: 12, missingEpisodes: 0, upgrades: 0 },
+      }),
+      "POST /wanted/search": async (req: Request) => {
+        bodies.push(await req.json());
+        return json({ queued: 10, alreadyQueued: 0 });
+      },
+    });
+    await screen.findByText("Movie 1 (2020)");
+    await userEvent.click(screen.getByLabelText(/Select all 12 shown/));
+    const bar = screen.getByRole("region", { name: "Actions for the selected rows" });
+    await userEvent.click(within(bar).getByRole("button", { name: "Search first 10" }));
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]?.versionIds).toHaveLength(10);
+    expect(
+      await screen.findByText(/10 searches queued.*The other 2 are left for the hourly search\./),
+    ).toBeInTheDocument();
+  });
+
   it("selects rows and searches them all", async () => {
     const bodies: unknown[] = [];
     open({
