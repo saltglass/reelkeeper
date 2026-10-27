@@ -12,7 +12,12 @@ deleted until you switch it on**, so you can look around safely.
 Open Reelkeeper in your browser (for example `http://your-server:7676`). The
 first visit shows "Welcome to Reelkeeper" and asks you to create the
 administrator account: a username, and a password of at least 8 characters.
-You are signed in straight away.
+You are signed in straight away and land on **Home**.
+
+Until a few basics are in place, Home shows a short checklist: *Add a media
+folder*, *Add an indexer* and *Set up a download client*. Each line links to
+its page and gets ticked when it's done, so you can always go back to Home to
+see what's left. The steps below cover those and the rest.
 
 Only the first visit can create an account. Later you can add
 [single sign-on](sign-in.md) if you want it.
@@ -351,6 +356,23 @@ while, then switch it to On. The defaults are cautious. After an import, a
 torrent seeds until a ratio of 1.0 or 24 hours, whichever comes first, and
 never less than the tracker's own minimum.
 
+**Download disk.** *Keep at least (GB) free* (100 by default) stops the
+download disk from filling up. Set it to a bit more than your largest
+downloads, or 0 to turn it off. Reelkeeper counts what downloads in progress
+still need, and:
+
+- skips a grab that wouldn't leave that much free. History says why, you get
+  one email, and the title is tried again once there is room. It doesn't wait
+  for its next scheduled search.
+- pauses grabbing and the hourly search while the disk is short, and says so
+  on Home. They carry on by themselves once there is room again.
+- removes finished torrents early while the disk is short (longest finished
+  first, never before the tracker's own minimum), once cleanup is On.
+
+The free space is measured at the download folder as Reelkeeper sees it, so
+that folder must be the real download disk (see
+[Folders and paths](install.md#folders-and-paths-read-this-first)).
+
 Files replaced by an upgrade are not deleted at once. They go into a hidden
 `.reelkeeper-replaced` folder inside the media folder and are emptied after 30
 days (0 keeps them forever).
@@ -377,7 +399,36 @@ Each has a Test button.
 Open Movies or Series in the sidebar. Whatever Reelkeeper found by scanning
 your folders is already there. To have it look for something new, add it with
 the Add movie or Add series button, or connect [Seerr](seerr.md) and request it there.
-The **Wanted** page lists everything Reelkeeper is still looking for.
+
+To change many titles at once, press **Select** on Movies or Series, tick
+posters or rows (or *Select all N shown* to take everything the current
+filter shows), and use the bar at the bottom:
+
+- **Monitoring**: start or stop looking after them.
+- **Upgrades** (movies): turn upgrades on or off, for example to keep the
+  files a scanned library already has.
+- **Episodes** (shows): monitor all episodes, future ones only, or none.
+
+Reelkeeper asks before it changes anything. When the selected titles have
+copies in more than one quality profile, that dialog also asks which
+profile's copies to change. Titles that become
+wanted are searched straight away, up to 10 of them; the rest wait for the
+hourly search, so a big change doesn't flood your indexers.
+
+The **Wanted** page lists everything Reelkeeper is still looking for, and why
+it hasn't been found yet. Tick rows to **Search** for them now (the first 10
+of a bigger selection; the rest wait for the hourly search) or to **Stop
+monitoring** them.
+
+## 10. Day to day: Home
+
+Home is where Reelkeeper opens. At the top it says whether anything needs
+you: grabbing switched off or in dry run, a download client it can't reach,
+a full download disk or queue, downloads that couldn't be imported, folders
+or shows waiting for you to identify them, a failing indexer, or (with the
+built-in client) a VPN that is down. Each line links to where it's fixed.
+When nothing needs you, it says "All good." Below that are a few numbers, what is
+downloading, what was just grabbed or imported, and what's due this week.
 
 ## Next
 

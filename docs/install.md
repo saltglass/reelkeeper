@@ -52,6 +52,12 @@ Imports always **copy** the file and leave the original alone, so the torrent
 keeps seeding. Your download folder and your media folder do not need to be on
 the same disk.
 
+Reelkeeper also watches how much room is left on the download disk (Settings
+→ Cleanup, *Keep at least (GB) free*), and it measures that at the download
+folder inside its own container. So mount the real download disk there, as
+above. A folder that only exists inside the container would report the
+container's disk, not the one your downloads fill.
+
 With the [built-in client](#the-built-in-download-client) there is no other
 program to agree with: its downloads are inside the Reelkeeper container, so
 Reelkeeper can always open them. You still mount the download folder from your
@@ -99,7 +105,9 @@ docker compose up -d
 ```
 
 Open `http://<your-server>:7676`. The first visit asks you to create the
-administrator account.
+administrator account. Reelkeeper then opens on its Home page, which lists
+what is left to set up until it is done; [First-time setup](first-run.md)
+goes through it.
 
 The folder mounted at `/config` must be writable by the `user:` above, on
 Postgres installs too (the secret key, backups and indexer definitions live
@@ -294,6 +302,10 @@ again, and never sent back to your browser.
   that were running start again (the ones you paused stay paused). While they
   are held, torrents show as *Queued*, and Activity → Queue says "VPN down:
   the built-in client's downloads are stopped until it reconnects."
+- A small indicator under the app's name in the sidebar shows the VPN's state
+  on every page (*VPN connected*, *VPN connecting*, *VPN down* or *Downloads
+  held*) and links to Settings → Download Client. The Home page lists the
+  VPN as a problem while it is down, still connecting or held.
 - If the VPN has been down for ten minutes, Reelkeeper sends one notice (the
   same channels as its other problems: the pop-up, email if you set it up, the
   webhook), and one when it is back.
@@ -458,8 +470,14 @@ sign-on and for the bypass list to work safely. See
 
 1. In Reelkeeper, open System → Backups and choose Back up now. (If you have
    not read about backups yet, see [Backups](backups.md).)
-2. Change the version tag on the `image:` line of `compose.yaml`.
-3. Run `docker compose pull && docker compose up -d`.
+2. Read the notes for the new version on the
+   [releases page](https://github.com/saltglass/reelkeeper/releases). They
+   list what changed and anything you need to do.
+3. Change the version tag on the `image:` line of `compose.yaml`.
+4. Run `docker compose pull && docker compose up -d`.
+
+Updates within 1.x (for example 1.2.5 to 1.3.0) need no changes to
+`compose.yaml` other than the tag, and keep your database as it is.
 
 Reelkeeper upgrades its database on startup. On SQLite it first saves a copy
 of the old database file into the backups folder (a file named like
@@ -467,3 +485,6 @@ of the old database file into the backups folder (a file named like
 
 Going back to an older version is not supported. If an update goes wrong,
 put the old image tag back and restore the backup you made in step 1.
+
+Once it is running, System → Status shows the version, and so does
+`docker exec reelkeeper /reelkeeper version`.
