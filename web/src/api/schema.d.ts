@@ -777,6 +777,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/movies/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change monitoring or upgrades for several movies at once
+         * @description Changes every version of the chosen movies, or only their versions with `profileId`. Everything is checked first and saved in one go, so a bad request changes nothing. Movies this makes wanted (monitoring or upgrades turned on) are searched: the first 10 at once, one after another, the rest by the hourly search. Turning things off never searches.
+         */
+        post: operations["editMovies"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/movies/{id}": {
         parameters: {
             query?: never;
@@ -958,6 +978,26 @@ export interface paths {
         get: operations["lookupSeries"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/series/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change monitoring for several series at once
+         * @description Changes every version of the chosen series, or only their versions with `profileId`. Everything is checked first and saved in one go, so a bad request changes nothing. A `monitor` preset replaces choices made per season or episode. Series this makes wanted are searched: the first 10 at once, one after another, the rest by the hourly search. Turning things off never searches.
+         */
+        post: operations["editSeries"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3535,6 +3575,45 @@ export interface components {
             /** @description Versions that already had a search waiting or running. */
             alreadyQueued: number;
         };
+        /** @description Send at least one of monitored and upgrades; one that's left out is unchanged. */
+        MoviesBulkEdit: {
+            /** @description Movie ids. */
+            titleIds: number[];
+            /**
+             * Format: int64
+             * @description Change only the versions with this quality profile. Left out, every version is changed.
+             */
+            profileId?: number;
+            monitored?: boolean;
+            /** @description Whether Reelkeeper may replace the movies' files with better releases. Off: it keeps the files it has, but still downloads a movie again if its file is missing. */
+            upgrades?: boolean;
+        };
+        /** @description Send at least one of monitored and monitor; one that's left out is unchanged. */
+        SeriesBulkEdit: {
+            /** @description Series ids. */
+            titleIds: number[];
+            /**
+             * Format: int64
+             * @description Change only the versions with this quality profile. Left out, every version is changed.
+             */
+            profileId?: number;
+            monitored?: boolean;
+            /**
+             * @description all: every episode, aired or not. future: only episodes airing from today. none: nothing until turned on per season or episode.
+             * @enum {string}
+             */
+            monitor?: "all" | "future" | "none";
+        };
+        BulkEditResult: {
+            /** @description Titles changed. */
+            titles: number;
+            /** @description Versions changed. */
+            versions: number;
+            /** @description Searches queued now (at most 10) */
+            searched: number;
+            /** @description Versions the change made wanted beyond the first 10; the hourly search finds them. */
+            later: number;
+        };
         WantedUnmonitorRequest: {
             /** @description Movie version ids. */
             movies?: number[];
@@ -5751,6 +5830,33 @@ export interface operations {
             };
         };
     };
+    editMovies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoviesBulkEdit"];
+            };
+        };
+        responses: {
+            /** @description What was changed and searched. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkEditResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
     getMovie: {
         parameters: {
             query?: never;
@@ -6118,6 +6224,33 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+        };
+    };
+    editSeries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeriesBulkEdit"];
+            };
+        };
+        responses: {
+            /** @description What was changed and searched. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkEditResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
         };
     };
     getSeries: {

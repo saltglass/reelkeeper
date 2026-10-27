@@ -45,7 +45,9 @@ does the same job, and uses the fact that everything lives together:
 ### Library
 
 - Movies and TV (standard and daily series) side by side, with poster and
-  table views, sorting, filters and search.
+  table views, sorting, filters and search. Select several titles (or all
+  that a filter shows) to change monitoring, upgrades or which episodes are
+  monitored at once.
 - **Versions:** each title can have several copies, each with its own quality
   profile, folder, upgrades and history. A regular copy and a remux are two
   versions of one movie, not two apps.

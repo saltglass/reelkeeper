@@ -862,6 +862,27 @@ func (e SeedingItemMediaType) Valid() bool {
 	}
 }
 
+// Defines values for SeriesBulkEditMonitor.
+const (
+	SeriesBulkEditMonitorAll    SeriesBulkEditMonitor = "all"
+	SeriesBulkEditMonitorFuture SeriesBulkEditMonitor = "future"
+	SeriesBulkEditMonitorNone   SeriesBulkEditMonitor = "none"
+)
+
+// Valid indicates whether the value is a known member of the SeriesBulkEditMonitor enum.
+func (e SeriesBulkEditMonitor) Valid() bool {
+	switch e {
+	case SeriesBulkEditMonitorAll:
+		return true
+	case SeriesBulkEditMonitorFuture:
+		return true
+	case SeriesBulkEditMonitorNone:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SeriesType.
 const (
 	Daily    SeriesType = "daily"
@@ -1449,6 +1470,21 @@ type BuiltinStatus struct {
 // `down`: the VPN dropped (no handshake for 3 minutes) or leaks; every torrent is stopped. `held`: the VPN was removed (or can't be used)
 // and downloads are stopped until the person starts them without one.
 type BuiltinStatusState string
+
+// BulkEditResult defines model for BulkEditResult.
+type BulkEditResult struct {
+	// Later Versions the change made wanted beyond the first 10; the hourly search finds them.
+	Later int `json:"later"`
+
+	// Searched Searches queued now (at most 10)
+	Searched int `json:"searched"`
+
+	// Titles Titles changed.
+	Titles int `json:"titles"`
+
+	// Versions Versions changed.
+	Versions int `json:"versions"`
+}
 
 // Candidate defines model for Candidate.
 type Candidate struct {
@@ -2345,6 +2381,20 @@ type MovieSummary struct {
 	Year      int              `json:"year"`
 }
 
+// MoviesBulkEdit Send at least one of monitored and upgrades; one that's left out is unchanged.
+type MoviesBulkEdit struct {
+	Monitored *bool `json:"monitored,omitempty"`
+
+	// ProfileId Change only the versions with this quality profile. Left out, every version is changed.
+	ProfileId *int64 `json:"profileId,omitempty"`
+
+	// TitleIds Movie ids.
+	TitleIds []int64 `json:"titleIds"`
+
+	// Upgrades Whether Reelkeeper may replace the movies' files with better releases. Off: it keeps the files it has, but still downloads a movie again if its file is missing.
+	Upgrades *bool `json:"upgrades,omitempty"`
+}
+
 // MultiEpisodeStyle How a file holding several episodes writes them, for episodes 1-3:
 // prefixed-range S01E01-E03, range S01E01-03, extend S01E01-02-03,
 // scene S01E01-E02-E03, repeat S01E01E02E03, duplicate
@@ -3143,6 +3193,22 @@ type SeedingTorrent struct {
 	// `unknown` (a state Reelkeeper doesn't recognise).
 	State TorrentState `json:"state"`
 }
+
+// SeriesBulkEdit Send at least one of monitored and monitor; one that's left out is unchanged.
+type SeriesBulkEdit struct {
+	// Monitor all: every episode, aired or not. future: only episodes airing from today. none: nothing until turned on per season or episode.
+	Monitor   *SeriesBulkEditMonitor `json:"monitor,omitempty"`
+	Monitored *bool                  `json:"monitored,omitempty"`
+
+	// ProfileId Change only the versions with this quality profile. Left out, every version is changed.
+	ProfileId *int64 `json:"profileId,omitempty"`
+
+	// TitleIds Series ids.
+	TitleIds []int64 `json:"titleIds"`
+}
+
+// SeriesBulkEditMonitor all: every episode, aired or not. future: only episodes airing from today. none: nothing until turned on per season or episode.
+type SeriesBulkEditMonitor string
 
 // SeriesDetail defines model for SeriesDetail.
 type SeriesDetail struct {
@@ -4109,6 +4175,9 @@ type PreviewSonarrImportJSONRequestBody = SonarrImportRequest
 // AddMovieJSONRequestBody defines body for AddMovie for application/json ContentType.
 type AddMovieJSONRequestBody = AddMovie
 
+// EditMoviesJSONRequestBody defines body for EditMovies for application/json ContentType.
+type EditMoviesJSONRequestBody = MoviesBulkEdit
+
 // UpdateVersionJSONRequestBody defines body for UpdateVersion for application/json ContentType.
 type UpdateVersionJSONRequestBody UpdateVersionJSONBody
 
@@ -4132,6 +4201,9 @@ type RemoveFromQueueJSONRequestBody RemoveFromQueueJSONBody
 
 // AddSeriesJSONRequestBody defines body for AddSeries for application/json ContentType.
 type AddSeriesJSONRequestBody = AddSeries
+
+// EditSeriesJSONRequestBody defines body for EditSeries for application/json ContentType.
+type EditSeriesJSONRequestBody = SeriesBulkEdit
 
 // UpdateSeriesJSONRequestBody defines body for UpdateSeries for application/json ContentType.
 type UpdateSeriesJSONRequestBody UpdateSeriesJSONBody
@@ -4390,6 +4462,9 @@ type ServerInterface interface {
 	// AddMovie Add a movie by its TMDB ID
 	// (POST /movies)
 	AddMovie(w http.ResponseWriter, r *http.Request)
+	// EditMovies Change monitoring or upgrades for several movies at once
+	// (POST /movies/bulk)
+	EditMovies(w http.ResponseWriter, r *http.Request)
 	// LookupMovies Search TMDB for movies to add
 	// (GET /movies/lookup)
 	LookupMovies(w http.ResponseWriter, r *http.Request, params LookupMoviesParams)
@@ -4471,6 +4546,9 @@ type ServerInterface interface {
 	// AddSeries Add a series by its TMDB ID
 	// (POST /series)
 	AddSeries(w http.ResponseWriter, r *http.Request)
+	// EditSeries Change monitoring for several series at once
+	// (POST /series/bulk)
+	EditSeries(w http.ResponseWriter, r *http.Request)
 	// LookupSeries Search TMDB for series to add
 	// (GET /series/lookup)
 	LookupSeries(w http.ResponseWriter, r *http.Request, params LookupSeriesParams)
@@ -5002,6 +5080,12 @@ func (_ Unimplemented) AddMovie(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// EditMovies Change monitoring or upgrades for several movies at once
+// (POST /movies/bulk)
+func (_ Unimplemented) EditMovies(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // LookupMovies Search TMDB for movies to add
 // (GET /movies/lookup)
 func (_ Unimplemented) LookupMovies(w http.ResponseWriter, r *http.Request, params LookupMoviesParams) {
@@ -5159,6 +5243,12 @@ func (_ Unimplemented) GetSeriesList(w http.ResponseWriter, r *http.Request) {
 // AddSeries Add a series by its TMDB ID
 // (POST /series)
 func (_ Unimplemented) AddSeries(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// EditSeries Change monitoring for several series at once
+// (POST /series/bulk)
+func (_ Unimplemented) EditSeries(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -6882,6 +6972,20 @@ func (siw *ServerInterfaceWrapper) AddMovie(w http.ResponseWriter, r *http.Reque
 	handler.ServeHTTP(w, r)
 }
 
+// EditMovies operation middleware
+func (siw *ServerInterfaceWrapper) EditMovies(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.EditMovies(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // LookupMovies operation middleware
 func (siw *ServerInterfaceWrapper) LookupMovies(w http.ResponseWriter, r *http.Request) {
 
@@ -7553,6 +7657,20 @@ func (siw *ServerInterfaceWrapper) AddSeries(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AddSeries(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// EditSeries operation middleware
+func (siw *ServerInterfaceWrapper) EditSeries(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.EditSeries(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8873,6 +8991,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/movies/lookup", wrapper.LookupMovies)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/movies/bulk", wrapper.EditMovies)
+	})
+	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/movies/{id}", wrapper.DeleteMovie)
 	})
 	r.Group(func(r chi.Router) {
@@ -8910,6 +9031,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/series/lookup", wrapper.LookupSeries)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/series/bulk", wrapper.EditSeries)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/series/{id}", wrapper.GetSeries)

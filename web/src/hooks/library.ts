@@ -73,3 +73,25 @@ export function useScanRoot() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["system", "tasks"] }),
   });
 }
+
+export type BulkEditResult = components["schemas"]["BulkEditResult"];
+export type MoviesBulkEdit = components["schemas"]["MoviesBulkEdit"];
+export type SeriesBulkEdit = components["schemas"]["SeriesBulkEdit"];
+
+/** Changes monitoring (or upgrades, for movies) of many titles at once. */
+export function useBulkEdit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (
+      req: { kind: "movie"; body: MoviesBulkEdit } | { kind: "series"; body: SeriesBulkEdit },
+    ) =>
+      req.kind === "movie"
+        ? unwrap(api.POST("/movies/bulk", { body: req.body }))
+        : unwrap(api.POST("/series/bulk", { body: req.body })),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["movies"] });
+      qc.invalidateQueries({ queryKey: ["series"] });
+      qc.invalidateQueries({ queryKey: ["wanted"] });
+    },
+  });
+}
