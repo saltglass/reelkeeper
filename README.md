@@ -68,8 +68,10 @@ does the same job, and uses the fact that everything lives together:
 - Episode ordering per series (TMDB episode groups), with mismatches flagged
   rather than guessed.
 - **Wanted** lists what is still missing or could be upgraded, and why it
-  hasn't been found yet. The **backfill queue** works through older seasons
-  of a show, one show at a time.
+  hasn't been found yet. Select rows to search for them now (10 at a time,
+  so a big selection doesn't flood your indexers; the rest wait for the
+  hourly search) or to stop looking for them. The **backfill queue** works
+  through older seasons of a show, one show at a time.
 
 ### Finding releases
 
@@ -117,7 +119,8 @@ does the same job, and uses the fact that everything lives together:
   through it, with no extra container privileges. Settings shows your real IP
   next to the VPN's, and a kill switch stops every download the moment the
   VPN drops (a banner on the Queue says so), starting again when it is back.
-  Without a VPN config, the client is plainly marked as unprotected.
+  A small indicator under the app's name shows the VPN's state on every
+  page. Without a VPN config, the client is plainly marked as unprotected.
 - Activity → Queue with Pause, Resume, Move to top and Remove.
 - **Switch clients without losing anything.** Changing the download client
   moves Reelkeeper's torrents to the new one, even half-finished ones: the
