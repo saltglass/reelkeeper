@@ -953,3 +953,79 @@ func TestGrabbingWaitsWhileTorrentsMove(t *testing.T) {
 		}
 	})
 }
+
+// A grab skipped only because the download disk has no room doesn't count
+// as a search (2026-10-27: a Seerr request waited three days for its next
+// search although cleanup had made room within hours). While the disk is
+// short, the hourly pass searches nothing; the first pass with room
+// searches the held movie.
+func TestSpaceSkipKeepsTheMovieFirstInLine(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newFixture(t, db)
+		f.mode = settings.Grabbing{Mode: settings.GrabOn, MinSeeders: 1}
+		g, q := &fakeGrabber{err: fmt.Errorf("%w: the download disk has 30.8 GB free", ErrNotEnoughSpace)}, &fakeQueue{}
+		f.setDownloads(g, q)
+		heat, ronin := f.lib.versions[0].Version.ID, f.lib.versions[1].Version.ID
+		f.idx.releases = []indexer.Release{rel("Ronin.1998.1080p.BluRay.x264-AMIABLE", 40)}
+
+		// Seerr's request finds Ronin a release, but the disk has no room.
+		if _, err := f.svc.SearchVersion(ctx, ronin, TriggerRequest); err != nil {
+			t.Fatal(err)
+		}
+		if ev := f.events(t, EventGrabSkipped); len(ev) != 1 || !strings.Contains(ev[0].Message, "the download disk has 30.8 GB free.") {
+			t.Fatalf("skipped = %+v", ev)
+		}
+		if _, marked := f.lib.searched[ronin]; marked {
+			t.Error("a search whose grab the disk had no room for counted as a search")
+		}
+		// A search that finds nothing acceptable still counts.
+		if _, err := f.svc.SearchVersion(ctx, heat, TriggerManual); err != nil {
+			t.Fatal(err)
+		}
+		if _, marked := f.lib.searched[heat]; !marked {
+			t.Error("a search with nothing acceptable didn't count")
+		}
+
+		// The disk is still short: the hourly pass searches nothing.
+		short := &diskQueue{fakeQueue: q, why: "the download disk has 18.0 GB free and downloads in progress still need 2.0 GB, which is less than the 20.0 GB kept free (Settings → Cleanup)."}
+		f.svc.SetDownloads(g, short)
+		queries := len(f.idx.queries)
+		f.now = f.now.Add(time.Hour)
+		msg, err := f.svc.ScheduledPass(ctx, 3, searchEvery)
+		if err != nil || msg != "Paused: "+short.why+" Searching resumes when cleanup makes room." {
+			t.Errorf("pass = %q, %v", msg, err)
+		}
+		if len(f.idx.queries) != queries {
+			t.Error("searched while the disk was short")
+		}
+
+		// Cleanup makes room: the next pass searches Ronin and grabs it.
+		short.why, g.err = "", nil
+		f.now = f.now.Add(time.Hour)
+		if _, err := f.svc.ScheduledPass(ctx, 3, searchEvery); err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Equal(g.got, []string{"Ronin.1998.1080p.BluRay.x264-AMIABLE"}) {
+			t.Errorf("with room again grabbed %v", g.got)
+		}
+		if _, marked := f.lib.searched[ronin]; !marked {
+			t.Error("the search that grabbed didn't count")
+		}
+	})
+}
+
+// A dry run downloads nothing, so a short disk doesn't pause it.
+func TestDryRunNotPausedByTheDisk(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newFixture(t, db)
+		f.mode = settings.Grabbing{Mode: settings.GrabDryRun, MinSeeders: 1}
+		f.svc.SetDownloads(&fakeGrabber{}, &diskQueue{fakeQueue: &fakeQueue{}, why: "the download disk has 1.0 GB free."})
+		f.idx.releases = []indexer.Release{rel("Ronin.1998.1080p.BluRay.x264-AMIABLE", 40)}
+		msg, err := f.svc.ScheduledPass(ctx, 3, searchEvery)
+		if err != nil || strings.Contains(msg, "Paused") || len(f.idx.queries) == 0 {
+			t.Errorf("pass = %q, %v; %d searches", msg, err, len(f.idx.queries))
+		}
+	})
+}

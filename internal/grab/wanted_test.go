@@ -2,6 +2,7 @@ package grab
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -564,6 +565,48 @@ func TestWantedHeldBackByTheLimit(t *testing.T) {
 		it := wantedOf(t, f).item(t, "Ronin")
 		if it.State != StateNever || it.Status != heldBackText || !strings.HasPrefix(it.LastSearchMessage, "Searched for Ronin") {
 			t.Errorf("held back: %+v", it)
+		}
+	})
+}
+
+// While the download disk is short (and grabbing is On), everything waiting
+// says so: the hourly pass doesn't search until cleanup makes room. A dry
+// run isn't held back by the disk.
+func TestWantedWaitingForSpace(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		f := newFixture(t, db)
+		f.mode = settings.Grabbing{Mode: settings.GrabOn, TVMode: settings.GrabDryRun, MinSeeders: 1}
+		why := "the download disk has 18.0 GB free."
+		f.svc.SetDownloads(&fakeGrabber{}, &diskQueue{fakeQueue: &fakeQueue{}, why: why})
+		addSeries(t, db, f, "The Expanse", "standard", map[string]string{"S01E01": "2015-12-14"}, "S01E01")
+
+		l := wantedOf(t, f)
+		it := l.item(t, "Ronin")
+		if it.State != StateNoSpace || it.Status != "Waiting for space: "+why+" Searching resumes when cleanup makes room." {
+			t.Errorf("movie with the disk short: %+v", it)
+		}
+		if tv := l.item(t, "The Expanse", 1); tv.State != StateNever {
+			t.Errorf("dry-run TV with the disk short: %+v", tv)
+		}
+	})
+}
+
+// Episodes searched but not marked (the disk had no room for their grab)
+// say they're first in line, not "not searched yet".
+func TestWantedEpisodesHeldBackBySpace(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newFixture(t, db)
+		g, _ := bfOn(f)
+		g.err = fmt.Errorf("%w: the download disk has 30.8 GB free", ErrNotEnoughSpace)
+		sv := addSeries(t, db, f, "The Expanse", "standard", map[string]string{"S01E01": "2015-12-14"}, "S01E01")
+		f.idx.releases = []indexer.Release{tvRel("The.Expanse.S01E01.1080p.WEB-DL.DDP5.1.H.264-NTb", 2<<30, 90)}
+		if _, err := f.svc.SearchVersion(ctx, sv.Version.ID, TriggerRequest); err != nil {
+			t.Fatal(err)
+		}
+		it := wantedOf(t, f).item(t, "The Expanse", 1)
+		if it.State != StateNever || it.Status != heldBackText || it.LastSearchMessage == "" {
+			t.Errorf("held back by the disk: %+v", it)
 		}
 	})
 }

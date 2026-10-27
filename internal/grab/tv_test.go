@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/saltglass/reelkeeper/internal/indexer"
 	"github.com/saltglass/reelkeeper/internal/indexer/core"
@@ -508,6 +509,79 @@ func TestTVSeasonFallbackSkipsEpisodesAlreadyChosen(t *testing.T) {
 		}
 		if g.grabs[1].Release.Title != "The.Expanse.S01.1080p.BluRay.x264-ROVERS" || !slices.Equal(g.grabs[1].TV.EpisodeIDs, []int64{epID(sv, "S01E04")}) {
 			t.Errorf("second grab = %s for %v", g.grabs[1].Release.Title, g.grabs[1].TV.EpisodeIDs)
+		}
+	})
+}
+
+// TV episodes whose season pack the download disk had no room for don't
+// count as searched, the hourly pass waits while the disk is short, and the
+// first pass with room grabs the pack (2026-10-27, What We Do in the Shadows
+// season 1: requested, skipped for space, then left for three days).
+func TestTVSpaceSkipKeepsEpisodesFirstInLine(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newFixture(t, db)
+		g, q := bfOn(f)
+		g.err = fmt.Errorf("%w: the download disk has 30.8 GB free", ErrNotEnoughSpace)
+		sv := addSeries(t, db, f, "The Expanse", "standard", map[string]string{
+			"S01E01": "2015-12-14", "S01E02": "2015-12-15", "S01E03": "2015-12-22",
+		}, "S01E01", "S01E02", "S01E03")
+		f.idx.releases = []indexer.Release{tvRel("The.Expanse.S01.1080p.BluRay.x264-ROVERS", 9<<30, 20)}
+
+		msg, err := f.svc.SearchVersion(ctx, sv.Version.ID, TriggerRequest)
+		if err != nil || !strings.Contains(msg, "didn't grab it: the download disk has 30.8 GB free.") {
+			t.Fatalf("search = %q, %v", msg, err)
+		}
+		if n := len(f.lib.epSearched[sv.Version.ID]); n != 0 {
+			t.Errorf("%d episodes counted as searched; the disk had no room for their pack", n)
+		}
+
+		short := &diskQueue{fakeQueue: q, why: "the download disk has 18.0 GB free."}
+		f.svc.SetDownloads(g, short)
+		queries := len(f.idx.queries)
+		f.now = f.now.Add(time.Hour)
+		msg, err = f.svc.ScheduledPass(ctx, 3, searchEvery)
+		if err != nil || !strings.Contains(msg, "TV: Paused: the download disk has 18.0 GB free. Searching resumes when cleanup makes room.") {
+			t.Errorf("pass = %q, %v", msg, err)
+		}
+		if len(f.idx.queries) != queries {
+			t.Error("searched while the disk was short")
+		}
+
+		short.why, g.err = "", nil
+		f.now = f.now.Add(time.Hour)
+		if _, err := f.svc.ScheduledPass(ctx, 3, searchEvery); err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Equal(g.got, []string{"The.Expanse.S01.1080p.BluRay.x264-ROVERS"}) {
+			t.Errorf("with room again grabbed %v", g.got)
+		}
+		if n := len(f.lib.epSearched[sv.Version.ID]); n != 3 {
+			t.Errorf("after the grab %d episodes counted as searched, want 3", n)
+		}
+	})
+}
+
+// The same when one missing episode's search falls back to its whole
+// season and the disk has no room for that pack.
+func TestTVSpaceSkipOnTheSeasonFallback(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newFixture(t, db)
+		g, _ := bfOn(f)
+		g.err = fmt.Errorf("%w: the download disk has 30.8 GB free", ErrNotEnoughSpace)
+		sv := addSeries(t, db, f, "The Completely Made-Up Adventures of Dick Turpin", "standard", map[string]string{
+			"S01E05": "2024-03-01", "S01E06": "2024-03-01",
+		}, "S01E06")
+		f.idx.releases = []indexer.Release{
+			tvRel("The.Completely.Made-Up.Adventures.of.Dick.Turpin.S01.1080p.ATVP.WEB-DL.DDP5.1.H.264-NTb", 6<<30, 40),
+		}
+		msg, err := f.svc.SearchVersion(ctx, sv.Version.ID, TriggerManual)
+		if err != nil || !strings.Contains(msg, "as a whole") || !strings.Contains(msg, "didn't grab it: the download disk") {
+			t.Fatalf("search = %q, %v", msg, err)
+		}
+		if _, ok := f.lib.epSearched[sv.Version.ID][epID(sv, "S01E06")]; ok {
+			t.Error("S01E06 counted as searched; the disk had no room for its season pack")
 		}
 	})
 }

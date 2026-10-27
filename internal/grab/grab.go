@@ -321,11 +321,6 @@ func (s *Service) search(ctx context.Context, w wanted, trigger string) (string,
 			return "", err
 		}
 	}
-	if !unsearched && !capped {
-		if err := s.lib.MarkSearched(ctx, w.v.Version.ID, s.now()); err != nil {
-			return "", err
-		}
-	}
 	msg := fmt.Sprintf("Searched for %s: %s, %d acceptable.", w.label(), countText(len(rels), "release"), accepted)
 	if len(rels) > 0 && accepted == 0 {
 		msg += " " + commonReason(ds)
@@ -347,14 +342,24 @@ func (s *Service) search(ctx context.Context, w wanted, trigger string) (string,
 	if err := s.history.Add(ctx, s.event(w, EventSearched, msg), data); err != nil {
 		return "", err
 	}
-	if accepted == 0 {
-		return msg, nil
+	noRoom := false
+	if accepted > 0 {
+		grabMsg, outcome, err := s.act(ctx, w, ds[0], trigger, true)
+		if err != nil {
+			return "", err
+		}
+		msg += " " + grabMsg
+		// Nor does a search whose grab the download disk had no room for:
+		// the movie stays first in line for when cleanup makes room, instead
+		// of waiting three days.
+		noRoom = outcome == outcomeNoSpace
 	}
-	grabMsg, err := s.act(ctx, w, ds[0], trigger, true)
-	if err != nil {
-		return "", err
+	if !unsearched && !capped && !noRoom {
+		if err := s.lib.MarkSearched(ctx, w.v.Version.ID, s.now()); err != nil {
+			return "", err
+		}
 	}
-	return msg + " " + grabMsg, nil
+	return msg, nil
 }
 
 // usenetTie says, for a search's message, when the best release is Usenet and
@@ -405,7 +410,7 @@ func (s *Service) decide(ctx context.Context, w wanted, rels []indexer.Release) 
 // act handles the chosen release according to the Grabbing setting.
 // recordDuplicates is false for RSS, which mustn't record the same "would
 // grab" every 15 minutes.
-func (s *Service) act(ctx context.Context, w wanted, c candidate, trigger string, recordDuplicates bool) (string, error) {
+func (s *Service) act(ctx context.Context, w wanted, c candidate, trigger string, recordDuplicates bool) (string, grabOutcome, error) {
 	g := s.settings()
 	v := verdict(c)
 	data := EventData{Trigger: trigger, Chosen: &v}
@@ -420,33 +425,34 @@ func (s *Service) act(ctx context.Context, w wanted, c candidate, trigger string
 		if !recordDuplicates {
 			seen, err := s.history.recently(ctx, w.v.Version.ID, EventWouldGrab, c.rel.Title, s.now().Add(-7*24*time.Hour))
 			if err != nil || seen {
-				return "", err
+				return "", outcomeNone, err
 			}
 		}
 		ev.Event = EventWouldGrab
 		ev.Message = fmt.Sprintf("Would %s %s (%s, score %d, from %s). Dry run: nothing was downloaded.",
 			what, c.rel.Title, c.d.Quality.Name, c.d.Score, c.rel.Indexer)
-		return ev.Message, s.history.Add(ctx, ev, data)
+		return ev.Message, outcomeNone, s.history.Add(ctx, ev, data)
 	}
 
-	skip := func(reason string) (string, error) {
+	skipAs := func(outcome grabOutcome, reason string) (string, grabOutcome, error) {
 		ev.Event = EventGrabSkipped
 		ev.Message = fmt.Sprintf("Chose %s, but didn't grab it: %s", c.rel.Title, reason)
-		return ev.Message, s.history.Add(ctx, ev, data)
+		return ev.Message, outcome, s.history.Add(ctx, ev, data)
 	}
+	skip := func(reason string) (string, grabOutcome, error) { return skipAs(outcomeHeld, reason) }
 	if s.grabber == nil {
 		return skip("no download client is set up yet (Settings → Download Client).")
 	}
 	if reason, err := s.unmanaged(ctx, w.v.Version.RootFolderID); err != nil || reason != "" {
 		if err != nil {
-			return "", err
+			return "", outcomeNone, err
 		}
 		return skip(reason)
 	}
 	if s.queue != nil {
 		active, err := s.queue.ActiveVersions(ctx)
 		if err != nil {
-			return "", err
+			return "", outcomeNone, err
 		}
 		if active[w.v.Version.ID] {
 			return skip("a download for this movie is already in progress (Activity → Queue).")
@@ -455,7 +461,7 @@ func (s *Service) act(ctx context.Context, w wanted, c candidate, trigger string
 	// A request (Seerr) goes past the queue limit: someone is waiting for it.
 	if trigger != TriggerRequest {
 		if full, err := s.queueFull(ctx, g.Mode); err != nil {
-			return "", err
+			return "", outcomeNone, err
 		} else if full {
 			return skip(queueFullReason(g.QueueLimit))
 		}
@@ -467,7 +473,7 @@ func (s *Service) act(ctx context.Context, w wanted, c candidate, trigger string
 		}
 		if errors.Is(err, ErrNotEnoughSpace) {
 			s.warnSpace(ctx, err)
-			return skip(strings.TrimPrefix(err.Error(), ErrNotEnoughSpace.Error()+": ") + ".")
+			return skipAs(outcomeNoSpace, strings.TrimPrefix(err.Error(), ErrNotEnoughSpace.Error()+": ")+".")
 		}
 		if s.notify != nil {
 			s.notify(ctx, notify.Event{Kind: notify.KindGrabFailed, Title: w.v.Title.Title, TitleID: w.v.Title.ID,
@@ -480,7 +486,7 @@ func (s *Service) act(ctx context.Context, w wanted, c candidate, trigger string
 	if c.d.Upgrade {
 		ev.Message = strings.TrimSuffix(ev.Message, ".") + " as an upgrade."
 	}
-	return ev.Message, s.history.Add(ctx, ev, data)
+	return ev.Message, outcomeGrabbed, s.history.Add(ctx, ev, data)
 }
 
 // unmanaged says why nothing should be grabbed for a version whose media
@@ -541,6 +547,9 @@ func (s *Service) moviePass(ctx context.Context, perRun int, every time.Duration
 	}
 	if msg, err := s.pausedByLimit(ctx, s.settings().Mode); msg != "" || err != nil {
 		return msg, err
+	}
+	if msg := s.pausedForSpace(ctx, s.settings().Mode); msg != "" {
+		return msg, nil
 	}
 	ws, err := s.load(ctx, true)
 	if err != nil {
@@ -736,7 +745,7 @@ func (s *Service) RSSSync(ctx context.Context) (msg string, quiet bool, err erro
 			return "", false, err
 		}
 		if accepted > 0 {
-			if _, err := s.act(ctx, w, ds[0], TriggerRSS, false); err != nil {
+			if _, _, err := s.act(ctx, w, ds[0], TriggerRSS, false); err != nil {
 				return "", false, err
 			}
 		}
@@ -942,6 +951,39 @@ func (s *Service) GrabsToday(ctx context.Context) (int, error) {
 func (s *Service) dayStart() time.Time {
 	y, m, d := s.now().In(s.loc).Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, s.loc)
+}
+
+// diskShort says why the download disk can't take another download right
+// now (see download.Service.DiskShort), or "" when it can or can't be told.
+func (s *Service) diskShort(ctx context.Context) string {
+	dc, ok := s.queue.(diskChecker)
+	if !ok {
+		return ""
+	}
+	why, err := dc.DiskShort(ctx)
+	if err != nil {
+		return ""
+	}
+	return why
+}
+
+// spaceResumesText ends the messages about a full download disk.
+const spaceResumesText = "Searching resumes when cleanup makes room."
+
+// pausedForSpace explains why the scheduled pass does nothing while the
+// download disk is short of space (only when grabbing is On; a dry run
+// downloads nothing). Searching then would only spend the indexers' query
+// limits on releases that couldn't be grabbed, and a release skipped for
+// space doesn't count as searched, so it would be searched again every
+// hour. RSS sync still reads its feeds.
+func (s *Service) pausedForSpace(ctx context.Context, mode string) string {
+	if mode != settings.GrabOn {
+		return ""
+	}
+	if why := s.diskShort(ctx); why != "" {
+		return "Paused: " + why + " " + spaceResumesText
+	}
+	return ""
 }
 
 // pausedByLimit explains why the scheduled pass and RSS sync do nothing
