@@ -25,23 +25,20 @@ export const wantedCountsQuery = queryOptions({
 /** Movies plus episodes: the number beside Wanted in the sidebar and on the Missing tab. */
 export const missingTotal = (c: WantedList["counts"]) => c.missingMovies + c.missingEpisodes;
 
+/**
+ * How many movies or shows one click searches now, so a big selection
+ * doesn't flood the indexers or the Cloudflare solver. The rest are left to
+ * the hourly search.
+ */
+export const SEARCH_LIMIT = 10;
+
 /** Searches for these movie or series versions now (queued, one after another). */
 export function useSearchWanted() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (versionIds: number[]) => {
-      // The server takes up to 50 at a time.
-      let queued = 0;
-      let alreadyQueued = 0;
-      for (let i = 0; i < versionIds.length; i += 50) {
-        const r = await unwrap(
-          api.POST("/wanted/search", { body: { versionIds: versionIds.slice(i, i + 50) } }),
-        );
-        queued += r.queued;
-        alreadyQueued += r.alreadyQueued;
-      }
-      return { queued, alreadyQueued };
-    },
+    // At most SEARCH_LIMIT at a time (the server refuses more).
+    mutationFn: (versionIds: number[]) =>
+      unwrap(api.POST("/wanted/search", { body: { versionIds } })),
     onSettled: () => qc.invalidateQueries({ queryKey: ["wanted"] }),
   });
 }

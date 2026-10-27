@@ -11,6 +11,7 @@ import {
   Film,
   FolderOpen,
   History,
+  House,
   KeyRound,
   Layers,
   Link2,
@@ -62,10 +63,12 @@ type NavItem = {
   icon: ReactNode;
   count?: "movies" | "series" | "wanted" | "queue";
 };
+// A section with no title (Home) has no heading in the sidebar or breadcrumb.
 type NavSection = { title: string; items: NavItem[] };
 
 /** Every page, by section. The breadcrumb and Jump to use this list too. */
 export const nav: NavSection[] = [
+  { title: "", items: [{ to: "/", label: "Home", icon: <House /> }] },
   {
     title: "Library",
     items: [
@@ -110,11 +113,11 @@ export const nav: NavSection[] = [
 /** The section and page a path belongs to, for the breadcrumb. */
 export function whereAmI(pathname: string): { section: string; page: string } | undefined {
   const path = pathname.replace(/\/+$/, "") || "/";
-  if (path === "/") return { section: "Library", page: "Movies" };
   let best: { section: string; page: string; len: number } | undefined;
   for (const s of nav) {
     for (const i of s.items) {
-      if ((path === i.to || path.startsWith(`${i.to}/`)) && (!best || i.to.length > best.len)) {
+      const under = i.to !== "/" && path.startsWith(`${i.to}/`);
+      if ((path === i.to || under) && (!best || i.to.length > best.len)) {
         best = { section: s.title, page: i.label, len: i.to.length };
       }
     }
@@ -124,7 +127,7 @@ export function whereAmI(pathname: string): { section: string; page: string } | 
 
 // The library lists use the whole window, so the poster grid shows as many
 // columns as fit; other pages keep a readable width.
-const widePages = new Set(["/", "/movies", "/series"]);
+const widePages = new Set(["/movies", "/series"]);
 function wide(pathname: string) {
   return widePages.has(pathname.replace(/\/+$/, "") || "/");
 }
@@ -213,9 +216,11 @@ function Sidebar({ name }: { name: string }) {
       </div>
       {nav.map((section) => (
         <div key={section.title} className="flex flex-col gap-0.5">
-          <p className="px-3 pt-4 pb-1.5 text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase">
-            {section.title}
-          </p>
+          {section.title && (
+            <p className="px-3 pt-4 pb-1.5 text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase">
+              {section.title}
+            </p>
+          )}
           {section.items.map((item) => {
             const n = item.count ? counts[item.count] : undefined;
             const full = item.count === "queue" && counts.queueFull;
@@ -223,6 +228,8 @@ function Sidebar({ name }: { name: string }) {
               <Link
                 key={item.to}
                 to={item.to}
+                // Home ("/") is active only on itself, not under every page.
+                activeOptions={{ exact: item.to === "/" }}
                 className="group relative flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-[calc(180ms*var(--m))] hover:bg-muted active:scale-[0.98] [&_svg]:size-[18px] [&_svg]:shrink-0 [&_svg]:text-muted-foreground [&_svg]:transition-transform [&_svg]:duration-[calc(320ms*var(--m))] hover:[&_svg]:scale-110 hover:[&_svg]:-rotate-6 hover:[&_svg]:text-foreground"
                 // The active item gets the accent fill and a bar on its left
                 // edge that grows in.
@@ -328,8 +335,12 @@ function TopBar({ pathname, onMenu }: { pathname: string; onMenu: () => void }) 
       <Logo className="size-6 md:hidden" />
       {here && (
         <div className="hidden min-w-0 flex-1 items-center gap-2 text-sm text-muted-foreground sm:flex">
-          <span>{here.section}</span>
-          <ChevronRight className="size-3.5" aria-hidden="true" />
+          {here.section && (
+            <>
+              <span>{here.section}</span>
+              <ChevronRight className="size-3.5" aria-hidden="true" />
+            </>
+          )}
           <b key={here.page} className="animate-crumb-in truncate font-semibold text-foreground">
             {here.page}
           </b>

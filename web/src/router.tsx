@@ -13,6 +13,7 @@ import { urlBase } from "@/lib/utils";
 import { CleanupPage } from "@/pages/activity/CleanupPage";
 import { HistoryPage } from "@/pages/activity/HistoryPage";
 import { QueuePage } from "@/pages/activity/QueuePage";
+import { HomePage } from "@/pages/home/HomePage";
 import { LoginPage } from "@/pages/LoginPage";
 import { ReviewPage } from "@/pages/library/ReviewPage";
 import { MovieDetailPage } from "@/pages/movies/MovieDetailPage";
@@ -72,13 +73,11 @@ const appRoute = createRoute({
   component: AppShell,
 });
 
-// The app opens on Movies.
+// The app opens on Home: is everything OK, and does anything need you?
 const indexRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/",
-  beforeLoad: () => {
-    throw redirect({ to: "/movies" });
-  },
+  component: HomePage,
 });
 
 const moviesRoute = createRoute({
@@ -116,6 +115,9 @@ const oldReviewRoute = createRoute({
 const seriesListRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/series",
+  // Home links here with ?filter=attention to show only shows that need it.
+  validateSearch: (s: { filter?: string }): { filter?: "attention" } =>
+    s.filter === "attention" ? { filter: "attention" } : {},
   component: SeriesPage,
 });
 

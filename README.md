@@ -44,8 +44,14 @@ does the same job, and uses the fact that everything lives together:
 
 ### Library
 
+- A Home page that says at a glance whether anything needs you (a failing
+  indexer, a full download disk, downloads that couldn't be imported...),
+  each linking to where it's fixed, plus what's downloading, what was just
+  grabbed or imported, and what's due this week.
 - Movies and TV (standard and daily series) side by side, with poster and
-  table views, sorting, filters and search.
+  table views, sorting, filters and search. Select several titles (or all
+  that a filter shows) to change monitoring, upgrades or which episodes are
+  monitored at once.
 - **Versions:** each title can have several copies, each with its own quality
   profile, folder, upgrades and history. A regular copy and a remux are two
   versions of one movie, not two apps.
@@ -62,8 +68,10 @@ does the same job, and uses the fact that everything lives together:
 - Episode ordering per series (TMDB episode groups), with mismatches flagged
   rather than guessed.
 - **Wanted** lists what is still missing or could be upgraded, and why it
-  hasn't been found yet. The **backfill queue** works through older seasons
-  of a show, one show at a time.
+  hasn't been found yet. Select rows to search for them now (10 at a time,
+  so a big selection doesn't flood your indexers; the rest wait for the
+  hourly search) or to stop looking for them. The **backfill queue** works
+  through older seasons of a show, one show at a time.
 
 ### Finding releases
 
@@ -115,7 +123,8 @@ does the same job, and uses the fact that everything lives together:
   through it, with no extra container privileges. Settings shows your real IP
   next to the VPN's, and a kill switch stops every download the moment the
   VPN drops (a banner on the Queue says so), starting again when it is back.
-  Without a VPN config, the client is plainly marked as unprotected.
+  A small indicator under the app's name shows the VPN's state on every
+  page. Without a VPN config, the client is plainly marked as unprotected.
 - Activity → Queue with Pause, Resume, Move to top and Remove.
 - **Switch clients without losing anything.** Changing the download client
   moves Reelkeeper's torrents to the new one, even half-finished ones: the
@@ -155,6 +164,8 @@ does the same job, and uses the fact that everything lives together:
 
 | | |
 | --- | --- |
+| ![Home: all good, downloads in progress, recent activity and the week ahead](docs/screenshots/home.png) | ![Three movies selected, about to turn their upgrades off](docs/screenshots/select.png) |
+| **Home**: does anything need you? | **Select** several titles and change them at once |
 | ![A movie's page with its file and quality details](docs/screenshots/movie.png) | ![A series page with its episodes](docs/screenshots/show.png) |
 | **A movie** and every copy of it | **A series** with its seasons and monitoring |
 | ![The Wanted page listing what is still missing](docs/screenshots/wanted.png) | ![History with grabs and imports explained](docs/screenshots/history.png) |

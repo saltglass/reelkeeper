@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { CircleAlert, LayoutGrid, List, Plus, Search, Tv } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PosterCaption, PosterName, usePosterTitles } from "@/components/PosterTitle";
@@ -23,6 +23,7 @@ import { labelSettingsQuery } from "@/hooks/settings";
 import { defaultLabelParts, formatBytes, versionLabel } from "@/lib/format";
 import { tmdbImage } from "@/lib/images";
 import { cn } from "@/lib/utils";
+import { PosterCheck, type Selection, SelectionBar, useSelection } from "../library/BulkEdit";
 import { PageHeader } from "../PageHeader";
 import { AddSeriesDialog } from "./AddSeriesDialog";
 import { progressText, seriesProgress } from "./progress";
@@ -61,11 +62,15 @@ export function SeriesPage() {
   const review = useQuery(reviewQuery);
   const [q, setQ] = useState("");
   const [sort, setSortState] = useState<Sort>(() => read("reelkeeper-series-sort", "title"));
-  const [filter, setFilterState] = useState<Filter>(() => read("reelkeeper-series-filter", "all"));
+  const linked = useSearch({ from: "/app/series" }).filter;
+  const [filter, setFilterState] = useState<Filter>(
+    () => linked ?? read("reelkeeper-series-filter", "all"),
+  );
   const [view, setViewState] = useState<"posters" | "table">(() =>
     read("reelkeeper-series-view", "posters"),
   );
   const [adding, setAdding] = useState(false);
+  const sel = useSelection();
 
   const setSort = (s: Sort) => {
     setSortState(s);
@@ -250,6 +255,13 @@ export function SeriesPage() {
             <List />
           </Button>
         </div>
+        <Button
+          variant="outline"
+          aria-pressed={sel.selecting}
+          onClick={sel.selecting ? sel.stop : sel.start}
+        >
+          {sel.selecting ? "Done" : "Select"}
+        </Button>
       </div>
       <div className="mb-6 flex flex-wrap items-center gap-2">
         {/* biome-ignore lint/a11y/useSemanticElements: a fieldset would add a border and legend */}
@@ -310,11 +322,12 @@ export function SeriesPage() {
           <p>{(series.data?.length ?? 0) === 0 ? "No series yet." : "No series match."}</p>
         </div>
       ) : view === "posters" ? (
-        <PosterGrid series={batches.visible} />
+        <PosterGrid series={batches.visible} sel={sel} />
       ) : (
-        <SeriesTable series={batches.visible} />
+        <SeriesTable series={batches.visible} sel={sel} />
       )}
       {batches.more}
+      <SelectionBar kind="series" sel={sel} shown={shown} />
       <p className="mt-6 text-sm text-muted-foreground">
         {shown.length} of {series.data?.length ?? 0} series
       </p>
@@ -380,6 +393,9 @@ function EpisodeProgress({ s }: { s: SeriesSummary }) {
   );
 }
 
+const posterTile =
+  "poster-tile group relative block aspect-[2/3] overflow-hidden rounded-[10px] bg-card text-white shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+
 const selectClass =
   "min-h-10 rounded-lg border border-input bg-card px-3 text-sm transition-[border-color,box-shadow] duration-[calc(200ms*var(--m))] focus:border-ring focus:ring-4 focus:ring-ring/20 focus-visible:outline-none";
 
@@ -400,7 +416,7 @@ const toneColor: Record<Status["tone"], string> = {
   idle: "text-white/70",
 };
 
-function PosterGrid({ series }: { series: SeriesSummary[] }) {
+function PosterGrid({ series, sel }: { series: SeriesSummary[]; sel: Selection }) {
   const titles = usePosterTitles();
   return (
     <NearScreen>
@@ -414,13 +430,9 @@ function PosterGrid({ series }: { series: SeriesSummary[] }) {
               className="poster-item animate-rise space-y-2"
               style={{ animationDelay: `calc(min(${i}, 14) * 45ms * var(--m))` }}
             >
-              {(near) => (
-                <>
-                  <Link
-                    to="/series/$id"
-                    params={{ id: String(s.id) }}
-                    className="poster-tile group relative block aspect-[2/3] overflow-hidden rounded-[10px] bg-card text-white shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                  >
+              {(near) => {
+                const body = (
+                  <>
                     {s.posterPath ? (
                       near && (
                         <img
@@ -451,22 +463,46 @@ function PosterGrid({ series }: { series: SeriesSummary[] }) {
                       </span>
                       {status.label}
                     </span>
-                  </Link>
-                  <div className="space-y-1.5">
-                    <div className="space-y-1">
-                      <Progress value={p.percent} label={`${s.title} episodes on disk`} />
-                      <p className="text-xs text-muted-foreground">
-                        {progressText(p.have, p.total)}
-                      </p>
-                    </div>
-                    {titles && (
-                      <PosterCaption to="/series/$id" id={s.id} title={s.title} year={s.year} />
+                  </>
+                );
+                return (
+                  <>
+                    {sel.selecting ? (
+                      <button
+                        type="button"
+                        aria-pressed={sel.selected.has(s.id)}
+                        aria-label={`${s.title} (${s.year})`}
+                        onClick={() => sel.toggle(s.id)}
+                        className={cn(
+                          posterTile,
+                          "w-full cursor-pointer text-left",
+                          sel.selected.has(s.id) && "outline-3 outline-offset-2 outline-primary",
+                        )}
+                      >
+                        {body}
+                        <PosterCheck checked={sel.selected.has(s.id)} />
+                      </button>
+                    ) : (
+                      <Link to="/series/$id" params={{ id: String(s.id) }} className={posterTile}>
+                        {body}
+                      </Link>
                     )}
-                    <Attention s={s} />
-                    <VersionBadges s={s} />
-                  </div>
-                </>
-              )}
+                    <div className="space-y-1.5">
+                      <div className="space-y-1">
+                        <Progress value={p.percent} label={`${s.title} episodes on disk`} />
+                        <p className="text-xs text-muted-foreground">
+                          {progressText(p.have, p.total)}
+                        </p>
+                      </div>
+                      {titles && (
+                        <PosterCaption to="/series/$id" id={s.id} title={s.title} year={s.year} />
+                      )}
+                      <Attention s={s} />
+                      <VersionBadges s={s} />
+                    </div>
+                  </>
+                );
+              }}
             </NearItem>
           );
         })}
@@ -475,12 +511,17 @@ function PosterGrid({ series }: { series: SeriesSummary[] }) {
   );
 }
 
-function SeriesTable({ series }: { series: SeriesSummary[] }) {
+function SeriesTable({ series, sel }: { series: SeriesSummary[]; sel: Selection }) {
   return (
     <div className="animate-rise overflow-x-auto rounded-lg border bg-card">
       <table className="w-full text-sm">
         <thead className="border-b text-left text-xs text-muted-foreground">
           <tr>
+            {sel.selecting && (
+              <th className="w-10 px-3 py-2">
+                <span className="sr-only">Selected</span>
+              </th>
+            )}
             <th className="px-3 py-2 font-medium">Title</th>
             <th className="px-3 py-2 font-medium">Year</th>
             <th className="px-3 py-2 font-medium">Episodes</th>
@@ -491,6 +532,17 @@ function SeriesTable({ series }: { series: SeriesSummary[] }) {
         <tbody className="divide-y">
           {series.map((s) => (
             <tr key={s.id} className="hover:bg-muted/50">
+              {sel.selecting && (
+                <td className="px-3 py-2">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    aria-label={`${s.title} (${s.year})`}
+                    checked={sel.selected.has(s.id)}
+                    onChange={() => sel.toggle(s.id)}
+                  />
+                </td>
+              )}
               <td className="px-3 py-2">
                 <Link
                   to="/series/$id"

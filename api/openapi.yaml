@@ -960,6 +960,32 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /movies/bulk:
+    post:
+      tags: [movies]
+      operationId: editMovies
+      summary: Change monitoring or upgrades for several movies at once
+      description: >-
+        Changes every version of the chosen movies, or only their versions with
+        `profileId`. Everything is checked first and saved in one go, so a bad
+        request changes nothing. Movies this makes wanted (monitoring or upgrades
+        turned on) are searched: the first 10 at once, one after another, the rest
+        by the hourly search. Turning things off never searches.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MoviesBulkEdit" }
+      responses:
+        "200":
+          description: What was changed and searched.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BulkEditResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
   /movies/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -1208,6 +1234,33 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+
+  /series/bulk:
+    post:
+      tags: [series]
+      operationId: editSeries
+      summary: Change monitoring for several series at once
+      description: >-
+        Changes every version of the chosen series, or only their versions with
+        `profileId`. Everything is checked first and saved in one go, so a bad
+        request changes nothing. A `monitor` preset replaces choices made per
+        season or episode. Series this makes wanted are searched: the first 10 at
+        once, one after another, the rest by the hourly search. Turning things off
+        never searches.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SeriesBulkEdit" }
+      responses:
+        "200":
+          description: What was changed and searched.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BulkEditResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /series/{id}:
     parameters:
@@ -4003,12 +4056,20 @@ components:
 
     Queue:
       type: object
-      required: [items, clientError, clientName, usenetClientName, limit, full, builtinState]
+      required: [items, clientError, clientName, usenetClientName, limit, full, builtinState, diskShort]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/QueueItem" }
         usenetClientName: { type: string, nullable: true, description: "The Usenet client's name (SABnzbd) when one is set up; Usenet items are in it. Null when none is." }
+        diskShort:
+          type: string
+          nullable: true
+          description: >-
+            Why the download disk can't take another download, in plain words (its free
+            space, less what downloads in progress still need, is below the space kept free in
+            Settings → Cleanup); null when there's room or it can't be told. While it's short,
+            grabs are skipped and the hourly search waits.
         builtinState:
           type: string
           nullable: true
@@ -4400,7 +4461,8 @@ components:
         versionIds:
           type: array
           minItems: 1
-          maxItems: 50
+          maxItems: 10
+          description: At most 10, so one request doesn't flood the indexers (or a Cloudflare solver).
           items: { type: integer, format: int64 }
 
     WantedSearchResult:
@@ -4409,6 +4471,60 @@ components:
       properties:
         queued: { type: integer, description: Searches newly queued. }
         alreadyQueued: { type: integer, description: Versions that already had a search waiting or running. }
+
+    MoviesBulkEdit:
+      type: object
+      required: [titleIds]
+      description: Send at least one of monitored and upgrades; one that's left out is unchanged.
+      properties:
+        titleIds:
+          type: array
+          maxItems: 10000
+          description: Movie ids.
+          items: { type: integer, format: int64 }
+        profileId:
+          type: integer
+          format: int64
+          description: Change only the versions with this quality profile. Left out, every version is changed.
+        monitored: { type: boolean }
+        upgrades:
+          type: boolean
+          description: >-
+            Whether Reelkeeper may replace the movies' files with better releases.
+            Off: it keeps the files it has, but still downloads a movie again if its file is missing.
+
+    SeriesBulkEdit:
+      type: object
+      required: [titleIds]
+      description: Send at least one of monitored and monitor; one that's left out is unchanged.
+      properties:
+        titleIds:
+          type: array
+          maxItems: 10000
+          description: Series ids.
+          items: { type: integer, format: int64 }
+        profileId:
+          type: integer
+          format: int64
+          description: Change only the versions with this quality profile. Left out, every version is changed.
+        monitored: { type: boolean }
+        monitor:
+          type: string
+          enum: [all, future, none]
+          description: >-
+            all: every episode, aired or not. future: only episodes airing from
+            today. none: nothing until turned on per season or episode.
+
+    BulkEditResult:
+      type: object
+      required: [titles, versions, searched, later]
+      properties:
+        titles: { type: integer, description: Titles changed. }
+        versions: { type: integer, description: Versions changed. }
+        searched: { type: integer, description: Searches queued now (at most 10), run one after another. }
+        later:
+          type: integer
+          description: Versions the change made wanted beyond the first 10; the hourly search finds them.
 
     WantedUnmonitorRequest:
       type: object

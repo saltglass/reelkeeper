@@ -349,6 +349,10 @@ func (h *Handlers) GetQueue(w http.ResponseWriter, r *http.Request) {
 		msg := capitalize(clientErr.Error()) + "."
 		out.ClientError = &msg
 	}
+	if why, err := h.Downloads.DiskShort(r.Context()); err == nil && why != "" {
+		msg := capitalize(why)
+		out.DiskShort = &msg
+	}
 	for _, it := range items {
 		d := it.Download
 		q := gen.QueueItem{

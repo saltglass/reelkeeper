@@ -9,8 +9,10 @@ import (
 	"github.com/saltglass/reelkeeper/internal/library"
 )
 
-// maxWantedSearches is how many versions one bulk search may name.
-const maxWantedSearches = 50
+// maxWantedSearches is how many versions one bulk search may name (Dan,
+// 2026-10-27: 10, as for bulk edits, so one click doesn't flood the
+// Cloudflare solver; the rest are left to the hourly search).
+const maxWantedSearches = bulkSearchesNow
 
 // GetWanted lists everything Reelkeeper is still looking for.
 func (h *Handlers) GetWanted(w http.ResponseWriter, r *http.Request, params gen.GetWantedParams) {
@@ -76,8 +78,8 @@ func (h *Handlers) SearchWanted(w http.ResponseWriter, r *http.Request) {
 			map[string]string{"versionIds": "Choose at least one."})
 		return
 	case len(ids) > maxWantedSearches:
-		writeError(w, http.StatusUnprocessableEntity, "invalid", "Search for up to 50 at a time; choose fewer.",
-			map[string]string{"versionIds": "At most 50 at a time."})
+		writeError(w, http.StatusUnprocessableEntity, "invalid", "Search for up to 10 at a time; choose fewer.",
+			map[string]string{"versionIds": "At most 10 at a time."})
 		return
 	}
 	refs, err := h.Library.VersionRefs(r.Context(), ids)

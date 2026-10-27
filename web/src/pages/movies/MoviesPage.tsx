@@ -23,6 +23,7 @@ import { labelSettingsQuery } from "@/hooks/settings";
 import { defaultLabelParts, formatBytes, versionLabel } from "@/lib/format";
 import { tmdbImage } from "@/lib/images";
 import { cn } from "@/lib/utils";
+import { PosterCheck, type Selection, SelectionBar, useSelection } from "../library/BulkEdit";
 import { PageHeader } from "../PageHeader";
 import { AddMovieDialog } from "./AddMovieDialog";
 
@@ -73,6 +74,7 @@ export function MoviesPage() {
     read("reelkeeper-movies-view", "posters"),
   );
   const [adding, setAdding] = useState(false);
+  const sel = useSelection();
   const { deleted, kept } = useSearch({ from: "/app/movies" });
   const navigate = useNavigate();
 
@@ -287,6 +289,13 @@ export function MoviesPage() {
             <List />
           </Button>
         </div>
+        <Button
+          variant="outline"
+          aria-pressed={sel.selecting}
+          onClick={sel.selecting ? sel.stop : sel.start}
+        >
+          {sel.selecting ? "Done" : "Select"}
+        </Button>
       </div>
       <div className="mb-6 flex flex-wrap items-center gap-2">
         {/* biome-ignore lint/a11y/useSemanticElements: a fieldset would add a border and legend */}
@@ -342,11 +351,12 @@ export function MoviesPage() {
           <p>{all.length === 0 ? "No movies yet." : "No movies match."}</p>
         </div>
       ) : view === "posters" ? (
-        <PosterGrid movies={batches.visible} downloading={downloading} />
+        <PosterGrid movies={batches.visible} downloading={downloading} sel={sel} />
       ) : (
-        <MovieTable movies={batches.visible} downloading={downloading} />
+        <MovieTable movies={batches.visible} downloading={downloading} sel={sel} />
       )}
       {batches.more}
+      <SelectionBar kind="movie" sel={sel} shown={shown} />
       <p className="mt-6 text-sm text-muted-foreground">
         {shown.length} of {all.length} movies
       </p>
@@ -355,6 +365,9 @@ export function MoviesPage() {
     </div>
   );
 }
+
+const posterTile =
+  "poster-tile group relative block aspect-[2/3] overflow-hidden rounded-[10px] bg-card text-white shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 const selectClass =
   "min-h-10 rounded-lg border border-input bg-card px-3 text-sm transition-[border-color,box-shadow] duration-[calc(200ms*var(--m))] focus:border-ring focus:ring-4 focus:ring-ring/20 focus-visible:outline-none";
@@ -419,9 +432,11 @@ const toneColor: Record<Status["tone"], string> = {
 function PosterGrid({
   movies,
   downloading,
+  sel,
 }: {
   movies: MovieSummary[];
   downloading: Map<number, number>;
+  sel: Selection;
 }) {
   const titles = usePosterTitles();
   return (
@@ -436,13 +451,9 @@ function PosterGrid({
               className="poster-item animate-rise space-y-2"
               style={{ animationDelay: `calc(min(${i}, 14) * 45ms * var(--m))` }}
             >
-              {(near) => (
-                <>
-                  <Link
-                    to="/movies/$id"
-                    params={{ id: String(m.id) }}
-                    className="poster-tile group relative block aspect-[2/3] overflow-hidden rounded-[10px] bg-card text-white shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                  >
+              {(near) => {
+                const body = (
+                  <>
                     {m.posterPath ? (
                       near && (
                         <img
@@ -492,13 +503,37 @@ function PosterGrid({
                         />
                       </span>
                     )}
-                  </Link>
-                  {titles && (
-                    <PosterCaption to="/movies/$id" id={m.id} title={m.title} year={m.year} />
-                  )}
-                  <VersionBadges m={m} />
-                </>
-              )}
+                  </>
+                );
+                return (
+                  <>
+                    {sel.selecting ? (
+                      <button
+                        type="button"
+                        aria-pressed={sel.selected.has(m.id)}
+                        aria-label={`${m.title} (${m.year})`}
+                        onClick={() => sel.toggle(m.id)}
+                        className={cn(
+                          posterTile,
+                          "w-full cursor-pointer text-left",
+                          sel.selected.has(m.id) && "outline-3 outline-offset-2 outline-primary",
+                        )}
+                      >
+                        {body}
+                        <PosterCheck checked={sel.selected.has(m.id)} />
+                      </button>
+                    ) : (
+                      <Link to="/movies/$id" params={{ id: String(m.id) }} className={posterTile}>
+                        {body}
+                      </Link>
+                    )}
+                    {titles && (
+                      <PosterCaption to="/movies/$id" id={m.id} title={m.title} year={m.year} />
+                    )}
+                    <VersionBadges m={m} />
+                  </>
+                );
+              }}
             </NearItem>
           );
         })}
@@ -510,15 +545,22 @@ function PosterGrid({
 function MovieTable({
   movies,
   downloading,
+  sel,
 }: {
   movies: MovieSummary[];
   downloading: Map<number, number>;
+  sel: Selection;
 }) {
   return (
     <div className="animate-rise overflow-x-auto rounded-lg border bg-card">
       <table className="w-full text-sm">
         <thead className="border-b text-left text-xs text-muted-foreground">
           <tr>
+            {sel.selecting && (
+              <th className="w-10 px-3 py-2">
+                <span className="sr-only">Selected</span>
+              </th>
+            )}
             <th className="px-3 py-2 font-medium">Title</th>
             <th className="px-3 py-2 font-medium">Year</th>
             <th className="px-3 py-2 font-medium">Versions</th>
@@ -528,6 +570,17 @@ function MovieTable({
         <tbody className="divide-y">
           {movies.map((m) => (
             <tr key={m.id} className="hover:bg-muted/50">
+              {sel.selecting && (
+                <td className="px-3 py-2">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    aria-label={`${m.title} (${m.year})`}
+                    checked={sel.selected.has(m.id)}
+                    onChange={() => sel.toggle(m.id)}
+                  />
+                </td>
+              )}
               <td className="px-3 py-2">
                 <Link
                   to="/movies/$id"

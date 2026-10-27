@@ -147,12 +147,12 @@ func TestWantedSearchAPI(t *testing.T) {
 		if r := a.do("POST", "/api/v1/wanted/search", `{"versionIds":[]}`); r.status != 422 {
 			t.Errorf("none: %d %s", r.status, r.raw)
 		}
-		ids := make([]string, 51)
+		ids := make([]string, 11)
 		for i := range ids {
 			ids[i] = fmt.Sprint(i + 1)
 		}
 		r = a.do("POST", "/api/v1/wanted/search", `{"versionIds":[`+strings.Join(ids, ",")+`]}`)
-		if r.status != 422 || !strings.Contains(r.raw, "up to 50") {
+		if r.status != 422 || !strings.Contains(r.raw, "up to 10") {
 			t.Errorf("too many: %d %s", r.status, r.raw)
 		}
 		if r := a.do("POST", "/api/v1/wanted/search", fmt.Sprintf(`{"versionIds":[%d,999999]}`, movieV)); r.status != 404 {

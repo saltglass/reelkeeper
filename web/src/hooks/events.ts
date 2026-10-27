@@ -30,6 +30,9 @@ export function useLiveEvents(enabled: boolean) {
       // A finished search changes what Wanted says about its movie or show.
       if (job.kind === "grab.search" && ["succeeded", "failed"].includes(job.status)) {
         qc.invalidateQueries({ queryKey: ["wanted"] });
+        // And Home's "Recently" and grabs today.
+        qc.invalidateQueries({ queryKey: ["summary"] });
+        qc.invalidateQueries({ queryKey: ["history"] });
       }
       // Likewise for the backfill queue's turn.
       if (job.kind === "grab.backfill" && ["succeeded", "failed"].includes(job.status)) {
@@ -43,6 +46,7 @@ export function useLiveEvents(enabled: boolean) {
       qc.invalidateQueries({ queryKey: ["library"] });
       qc.invalidateQueries({ queryKey: ["wanted"] });
       qc.invalidateQueries({ queryKey: ["backfill"] });
+      qc.invalidateQueries({ queryKey: ["summary"] });
     });
     // Something worth a pop-up happened (an import finished, a download failed).
     es.addEventListener("notice", (e) => {
@@ -53,6 +57,9 @@ export function useLiveEvents(enabled: boolean) {
       };
       const text = n.message || n.title;
       if (text) toast(text, n.problem ? "problem" : "ok");
+      // Home's lists: an import or a failure changes them.
+      qc.invalidateQueries({ queryKey: ["summary"] });
+      qc.invalidateQueries({ queryKey: ["history"] });
     });
     es.addEventListener("session.ended", () => {
       qc.invalidateQueries({ queryKey: ["auth"] });
