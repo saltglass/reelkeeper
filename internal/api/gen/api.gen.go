@@ -1044,6 +1044,7 @@ const (
 	WantedItemStateCapped      WantedItemState = "capped"
 	WantedItemStateDownloading WantedItemState = "downloading"
 	WantedItemStateNever       WantedItemState = "never"
+	WantedItemStateNoSpace     WantedItemState = "noSpace"
 	WantedItemStateOff         WantedItemState = "off"
 	WantedItemStateWaiting     WantedItemState = "waiting"
 )
@@ -1056,6 +1057,8 @@ func (e WantedItemState) Valid() bool {
 	case WantedItemStateDownloading:
 		return true
 	case WantedItemStateNever:
+		return true
+	case WantedItemStateNoSpace:
 		return true
 	case WantedItemStateOff:
 		return true
@@ -3697,7 +3700,7 @@ type WantedItem struct {
 	// Season Episodes: the season (in the series' chosen order).
 	Season *int `json:"season,omitempty"`
 
-	// State downloading: in the queue. off: grabbing is off. capped: the queue is full (the queue limit is reached). never: not searched yet. waiting: searched; the next search is due at `nextSearchAt`.
+	// State downloading: in the queue. off: grabbing is off. capped: the queue is full (the queue limit is reached). noSpace: the download disk is short of space, so searching waits until cleanup makes room. never: not searched yet. waiting: searched; the next search is due at `nextSearchAt`.
 	State WantedItemState `json:"state"`
 
 	// Status The state in plain English
@@ -3717,7 +3720,7 @@ type WantedItem struct {
 // WantedItemKind defines model for WantedItem.Kind.
 type WantedItemKind string
 
-// WantedItemState downloading: in the queue. off: grabbing is off. capped: the queue is full (the queue limit is reached). never: not searched yet. waiting: searched; the next search is due at `nextSearchAt`.
+// WantedItemState downloading: in the queue. off: grabbing is off. capped: the queue is full (the queue limit is reached). noSpace: the download disk is short of space, so searching waits until cleanup makes room. never: not searched yet. waiting: searched; the next search is due at `nextSearchAt`.
 type WantedItemState string
 
 // WantedList defines model for WantedList.

@@ -342,6 +342,8 @@ function stateBadge(it: WantedItem) {
       return <Badge variant="neutral">Grabbing is off</Badge>;
     case "capped":
       return <Badge variant="warning">Queue full</Badge>;
+    case "noSpace":
+      return <Badge variant="warning">Disk full</Badge>;
     case "never":
       return <Badge variant="neutral">Not searched yet</Badge>;
     default:

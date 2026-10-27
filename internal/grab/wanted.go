@@ -37,6 +37,7 @@ const (
 	StateDownloading = "downloading"
 	StateOff         = "off"
 	StateCapped      = "capped"
+	StateNoSpace     = "noSpace"
 	StateNever       = "never"
 	StateWaiting     = "waiting"
 )
@@ -58,9 +59,10 @@ const (
 	offText         = "Grabbing is off, so Reelkeeper doesn't search for it (Settings → Download Client)."
 	cappedText      = "The queue is full (Settings → Download Client); searching resumes when downloads finish."
 	airedTodayText  = "Aired today. Searching starts tomorrow (the RSS check may find it sooner)."
-	// A movie searched without being marked searched: the queue limit held
-	// its grab back, or no indexer answered. It stays first in line.
-	heldBackText = "Searched, but the full queue or a resting indexer held it back, so it's first in line for the next scheduled search."
+	// Something searched without being marked searched: the queue limit or
+	// the download disk held its grab back, or no indexer answered. It
+	// stays first in line.
+	heldBackText = "Searched, but the full queue, the full download disk or a resting indexer held it back, so it's first in line for the next scheduled search."
 )
 
 // WantedEpisode is one wanted episode.
@@ -138,6 +140,16 @@ func (s *Service) Wanted(ctx context.Context, full bool) (*WantedList, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The scheduled pass waits while the download disk is short (only when
+	// grabbing is On; see pausedForSpace).
+	short := s.diskShort(ctx)
+	movieShort, tvShort := "", ""
+	if g.Mode == settings.GrabOn {
+		movieShort = short
+	}
+	if g.TVMode == settings.GrabOn {
+		tvShort = short
+	}
 	ps, err := s.lib.Profiles(ctx)
 	if err != nil {
 		return nil, err
@@ -196,7 +208,7 @@ func (s *Service) Wanted(ctx context.Context, full bool) (*WantedList, error) {
 		default:
 			continue // has what its profile aims for
 		}
-		in := explainIn{mode: g.Mode, capped: movieCapped, downloading: activeVersions[w.v.Version.ID], searchable: 1, now: now}
+		in := explainIn{mode: g.Mode, capped: movieCapped, noSpace: movieShort, downloading: activeVersions[w.v.Version.ID], searchable: 1, now: now}
 		if last := w.v.Version.LastSearchAt; last != nil {
 			in.marks, in.dueMarks = []time.Time{*last}, []time.Time{*last}
 		}
@@ -232,7 +244,7 @@ func (s *Service) Wanted(ctx context.Context, full bool) (*WantedList, error) {
 				Kind: WantedEpisodes, TitleID: sv.Title.ID, VersionID: sv.Version.ID, Title: sv.Title.Title,
 				Year: sv.Title.Year, PosterPath: sv.Title.PosterPath, Profile: names[sv.Version.ProfileID], Season: &season,
 			}
-			in := explainIn{mode: g.TVMode, capped: tvCapped, now: now}
+			in := explainIn{mode: g.TVMode, capped: tvCapped, noSpace: tvShort, now: now}
 			for _, e := range eps {
 				it.Episodes = append(it.Episodes, WantedEpisode{EpisodeID: e.ID, Season: *e.Season, Number: *e.Number, Name: e.Name, AirDate: e.AirDate})
 				if e.AirDate > it.Date {
@@ -331,6 +343,7 @@ func availableDate(t library.Title) string {
 type explainIn struct {
 	mode        string // the Grabbing mode for its media type
 	capped      bool
+	noSpace     string // why the download disk is short, or ""
 	downloading bool
 	// marks are when any of its parts was last searched.
 	marks []time.Time
@@ -344,7 +357,7 @@ type explainIn struct {
 
 // explain sets an item's state, plain-English status, last-search time and
 // next-search time. The order matters: a download in progress beats
-// everything, then Grabbing off, then the queue limit.
+// everything, then Grabbing off, then the queue limit, then the disk.
 func (s *Service) explain(it *WantedItem, in explainIn) {
 	if len(in.marks) > 0 {
 		latest := slices.MaxFunc(in.marks, time.Time.Compare)
@@ -359,6 +372,9 @@ func (s *Service) explain(it *WantedItem, in explainIn) {
 		return
 	case in.capped:
 		it.State, it.Status = StateCapped, cappedText
+		return
+	case in.noSpace != "":
+		it.State, it.Status = StateNoSpace, "Waiting for space: "+in.noSpace+" "+spaceResumesText
 		return
 	}
 	switch {
@@ -460,7 +476,9 @@ func (s *Service) addSearches(ctx context.Context, l *WantedList) error {
 				continue
 			}
 			it.LastSearchMessage = ev.Message
-			if it.Kind == WantedMovie && it.State == StateNever {
+			// Not marked searched, yet searched (an episode group that aired
+			// today stays as it is: it isn't searched until tomorrow).
+			if it.State == StateNever && strings.HasPrefix(it.Status, neverText) {
 				dry := strings.HasSuffix(it.Status, dryRunNote)
 				it.Status = heldBackText
 				if dry {

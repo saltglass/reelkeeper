@@ -559,9 +559,10 @@ func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string, run 
 		return unitSearch{}, err
 	}
 	res := unitSearch{acceptable: len(picks), unanswered: unsearched, heldIDs: map[int64]bool{}}
-	// Episodes whose grab the queue limit (or backfill's quota) holds back
-	// don't count as searched: they stay first in line for when the queue
-	// has room or the limit is raised.
+	// Episodes whose grab the queue limit (or backfill's quota) holds back,
+	// or the download disk has no room for, don't count as searched: they
+	// stay first in line for when the queue or the disk has room, or the
+	// limit is raised.
 	held := res.heldIDs
 	for _, p := range picks {
 		limited := false
@@ -585,8 +586,13 @@ func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string, run 
 			res.grabbed++
 		case outcomeHeld:
 			res.held++
+		case outcomeNoSpace:
+			res.held++
+			for _, id := range p.ids {
+				held[id] = true
+			}
 		}
-		if outcome != outcomeHeld {
+		if outcome != outcomeHeld && outcome != outcomeNoSpace {
 			for _, id := range p.ids {
 				run.claimed[id] = true
 			}
@@ -662,11 +668,12 @@ func (s *Service) actTV(ctx context.Context, w *tvWanted, p tvPick, trigger stri
 		return ev.Message, outcomeNone, s.history.Add(ctx, ev, data)
 	}
 
-	skip := func(reason string) (string, grabOutcome, error) {
+	skipAs := func(outcome grabOutcome, reason string) (string, grabOutcome, error) {
 		ev.Event = EventGrabSkipped
 		ev.Message = fmt.Sprintf("Chose %s for %s, but didn't grab it: %s", c.rel.Title, label, reason)
-		return ev.Message, outcomeHeld, s.history.Add(ctx, ev, data)
+		return ev.Message, outcome, s.history.Add(ctx, ev, data)
 	}
+	skip := func(reason string) (string, grabOutcome, error) { return skipAs(outcomeHeld, reason) }
 	if s.grabber == nil {
 		return skip("no download client is set up yet (Settings → Download Client).")
 	}
@@ -707,7 +714,7 @@ func (s *Service) actTV(ctx context.Context, w *tvWanted, p tvPick, trigger stri
 		}
 		if errors.Is(err, ErrNotEnoughSpace) {
 			s.warnSpace(ctx, err)
-			return skip(strings.TrimPrefix(err.Error(), ErrNotEnoughSpace.Error()+": ") + ".")
+			return skipAs(outcomeNoSpace, strings.TrimPrefix(err.Error(), ErrNotEnoughSpace.Error()+": ")+".")
 		}
 		if s.notify != nil {
 			s.notify(ctx, notify.Event{Kind: notify.KindGrabFailed, Title: w.sv.Title.Title, TitleID: w.sv.Title.ID,
@@ -730,7 +737,11 @@ type grabOutcome int
 const (
 	outcomeNone    grabOutcome = iota // nothing was sent (a dry run, or already recorded)
 	outcomeGrabbed                    // sent to the download client
-	outcomeHeld                       // acceptable, but not sent: a limit, the disk, the folder or the client
+	outcomeHeld                       // acceptable, but not sent: a limit, the folder or the client
+	// outcomeNoSpace: acceptable, but the download disk had no room. It
+	// doesn't count as a search, so the next scheduled pass with room
+	// tries again instead of waiting three days.
+	outcomeNoSpace
 )
 
 // tvPass is the scheduled pass's TV half: a few units that haven't been
@@ -747,6 +758,9 @@ func (s *Service) tvPass(ctx context.Context, perRun int, every time.Duration) (
 	}
 	if msg, err := s.pausedByLimit(ctx, g.TVMode); msg != "" || err != nil {
 		return "TV: " + msg, err
+	}
+	if msg := s.pausedForSpace(ctx, g.TVMode); msg != "" {
+		return "TV: " + msg, nil
 	}
 	now := s.now()
 	var all, due []tvUnit

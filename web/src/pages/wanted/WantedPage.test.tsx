@@ -184,6 +184,25 @@ describe("wanted page", () => {
     expect(screen.getByText(/searching resumes when downloads finish/)).toBeInTheDocument();
   });
 
+  it("labels items waiting for space on the download disk", async () => {
+    open({
+      "GET /wanted": json({
+        ...list,
+        missing: [
+          movie(1, "Ronin", {
+            state: "noSpace",
+            status:
+              "Waiting for space: the download disk has 18.0 GB free. Searching resumes when cleanup makes room.",
+          }),
+        ],
+        counts: { missingMovies: 1, missingEpisodes: 0, upgrades: 1 },
+      }),
+    });
+    await screen.findByText("Ronin (2020)");
+    expect(screen.getByText("Disk full")).toBeInTheDocument();
+    expect(screen.getByText(/Searching resumes when cleanup makes room/)).toBeInTheDocument();
+  });
+
   it("shows the score gap when the quality is already reached", async () => {
     open({
       "GET /wanted": json({

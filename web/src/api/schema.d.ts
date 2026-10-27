@@ -3488,10 +3488,10 @@ export interface components {
             /** @description "YYYY-MM-DD". A movie: when it became available (digital or physical release, else TMDB's release date). Episodes: the newest air date in the group. */
             date: string;
             /**
-             * @description downloading: in the queue. off: grabbing is off. capped: the queue is full (the queue limit is reached). never: not searched yet. waiting: searched; the next search is due at `nextSearchAt`.
+             * @description downloading: in the queue. off: grabbing is off. capped: the queue is full (the queue limit is reached). noSpace: the download disk is short of space, so searching waits until cleanup makes room. never: not searched yet. waiting: searched; the next search is due at `nextSearchAt`.
              * @enum {string}
              */
-            state: "downloading" | "off" | "capped" | "never" | "waiting";
+            state: "downloading" | "off" | "capped" | "noSpace" | "never" | "waiting";
             /** @description The state in plain English */
             status: string;
             /** Format: date-time */

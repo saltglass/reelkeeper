@@ -555,10 +555,8 @@ func (s *Service) backfillStep(ctx context.Context, row *BackfillRow) (backfillS
 	} else if full {
 		return stepWaiting, fmt.Sprintf("%s: waiting; the queue is full.", name), nil
 	}
-	if dc, ok := s.queue.(diskChecker); ok {
-		if why, err := dc.DiskShort(ctx); err == nil && why != "" {
-			return stepWaiting, fmt.Sprintf("%s: waiting; %s", name, why), nil
-		}
+	if why := s.diskShort(ctx); why != "" {
+		return stepWaiting, fmt.Sprintf("%s: waiting; %s", name, why), nil
 	}
 	// 5. Search for everything it wants.
 	since := row.AddedAt

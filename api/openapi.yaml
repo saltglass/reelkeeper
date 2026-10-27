@@ -4233,11 +4233,12 @@ components:
             release, else TMDB's release date). Episodes: the newest air date in the group.
         state:
           type: string
-          enum: [downloading, off, capped, never, waiting]
+          enum: [downloading, off, capped, noSpace, never, waiting]
           description: >-
             downloading: in the queue. off: grabbing is off. capped: the queue is
-            full (the queue limit is reached). never: not searched yet. waiting: searched; the next
-            search is due at `nextSearchAt`.
+            full (the queue limit is reached). noSpace: the download disk is short of space, so
+            searching waits until cleanup makes room. never: not searched yet. waiting: searched;
+            the next search is due at `nextSearchAt`.
         status: { type: string, description: The state in plain English, with the next step. }
         lastSearchedAt: { type: string, format: date-time }
         lastSearchMessage:
