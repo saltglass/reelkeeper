@@ -159,6 +159,8 @@ does the same job, and uses the fact that everything lives together:
 
 | | |
 | --- | --- |
+| ![Home: all good, downloads in progress, recent activity and the week ahead](docs/screenshots/home.png) | ![Three movies selected, about to turn their upgrades off](docs/screenshots/select.png) |
+| **Home**: does anything need you? | **Select** several titles and change them at once |
 | ![A movie's page with its file and quality details](docs/screenshots/movie.png) | ![A series page with its episodes](docs/screenshots/show.png) |
 | **A movie** and every copy of it | **A series** with its seasons and monitoring |
 | ![The Wanted page listing what is still missing](docs/screenshots/wanted.png) | ![History with grabs and imports explained](docs/screenshots/history.png) |
