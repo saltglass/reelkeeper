@@ -12,6 +12,9 @@ import (
 
 var PruneBackupsForTest = pruneBackups
 
+// LimitPostgresPoolForTest applies Open's Postgres pool limits to db.
+var LimitPostgresPoolForTest = limitPostgresPool
+
 // UseMigrationsForTest makes s use fsys as its migration folder.
 func UseMigrationsForTest(s *Store, fsys fs.FS) { s.migrations = fsys }
 

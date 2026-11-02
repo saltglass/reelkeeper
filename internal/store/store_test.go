@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"database/sql"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -232,6 +233,26 @@ func TestOpenPostgresFailureHidesPassword(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "hunter2secret") {
 		t.Errorf("error leaks the password: %v", err)
+	}
+}
+
+// The Postgres pool must have a ceiling. Without one, every query waiting
+// when Postgres comes back after an outage opens its own connection, and one
+// install took 54 of its server's 100 slots that way.
+func TestPostgresPoolIsLimited(t *testing.T) {
+	// sql.Open doesn't connect, so nothing needs to listen here.
+	db, err := sql.Open("pgx", "postgres://reelkeeper@127.0.0.1:1/reelkeeper")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	if got := db.Stats().MaxOpenConnections; got != 0 {
+		t.Fatalf("database/sql default changed: MaxOpenConnections = %d, want 0 (unlimited)", got)
+	}
+	store.LimitPostgresPoolForTest(db)
+	if got := db.Stats().MaxOpenConnections; got != 10 {
+		t.Errorf("MaxOpenConnections = %d, want 10", got)
 	}
 }
 

@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	// Registers the "pgx" database/sql driver.
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -74,6 +75,7 @@ func Open(ctx context.Context, dsn string) (*Store, error) {
 		if err != nil {
 			return nil, fmt.Errorf("open postgres: %w", err)
 		}
+		limitPostgresPool(sqldb)
 		db = bun.NewDB(sqldb, pgdialect.New())
 
 	case SQLite:
@@ -95,6 +97,26 @@ func Open(ctx context.Context, dsn string) (*Store, error) {
 	}
 
 	return &Store{DB: db, Engine: engine, migrations: migrationsFor(engine)}, nil
+}
+
+// Postgres connection pool limits. Go's database/sql opens as many
+// connections as there are queries waiting, with no ceiling. When Postgres
+// comes back after an outage, every poller (Seerr, dashboards, the "Check
+// downloads" task) that piled up connects at once: one install took 54 of
+// its server's 100 slots and locked every other app on that server out.
+// With a ceiling, extra queries wait their turn for a free connection
+// instead. Reelkeeper's work is short queries, so 10 is plenty.
+const (
+	postgresMaxOpenConns    = 10
+	postgresMaxIdleConns    = 5
+	postgresConnMaxIdleTime = 5 * time.Minute
+)
+
+// limitPostgresPool applies the limits above to a Postgres pool.
+func limitPostgresPool(db *sql.DB) {
+	db.SetMaxOpenConns(postgresMaxOpenConns)
+	db.SetMaxIdleConns(postgresMaxIdleConns)
+	db.SetConnMaxIdleTime(postgresConnMaxIdleTime)
 }
 
 // sqliteDSN adds the connection settings every SQLite connection needs:
