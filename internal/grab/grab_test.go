@@ -104,6 +104,17 @@ func (f *fakeLib) RootFolder(_ context.Context, id int64) (*library.RootFolder, 
 	return &library.RootFolder{ID: id, Path: "/movies", ManageFiles: !f.unmanaged[id]}, nil
 }
 
+// SetUpgrades turns a movie version's Upgrades switch, as the library does.
+func (f *fakeLib) SetUpgrades(_ context.Context, titleID, versionID int64, on bool) error {
+	for i := range f.versions {
+		if v := &f.versions[i]; v.Version.ID == versionID && v.Title.ID == titleID {
+			v.Version.Upgrades = on
+			return nil
+		}
+	}
+	return library.ErrNotFound
+}
+
 func (f *fakeLib) MarkEpisodesSearched(_ context.Context, versionID int64, ids []int64, at time.Time) error {
 	if f.epSearched == nil {
 		f.epSearched = map[int64]map[int64]time.Time{}

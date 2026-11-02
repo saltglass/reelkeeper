@@ -74,11 +74,13 @@ type Decision struct {
 	Rejections []string `json:"rejections,omitempty"`
 	// Upgrade is set when the release would replace an existing file.
 	Upgrade bool `json:"upgrade,omitempty"`
-	// WrongContent is set when a TV release is for something else than was
-	// searched for (another show, season or episode, or a name Reelkeeper
-	// can't make sense of), as opposed to being the right content that the profile
-	// turns down (quality, size, score, seeders). Backfill's "options" never
-	// offer wrong content. Not part of the stored or shown verdict.
+	// WrongContent is set when a release is for something else than was
+	// searched for (another movie, show, season or episode, or a name
+	// Reelkeeper can't make sense of), as opposed to being the right content
+	// that the profile turns down (quality, size, score, seeders). Releases
+	// offered for the user to pick (backfill's "Show options", a movie's
+	// "Choose a release") never include wrong content. Not part of the
+	// stored or shown verdict.
 	WrongContent bool `json:"-"`
 
 	// Usenet is set for a Usenet release (Candidate.Usenet).
@@ -109,6 +111,7 @@ func Decide(p *Profile, m Movie, c Candidate, have *Existing) Decision {
 
 	if why := wrongMovie(r, m); why != "" {
 		reject("%s", why)
+		d.WrongContent = true
 	}
 	switch {
 	case d.Quality.ID == 0:

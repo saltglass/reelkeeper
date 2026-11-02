@@ -35,6 +35,7 @@ import { tmdbImage } from "@/lib/images";
 import { relativeTime } from "@/lib/time";
 import { HistoryRow } from "@/pages/activity/HistoryRow";
 import { RenameDialog } from "@/pages/library/RenameDialog";
+import { ChooseRelease } from "./ChooseReleaseDialog";
 import { DeleteMovieDialog } from "./DeleteMovieDialog";
 
 export function MovieDetailPage() {
@@ -270,6 +271,12 @@ function VersionCard({
         >
           <Search /> {search.isPending ? "Searching…" : "Search now"}
         </Button>
+        <ChooseRelease
+          movieId={movieId}
+          versionId={v.id}
+          profileName={v.profileName}
+          upgrades={v.upgrades}
+        />
         <label className="flex items-center gap-2 text-sm" htmlFor={`mon-${v.id}`}>
           Monitored
           <Switch

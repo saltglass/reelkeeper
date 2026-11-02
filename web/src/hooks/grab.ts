@@ -46,3 +46,44 @@ export const historyQuery = (filter: HistoryFilter, limit = 50) =>
     queryFn: () => fetchHistory(filter, limit),
     refetchInterval: 30_000,
   });
+
+export type MovieChoices = components["schemas"]["MovieChoices"];
+export type MovieChoice = components["schemas"]["MovieChoice"];
+export type PickResult = components["schemas"]["PickResult"];
+
+/**
+ * "Choose a release": searches every indexer for one movie version and lists
+ * what was found with the profile's verdict. Searches, so it can take a while:
+ * asked for on request only, as a mutation.
+ */
+export function useMovieChoices(movieId: number, versionId: number) {
+  return useMutation({
+    mutationFn: () =>
+      unwrap(
+        api.GET("/movies/{id}/versions/{versionId}/releases", {
+          params: { path: { id: movieId, versionId } },
+        }),
+      ),
+  });
+}
+
+/** Grabs one release from the "Choose a release" list (or records it, in a dry run). */
+export function useGrabMovieChoice(movieId: number, versionId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) =>
+      unwrap(
+        api.POST("/movies/{id}/versions/{versionId}/releases/grab", {
+          params: { path: { id: movieId, versionId } },
+          body: { token },
+        }),
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["history"] });
+      // The Upgrades switch may have turned off, and the movie is now downloading.
+      qc.invalidateQueries({ queryKey: ["movies"] });
+      qc.invalidateQueries({ queryKey: ["queue"] });
+      qc.invalidateQueries({ queryKey: ["wanted"] });
+    },
+  });
+}

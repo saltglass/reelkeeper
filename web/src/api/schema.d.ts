@@ -940,6 +940,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/movies/{id}/versions/{versionId}/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search now and list every release, for choosing one by hand
+         * @description "Choose a release". Searches the indexers for this version and lists what was found with the profile's verdict on each: the releases it accepts, best first, then the ones it turned down, fewest broken rules first. Releases for another movie, blocklisted ones and torrents nobody seeds are left out (`hidden`), and so is anything past the first 50 (`more`). The version's Upgrades switch is ignored. May take a while. Nothing is grabbed or stored except the short-lived tokens in the answer.
+         */
+        get: operations["getMovieChoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/movies/{id}/versions/{versionId}/releases/grab": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download one of the listed releases
+         * @description Grabs the release behind a `token` from the list. One the profile turned down also turns the version's Upgrades switch off (`upgradesOff`), so the next search doesn't replace the file. The queue limit doesn't apply and the download goes to the top of the client's queue. With Grabbing off nothing is downloaded and History records what would have been (`dryRun`). Refused (409, the message says why) for a media folder with "Manage files" off, too little free space, a blocklisted release, no download client, or a download already in progress for this version. A token expires after 15 minutes (404 `option_expired`).
+         */
+        post: operations["grabMovieChoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/series": {
         parameters: {
             query?: never;
@@ -1819,7 +1859,7 @@ export interface paths {
         put?: never;
         /**
          * Download one of the offered releases anyway
-         * @description Grabs the release behind a `token` from the options, outside the profile. It is refused for a media folder with "Manage files" off, too little free space, or a blocklisted release. The queue limit and backfill's daily quota don't apply, since the user chose it. A token expires after 15 minutes (404 `option_expired`); a refusal is a 409 whose message says why.
+         * @description Grabs the release behind a `token` from the options, outside the profile. It is refused for a media folder with "Manage files" off, too little free space, or a blocklisted release. The queue limit and backfill's daily quota don't apply, since the user chose it. With Grabbing off nothing is downloaded and History records what would have been (`dryRun`). A token expires after 15 minutes (404 `option_expired`); a refusal is a 409 whose message says why.
          */
         post: operations["grabBackfillOption"];
         delete?: never;
@@ -3535,6 +3575,46 @@ export interface components {
             /** @description A Usenet release (it has no seeders). */
             usenet?: boolean;
             /** @description Why the profile turned it down, in plain English. */
+            reasons: string[];
+        };
+        PickToken: {
+            /** @description A token from the list of releases offered. */
+            token: string;
+        };
+        PickResult: {
+            /** @description What History says about it. */
+            message: string;
+            /** @description Grabbing is off, so nothing was downloaded. */
+            dryRun: boolean;
+            /** @description The release was outside the profile, so the version's Upgrades switch was turned off. */
+            upgradesOff?: boolean;
+        };
+        MovieChoices: {
+            releases: components["schemas"]["MovieChoice"][];
+            /** @description Releases left out because they're for another movie, blocklisted, or a torrent nobody seeds. */
+            hidden: number;
+            /** @description Releases past the first 50, left out. */
+            more: number;
+            /** @description Indexers that failed or weren't asked, with why. */
+            indexerErrors?: string[];
+        };
+        MovieChoice: {
+            /** @description Sent back to grab it. Valid for 15 minutes. */
+            token: string;
+            /** @description The release name. */
+            title: string;
+            /** Format: int64 */
+            size: number;
+            quality: string;
+            indexer: string;
+            seeders: number;
+            /** @description A Usenet release (it has no seeders). */
+            usenet?: boolean;
+            /** @description The profile's custom-format score. */
+            score: number;
+            /** @description The profile would grab it. */
+            accepted: boolean;
+            /** @description Why the profile turned it down, in plain English (empty when accepted). */
             reasons: string[];
         };
         /** @enum {string} */
@@ -6241,6 +6321,69 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    getMovieChoices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                versionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovieChoices"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    grabMovieChoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                versionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PickToken"];
+            };
+        };
+        responses: {
+            /** @description Sent to the download client, or recorded as a dry run. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description Refused; the message says why. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     getSeriesList: {
         parameters: {
             query?: never;
@@ -7832,22 +7975,17 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    token: string;
-                };
+                "application/json": components["schemas"]["PickToken"];
             };
         };
         responses: {
-            /** @description Sent to the download client. */
+            /** @description Sent to the download client, or recorded as a dry run. */
             202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @description What History says about it. */
-                        message: string;
-                    };
+                    "application/json": components["schemas"]["PickResult"];
                 };
             };
             401: components["responses"]["Unauthorized"];

@@ -140,6 +140,15 @@ func TestDecideReasons(t *testing.T) {
 			if tt.want != "" && !slices.ContainsFunc(d.Rejections, func(r string) bool { return strings.Contains(r, tt.want) }) {
 				t.Errorf("reasons %q don't mention %q", d.Rejections, tt.want)
 			}
+			// Only a release for another movie is wrong content, which
+			// "Choose a release" never offers; the rest are the right movie
+			// that the profile turns down. ("Heat.1995-GRP" has no quality
+			// to end the title at, so it reads as a movie called "Heat
+			// 1995-GRP".)
+			wrong := strings.HasPrefix(tt.name, "wrong ") || tt.name == "unknown quality"
+			if d.WrongContent != wrong {
+				t.Errorf("WrongContent = %v", d.WrongContent)
+			}
 		})
 	}
 }

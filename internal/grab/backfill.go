@@ -86,12 +86,6 @@ var (
 	ErrOptionGone = errors.New("that option has expired")
 )
 
-// BackfillRefusal is a reason a release picked by the user can't be
-// grabbed (the same ones that stop an automatic grab).
-type BackfillRefusal string
-
-func (r BackfillRefusal) Error() string { return string(r) }
-
 // BackfillRow is one show in the queue.
 type BackfillRow struct {
 	bun.BaseModel `bun:"table:backfill"`
@@ -677,6 +671,9 @@ type BackfillOptionList struct {
 // pickedOption is what a token stands for. It lives in memory only for
 // optionsKept; the release is never taken from the client.
 type pickedOption struct {
+	// movie: offered by a movie's "Choose a release" (pick.go), not by
+	// backfill (rowID), so neither's token works for the other.
+	movie      bool
 	rowID      int64
 	versionID  int64
 	episodeIDs []int64
@@ -830,21 +827,19 @@ func (s *Service) forgetOldOptionsLocked() {
 // when the grab can't work: a media folder with "Manage files" off, not
 // enough free space, a blocklisted release. The queue limit and
 // backfill's quota don't apply, since the user chose it (the grab does
-// count toward them). It returns the History message.
-func (s *Service) BackfillGrabOption(ctx context.Context, id int64, token string) (string, error) {
-	s.optMu.Lock()
-	s.forgetOldOptionsLocked()
-	o, ok := s.options[token]
-	s.optMu.Unlock()
-	if !ok || o.rowID != id {
-		return "", ErrOptionGone
+// count toward them). With Grabbing for TV off or in dry run it only
+// records "would grab".
+func (s *Service) BackfillGrabOption(ctx context.Context, id int64, token string) (PickResult, error) {
+	o, err := s.option(token, func(o pickedOption) bool { return !o.movie && o.rowID == id })
+	if err != nil {
+		return PickResult{}, err
 	}
 	ws, err := s.loadTV(ctx, o.versionID)
 	if err != nil {
-		return "", err
+		return PickResult{}, err
 	}
 	if len(ws) == 0 {
-		return "", ErrBackfillNotFound
+		return PickResult{}, ErrBackfillNotFound
 	}
 	w := ws[0]
 	// The episodes the release holds that are still wanted (and not already
@@ -856,45 +851,36 @@ func (s *Service) BackfillGrabOption(ctx context.Context, id int64, token string
 		}
 	}
 	if len(ids) == 0 {
-		return "", BackfillRefusal("Those episodes are no longer waiting for a release.")
+		return PickResult{}, Refusal("Those episodes are no longer waiting for a release.")
 	}
-	if s.queue != nil {
-		blocked, err := s.queue.Blocklisted(ctx, w.sv.Title.ID)
-		if err != nil {
-			return "", err
-		}
-		if blocked(o.rel.Title, o.rel.InfoHash) {
-			return "", BackfillRefusal("That release is on the blocklist.")
-		}
-	}
-	if s.grabber == nil {
-		return "", BackfillRefusal("No download client is set up yet (Settings → Download Client).")
-	}
-	if reason, err := s.unmanaged(ctx, w.sv.Version.RootFolderID); err != nil {
-		return "", err
-	} else if reason != "" {
-		return "", BackfillRefusal(reason)
+	if err := s.pickRefusal(ctx, w.sv.Title.ID, w.sv.Version.RootFolderID, o); err != nil {
+		return PickResult{}, err
 	}
 	p := tvPick{c: tvCandidate{candidate: candidate{rel: o.rel, d: o.d}, cov: o.cov}, ids: ids}
 	label := pickLabel(w, p)
+	v := verdict(p.c.candidate)
+	ev := s.tvEvent(w, "", "")
+	ev.SourceTitle, ev.Indexer, ev.Quality, ev.Score = o.rel.Title, o.rel.Indexer, o.d.Quality.Name, o.d.Score
+	data := EventData{Trigger: TriggerPicked, Chosen: &v, EpisodeIDs: ids}
+	picked := "Picked by you outside the profile: " + strings.Join(o.d.Rejections, " ")
+
+	if s.settings().TVMode != settings.GrabOn { // TV's own Grabbing setting
+		s.forgetOption(token)
+		ev.Event = EventWouldGrab
+		ev.Message = fmt.Sprintf("Would grab %s for %s (%s, from %s). %s Dry run: nothing was downloaded.",
+			o.rel.Title, label, o.d.Quality.Name, o.rel.Indexer, picked)
+		return PickResult{Message: ev.Message, DryRun: true}, s.history.Add(ctx, ev, data)
+	}
+	if s.grabber == nil {
+		return PickResult{}, Refusal(noClientText)
+	}
 	tg := &TVGrab{Title: w.sv.Title, Version: w.sv.Version, EpisodeIDs: ids, Label: label}
 	if err := s.grabber.Grab(ctx, Grabbed{Release: o.rel, Quality: o.d.Quality.Name, Score: o.d.Score, TV: tg}); err != nil {
-		if errors.Is(err, ErrMoving) {
-			return "", BackfillRefusal("Torrents are moving to another download client; try again when that's done (System → Tasks).")
-		}
-		if errors.Is(err, ErrNotEnoughSpace) {
-			return "", BackfillRefusal(strings.TrimPrefix(err.Error(), ErrNotEnoughSpace.Error()+": ") + ".")
-		}
-		return "", BackfillRefusal("The download client refused it: " + err.Error())
+		return PickResult{}, grabRefusal(err)
 	}
-	s.optMu.Lock()
-	delete(s.options, token)
-	s.optMu.Unlock()
+	s.forgetOption(token)
 
-	v := verdict(p.c.candidate)
-	ev := s.tvEvent(w, EventGrabbed, "")
-	ev.SourceTitle, ev.Indexer, ev.Quality, ev.Score = o.rel.Title, o.rel.Indexer, o.d.Quality.Name, o.d.Score
-	ev.Message = fmt.Sprintf("Grabbed %s for %s (%s, from %s). Picked by you outside the profile: %s",
-		o.rel.Title, label, o.d.Quality.Name, o.rel.Indexer, strings.Join(o.d.Rejections, " "))
-	return ev.Message, s.history.Add(ctx, ev, EventData{Trigger: TriggerPicked, Chosen: &v, EpisodeIDs: ids})
+	ev.Event = EventGrabbed
+	ev.Message = fmt.Sprintf("Grabbed %s for %s (%s, from %s). %s", o.rel.Title, label, o.d.Quality.Name, o.rel.Indexer, picked)
+	return PickResult{Message: ev.Message}, s.history.Add(ctx, ev, data)
 }

@@ -28,6 +28,7 @@ import { toast } from "@/hooks/toast";
 import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { MovieName, PosterThumb, riseStyle } from "@/pages/activity/shared";
+import { grabbedText } from "@/pages/movies/ChooseReleaseDialog";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -296,7 +297,8 @@ function Options({
   query: ReturnType<typeof useBackfillOptions>;
 }) {
   const [picked, setPicked] = useState<BackfillOption>();
-  const [sent, setSent] = useState<Set<string>>(new Set());
+  // Taken options, by token: true when it was only a dry run.
+  const [sent, setSent] = useState<Record<string, boolean>>({});
   const grab = useGrabBackfillOption();
 
   if (query.isPending) {
@@ -321,9 +323,9 @@ function Options({
     grab.mutate(
       { id: show.id, token },
       {
-        onSuccess: () => {
-          setSent((cur) => new Set(cur).add(token));
-          toast("Sent to the download client.", "ok");
+        onSuccess: (res) => {
+          setSent((cur) => ({ ...cur, [token]: res.dryRun }));
+          toast(grabbedText(res), "ok");
           setPicked(undefined);
         },
       },
@@ -355,8 +357,10 @@ function Options({
                   </p>
                   <p className="mt-1 text-sm break-words">{o.reasons.join(" ")}</p>
                   <div className="mt-2">
-                    {sent.has(o.token) ? (
-                      <Badge variant="success">Sent to the download client</Badge>
+                    {o.token in sent ? (
+                      <Badge variant="success">
+                        {sent[o.token] ? "Recorded as a dry run" : "Sent to the download client"}
+                      </Badge>
                     ) : (
                       <Button
                         variant="outline"

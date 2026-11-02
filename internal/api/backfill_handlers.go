@@ -42,7 +42,7 @@ func toBackfillShow(s grab.BackfillShow) gen.BackfillShow {
 
 // writeBackfillError answers for the errors backfill returns on purpose.
 func (h *Handlers) writeBackfillError(w http.ResponseWriter, r *http.Request, err error) {
-	var refusal grab.BackfillRefusal
+	var refusal grab.Refusal
 	switch {
 	case errors.Is(err, grab.ErrBackfillNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "That show isn't in the backfill queue (any more).", nil)
@@ -165,10 +165,10 @@ func (h *Handlers) GrabBackfillOption(w http.ResponseWriter, r *http.Request, id
 	if !decode(w, r, &body) {
 		return
 	}
-	msg, err := h.Grab.BackfillGrabOption(r.Context(), id, body.Token)
+	res, err := h.Grab.BackfillGrabOption(r.Context(), id, body.Token)
 	if err != nil {
 		h.writeBackfillError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, map[string]string{"message": msg})
+	writeJSON(w, http.StatusAccepted, toPickResult(res))
 }
