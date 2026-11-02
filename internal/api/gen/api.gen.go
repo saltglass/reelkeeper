@@ -2330,6 +2330,41 @@ type MetadataSettingsUpdate struct {
 	TmdbApiKey *string `json:"tmdbApiKey,omitempty"`
 }
 
+// MovieChoice defines model for MovieChoice.
+type MovieChoice struct {
+	// Accepted The profile would grab it.
+	Accepted bool   `json:"accepted"`
+	Indexer  string `json:"indexer"`
+	Quality  string `json:"quality"`
+
+	// Reasons Why the profile turned it down, in plain English (empty when accepted).
+	Reasons []string `json:"reasons"`
+
+	// Score The profile's custom-format score.
+	Score   int   `json:"score"`
+	Seeders int   `json:"seeders"`
+	Size    int64 `json:"size"`
+
+	// Title The release name.
+	Title string `json:"title"`
+
+	// Token Sent back to grab it. Valid for 15 minutes.
+	Token string `json:"token"`
+}
+
+// MovieChoices defines model for MovieChoices.
+type MovieChoices struct {
+	// Hidden Releases left out because they're for another movie, blocklisted, or a torrent nobody seeds.
+	Hidden int `json:"hidden"`
+
+	// IndexerErrors Indexers that failed or weren't asked, with why.
+	IndexerErrors *[]string `json:"indexerErrors,omitempty"`
+
+	// More Releases past the first 50, left out.
+	More     int           `json:"more"`
+	Releases []MovieChoice `json:"releases"`
+}
+
 // MovieDetail defines model for MovieDetail.
 type MovieDetail struct {
 	AddedAt           time.Time       `json:"addedAt"`
@@ -2589,6 +2624,24 @@ type Orphans struct {
 type PasswordChange struct {
 	CurrentPassword string `json:"currentPassword"`
 	NewPassword     string `json:"newPassword"`
+}
+
+// PickResult defines model for PickResult.
+type PickResult struct {
+	// DryRun Grabbing is off, so nothing was downloaded.
+	DryRun bool `json:"dryRun"`
+
+	// Message What History says about it.
+	Message string `json:"message"`
+
+	// UpgradesOff The release was outside the profile, so the version's Upgrades switch was turned off.
+	UpgradesOff *bool `json:"upgradesOff,omitempty"`
+}
+
+// PickToken defines model for PickToken.
+type PickToken struct {
+	// Token A token from the list of releases offered.
+	Token string `json:"token"`
 }
 
 // Profile defines model for Profile.
@@ -3877,11 +3930,6 @@ type AddBackfillJSONBody struct {
 	VersionId int64 `json:"versionId"`
 }
 
-// GrabBackfillOptionJSONBody defines parameters for GrabBackfillOption.
-type GrabBackfillOptionJSONBody struct {
-	Token string `json:"token"`
-}
-
 // MoveBackfillJSONBody defines parameters for MoveBackfill.
 type MoveBackfillJSONBody struct {
 	Direction MoveBackfillJSONBodyDirection `json:"direction"`
@@ -4129,7 +4177,7 @@ type SetupJSONRequestBody = Credentials
 type AddBackfillJSONRequestBody AddBackfillJSONBody
 
 // GrabBackfillOptionJSONRequestBody defines body for GrabBackfillOption for application/json ContentType.
-type GrabBackfillOptionJSONRequestBody GrabBackfillOptionJSONBody
+type GrabBackfillOptionJSONRequestBody = PickToken
 
 // MoveBackfillJSONRequestBody defines body for MoveBackfill for application/json ContentType.
 type MoveBackfillJSONRequestBody MoveBackfillJSONBody
@@ -4184,6 +4232,9 @@ type EditMoviesJSONRequestBody = MoviesBulkEdit
 
 // UpdateVersionJSONRequestBody defines body for UpdateVersion for application/json ContentType.
 type UpdateVersionJSONRequestBody UpdateVersionJSONBody
+
+// GrabMovieChoiceJSONRequestBody defines body for GrabMovieChoice for application/json ContentType.
+type GrabMovieChoiceJSONRequestBody = PickToken
 
 // AddProfileJSONRequestBody defines body for AddProfile for application/json ContentType.
 type AddProfileJSONRequestBody = ProfileInput
@@ -4493,6 +4544,12 @@ type ServerInterface interface {
 
 	// (PATCH /movies/{id}/versions/{versionId})
 	UpdateVersion(w http.ResponseWriter, r *http.Request, id int64, versionId int64)
+	// GetMovieChoices Search now and list every release, for choosing one by hand
+	// (GET /movies/{id}/versions/{versionId}/releases)
+	GetMovieChoices(w http.ResponseWriter, r *http.Request, id int64, versionId int64)
+	// GrabMovieChoice Download one of the listed releases
+	// (POST /movies/{id}/versions/{versionId}/releases/grab)
+	GrabMovieChoice(w http.ResponseWriter, r *http.Request, id int64, versionId int64)
 	// SearchVersion Search the indexers for this version now
 	// (POST /movies/{id}/versions/{versionId}/search)
 	SearchVersion(w http.ResponseWriter, r *http.Request, id int64, versionId int64)
@@ -5133,6 +5190,18 @@ func (_ Unimplemented) RemoveVersion(w http.ResponseWriter, r *http.Request, id 
 
 // (PATCH /movies/{id}/versions/{versionId})
 func (_ Unimplemented) UpdateVersion(w http.ResponseWriter, r *http.Request, id int64, versionId int64) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetMovieChoices Search now and list every release, for choosing one by hand
+// (GET /movies/{id}/versions/{versionId}/releases)
+func (_ Unimplemented) GetMovieChoices(w http.ResponseWriter, r *http.Request, id int64, versionId int64) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GrabMovieChoice Download one of the listed releases
+// (POST /movies/{id}/versions/{versionId}/releases/grab)
+func (_ Unimplemented) GrabMovieChoice(w http.ResponseWriter, r *http.Request, id int64, versionId int64) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -7239,6 +7308,76 @@ func (siw *ServerInterfaceWrapper) UpdateVersion(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// GetMovieChoices operation middleware
+func (siw *ServerInterfaceWrapper) GetMovieChoices(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "versionId" -------------
+	var versionId int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "versionId", chi.URLParam(r, "versionId"), &versionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "versionId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMovieChoices(w, r, id, versionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GrabMovieChoice operation middleware
+func (siw *ServerInterfaceWrapper) GrabMovieChoice(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "versionId" -------------
+	var versionId int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "versionId", chi.URLParam(r, "versionId"), &versionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "versionId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GrabMovieChoice(w, r, id, versionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // SearchVersion operation middleware
 func (siw *ServerInterfaceWrapper) SearchVersion(w http.ResponseWriter, r *http.Request) {
 
@@ -9026,6 +9165,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/movies/{id}/versions/{versionId}/search", wrapper.SearchVersion)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/movies/{id}/versions/{versionId}/releases", wrapper.GetMovieChoices)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/movies/{id}/versions/{versionId}/releases/grab", wrapper.GrabMovieChoice)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/series", wrapper.GetSeriesList)

@@ -100,7 +100,13 @@ the file naming settings. They are optional.
 ## 5. Indexers (Settings → Indexers)
 
 Indexers are where Reelkeeper searches for releases. There is no search page:
-Reelkeeper searches by itself when something is wanted.
+Reelkeeper searches by itself when something is wanted. When it can't find
+anything your profile accepts (an old film that only exists as a DVD rip, a
+film in a language your profile doesn't take), open the movie and choose
+**Choose a release** on its version: it lists everything found, the releases
+your profile accepts first and then the closest misses with why, and lets you
+grab one yourself. Grabbing one outside your profile turns that version's
+Upgrades switch off, so Reelkeeper keeps the file instead of replacing it.
 
 Choose Add indexer and pick one of:
 
@@ -151,7 +157,9 @@ In the **Automatic grabbing** card, movies and TV each have three modes:
 
 - **Off**: Reelkeeper does not search on its own.
 - **Dry run**: Reelkeeper searches and records in Activity → History what it
-  *would* grab, and downloads nothing. **This is where it starts.**
+  *would* grab, and downloads nothing. **This is where it starts.** A release
+  you pick yourself (a movie's Choose a release, Backfill's Show options) is
+  recorded the same way and not downloaded.
 - **On**: Reelkeeper sends the releases it picks to qBittorrent.
 
 Why start in dry run? It lets you see the choices Reelkeeper makes with your

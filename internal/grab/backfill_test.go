@@ -708,7 +708,8 @@ func TestBackfillOptionsAndGrabAnyway(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		msg, err := f.svc.BackfillGrabOption(ctx, row.ID, tokens["MOST"])
+		res, err := f.svc.BackfillGrabOption(ctx, row.ID, tokens["MOST"])
+		msg := res.Message
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -739,7 +740,7 @@ func TestBackfillOptionsAndGrabAnyway(t *testing.T) {
 }
 
 func refusedWith(err error, text string) bool {
-	var r BackfillRefusal
+	var r Refusal
 	return errors.As(err, &r) && strings.Contains(r.Error(), text)
 }
 
@@ -802,6 +803,43 @@ func TestBackfillOptionsOfferSeasonPacks(t *testing.T) {
 		sv := f.sv(a)
 		if len(g.grabs) != 1 || !slices.Equal(g.grabs[0].TV.EpisodeIDs, []int64{epID(sv, "S01E05"), epID(sv, "S01E06")}) {
 			t.Errorf("grabs = %+v", g.grabs)
+		}
+	})
+}
+
+// With TV grabbing in dry run, taking an option records "would grab" and
+// downloads nothing (movie grabbing being on doesn't matter).
+func TestBackfillGrabOptionDryRun(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newFixture(t, db)
+		g, _ := bfOn(f)
+		a := bfShow(t, db, f, "The IT Crowd")
+		row, _ := f.svc.BackfillAdd(ctx, a)
+		f.idx.releases = nil
+		runBackfill(t, f)
+		f.idx.releases = []indexer.Release{tvRel("The.IT.Crowd.S01E05.720p.HDTV.x264-MOST", 1<<30, 90)}
+		opts, err := f.svc.BackfillOptions(ctx, row.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(opts.Units) == 0 || len(opts.Units[0].Options) != 1 {
+			t.Fatalf("units = %+v", opts.Units)
+		}
+		f.mode.TVMode = settings.GrabDryRun
+		res, err := f.svc.BackfillGrabOption(ctx, row.ID, opts.Units[0].Options[0].Token)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !res.DryRun || !strings.HasPrefix(res.Message, "Would grab The.IT.Crowd.S01E05.720p.HDTV.x264-MOST for S01E05") ||
+			!strings.Contains(res.Message, "Dry run: nothing was downloaded.") {
+			t.Errorf("result = %+v", res)
+		}
+		if len(g.got) != 0 || len(f.events(t, EventGrabbed)) != 0 {
+			t.Errorf("grabbed %v", g.got)
+		}
+		if would := f.events(t, EventWouldGrab); len(would) != 1 || would[0].Message != res.Message {
+			t.Errorf("History = %+v", would)
 		}
 	})
 }

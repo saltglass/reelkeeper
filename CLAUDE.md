@@ -69,9 +69,14 @@ all mediocre" app.
 - Multiple users with roles
 - Telegram notifications (Dan, 2026-10-09).
 - Jellyfin and Plex library updates, like Emby's (planned for 2.0).
-- Interactive (user-driven) search. Seerr already does this well (Dan,
-  2026-10-08); Reelkeeper searches automatically. The search engine exists for
-  that; only the screens are left out.
+- Choosing a release by hand **for series**. Movies have it ("Choose a
+  release" on each version, `grab/pick.go`; Dan, 2026-11-02, after Downfall,
+  a German film, was turned down by an English-only profile): every release
+  found, the profile's accepted ones first, then the closest misses with
+  why; one outside the profile asks first and turns the version's Upgrades
+  off so the next search keeps it. Series would pick episode or season pack,
+  and one pick mustn't stop the rest of the show upgrading. Backfill's "Show
+  options" already covers a show's missing episodes.
 - A Calendar page (tabled by Dan, 2026-10-11: he never used Radarr's or
   Sonarr's, and Seerr already shows what's coming). The data exists: the
   compat calendar endpoints and the summary's upcoming lists.
@@ -239,8 +244,8 @@ math.
   never silently change what the profile does.
 - **Explain every decision.**
   - Every automatic grab or rejection is recorded with why, in plain words,
-    and shown in History. (Interactive search, which would show this per
-    release, is a "later" item.)
+    and shown in History. A movie's "Choose a release" shows the same
+    verdict for every release found.
   - Each profile page has a "test a release name" box.
 - Each profile applies to movies, TV or both.
 

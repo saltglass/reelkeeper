@@ -49,6 +49,9 @@ type Library interface {
 	MarkEpisodesSearched(ctx context.Context, versionID int64, episodeIDs []int64, at time.Time) error
 	SetEpisodesMonitored(ctx context.Context, versionID int64, episodeIDs []int64, monitored bool) error
 	RootFolder(ctx context.Context, id int64) (*library.RootFolder, error)
+	// SetUpgrades turns a movie version's Upgrades switch on or off (a
+	// release picked outside the profile turns it off).
+	SetUpgrades(ctx context.Context, titleID, versionID int64, upgrades bool) error
 }
 
 // Indexers searches every suitable indexer.
@@ -70,8 +73,9 @@ type Grabbed struct {
 	Quality string
 	Score   int
 	Upgrade bool
-	// Requested: came from a request's search (Seerr); it skips the queue
-	// limit and goes to the top of the download client's queue.
+	// Requested: somebody is waiting for it (a Seerr request's search, or
+	// a release the user picked); it skips the queue limit and goes to the
+	// top of the download client's queue.
 	Requested bool
 }
 
@@ -121,8 +125,9 @@ type Service struct {
 	// backfillMu serializes changes to the backfill queue (adding,
 	// removing, moving, starting the next show).
 	backfillMu sync.Mutex
-	// options are the releases offered under a show's "Show options" that
-	// the user may still take, by token (see backfill.go).
+	// options are the releases offered under a show's "Show options" or a
+	// movie's "Choose a release" that the user may still take, by token
+	// (see backfill.go and pick.go).
 	optMu   sync.Mutex
 	options map[string]pickedOption
 }
@@ -175,7 +180,8 @@ const (
 	TriggerScheduled = "scheduled"
 	TriggerRSS       = "rss"
 	// TriggerBackfill: the Backfill task's search. TriggerPicked: a release
-	// the user chose under "Show options".
+	// the user chose (backfill's "Show options", a movie's "Choose a
+	// release").
 	TriggerBackfill = "backfill"
 	TriggerPicked   = "picked"
 	// TriggerRequest: a search another app (Seerr) asked for through the
@@ -287,11 +293,7 @@ func (s *Service) SearchVersion(ctx context.Context, versionID int64, trigger st
 
 func (s *Service) search(ctx context.Context, w wanted, trigger string) (string, error) {
 	t := w.v.Title
-	q := core.Query{
-		Type: "movie-search", Keywords: t.Title, Year: t.Year, IMDbID: t.IMDbID, TMDBID: t.TMDBID,
-		Categories: movieCategories,
-	}
-	rels, failures, err := s.idx.Search(ctx, q, indexer.SearchOptions{})
+	rels, failures, err := s.idx.Search(ctx, movieQuery(t), indexer.SearchOptions{})
 	if err != nil {
 		return "", err
 	}
