@@ -205,9 +205,17 @@ func NewVPN(cfg *WireGuardConfig, opts VPNOptions) (*VPNNetwork, error) {
 	v.local = pickLocal(addrs)
 	v.status = VPNStatus{State: VPNConnecting, Since: opts.Now()}
 	v.nudgedAt = v.status.Since
+	// wireguard-go's own lines: its errors at Warn, its chatter (handshakes
+	// sent and received, keepalives) only when the log level is Debug
+	// (Settings → General). Both are scrubbed of anything key-like, though
+	// wireguard-go itself only ever names a peer by a short public-key prefix.
 	wgLog := &device.Logger{
-		Verbosef: func(string, ...any) {},
-		Errorf:   func(format string, a ...any) { v.logger.Debug("wireguard: " + fmt.Sprintf(format, a...)) },
+		Verbosef: func(format string, a ...any) {
+			if v.logger.Enabled(context.Background(), slog.LevelDebug) {
+				v.logger.Debug("wireguard: " + scrub(fmt.Sprintf(format, a...)))
+			}
+		},
+		Errorf: func(format string, a ...any) { v.logger.Warn("wireguard: " + scrub(fmt.Sprintf(format, a...))) },
 	}
 	v.dev = device.NewDevice(tdev, opts.Bind, wgLog)
 	var b strings.Builder
@@ -321,8 +329,19 @@ func (v *VPNNetwork) lookupEndpoint() string {
 	}
 	ep := net.JoinHostPort(ip, strconv.Itoa(v.endpointPort))
 	v.mu.Lock()
+	old := v.endpoint
 	v.endpoint = ep
 	v.mu.Unlock()
+	// Whether a name points somewhere new after a drop is one of the two
+	// things these lines are for (the other is the handshake rhythm, in poll).
+	switch {
+	case old == "":
+		v.logger.Info("looked up the VPN server's address", "host", host, "address", ep)
+	case old != ep:
+		v.logger.Info("the VPN server's name now points elsewhere", "host", host, "address", ep, "previous", old)
+	default:
+		v.logger.Info("looked up the VPN server's address again; it hasn't changed", "host", host, "address", ep)
+	}
 	return ep
 }
 
@@ -372,15 +391,47 @@ func (v *VPNNetwork) poll() {
 	}
 	v.rxPrev, v.txPrev = rx, tx
 	v.status.RxBytes, v.status.TxBytes = v.rxAcc+rx, v.txAcc+tx
-	if !hs.IsZero() && !hs.Equal(v.status.LastHandshake) {
+	var prevHS time.Time
+	renewed := !hs.IsZero() && !hs.Equal(v.status.LastHandshake)
+	if renewed {
+		prevHS = v.status.LastHandshake
 		v.status.LastHandshake = hs
 		v.hsSeen = now
 		v.hsBase = max(time.Since(hs), 0)
 	}
 	state := v.stateAt(now)
+	gen := v.status.Generation
 	v.mu.Unlock()
+	if renewed {
+		v.logHandshake(hs, prevHS, gen)
+	}
 	v.setState(state, "")
 	v.nudge(state)
+}
+
+// logHandshake records a new handshake with the time since the one before,
+// measured on WireGuard's own timestamps. WireGuard renews a session about
+// every two minutes and gives up on it at three, so gaps near 120 s are the
+// normal rhythm, and a gap close to (or past) 180 s is a renewal that nearly
+// (or did) fail. gen is the connection the handshake belongs to (Generation,
+// before any change of state the handshake brings, which is logged next).
+func (v *VPNNetwork) logHandshake(hs, prev time.Time, gen uint64) {
+	if prev.IsZero() {
+		v.logger.Info("the VPN's first handshake")
+		return
+	}
+	gap := hs.Sub(prev).Round(time.Second)
+	v.logger.Info(fmt.Sprintf("the VPN's handshake renewed, %d s after the last", int64(gap/time.Second)),
+		"gap", gap.String(), "generation", gen)
+}
+
+// handshakeAgeLocked is how old the newest handshake is, as stateAt measures
+// it, for the log ("never" before the first). The caller holds the lock.
+func (v *VPNNetwork) handshakeAgeLocked(now time.Time) string {
+	if v.status.LastHandshake.IsZero() {
+		return "never"
+	}
+	return (v.hsBase + now.Sub(v.hsSeen)).Round(time.Second).String()
 }
 
 // stateAt works out the state from what the poller has seen. The caller holds
@@ -403,10 +454,12 @@ func (v *VPNNetwork) setState(s VPNState, problem string) {
 		v.mu.Unlock()
 		return
 	}
-	was := v.usableLocked()
+	now := v.opts.Now()
+	from, lasted := v.status.State, now.Sub(v.status.Since).Round(time.Second)
+	age, leak := v.handshakeAgeLocked(now), v.status.Leak
 	if v.status.State != s {
 		v.status.State = s
-		v.status.Since = v.opts.Now()
+		v.status.Since = now
 		v.nudgedAt = v.status.Since // a new handshake is tried a while after this
 		if s == VPNConnected {
 			v.everConnected = true
@@ -418,15 +471,18 @@ func (v *VPNNetwork) setState(s VPNState, problem string) {
 	if !v.usableLocked() {
 		toClose = v.takeLiveLocked()
 	}
-	changed := was != v.usableLocked()
+	gen := v.status.Generation
 	cbs := append([]func(){}, v.onChange...)
 	v.mu.Unlock()
 	for _, c := range toClose {
 		_ = c.Close()
 	}
-	if changed || len(toClose) > 0 {
-		v.logger.Info("the VPN's state changed", "state", string(s))
-	}
+	// Every change is logged, with what is needed to tell why: a handshake
+	// age near DownAfter means WireGuard stopped renewing the session, a
+	// problem means the tunnel itself failed, leak means the IP check.
+	v.logger.Info("the VPN's state changed", "state", string(s), "from", string(from), "lasted", lasted.String(),
+		"handshake_age", age, "leak", leak, "problem", problem, "generation", gen,
+		"connections_closed", len(toClose))
 	for _, f := range cbs {
 		f()
 	}
@@ -452,7 +508,9 @@ func (v *VPNNetwork) nudge(s VPNState) {
 	}
 	v.nudgedAt = v.opts.Now()
 	ep := v.endpoint
+	age := v.handshakeAgeLocked(v.nudgedAt)
 	v.mu.Unlock()
+	v.logger.Info("nudging the VPN to try a new handshake", "state", string(s), "handshake_age", age, "endpoint", ep)
 	if _, err := netip.ParseAddr(v.endpointHost); err != nil {
 		if n := v.lookupEndpoint(); n != "" {
 			ep = n
@@ -522,10 +580,18 @@ func (v *VPNNetwork) SetLeak(leak bool) {
 	if !v.usableLocked() {
 		toClose = v.takeLiveLocked()
 	}
+	state, age := v.status.State, v.handshakeAgeLocked(v.opts.Now())
 	cbs := append([]func(){}, v.onChange...)
 	v.mu.Unlock()
 	for _, c := range toClose {
 		_ = c.Close()
+	}
+	if leak {
+		v.logger.Warn("the IP check says the VPN shows the computer's own address; holding downloads",
+			"state", string(state), "handshake_age", age, "connections_closed", len(toClose))
+	} else {
+		v.logger.Info("the IP check says the VPN hides the computer's address again",
+			"state", string(state), "handshake_age", age)
 	}
 	for _, f := range cbs {
 		f()

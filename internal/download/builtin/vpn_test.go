@@ -1,15 +1,20 @@
 package builtin
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/netip"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -433,5 +438,101 @@ func TestVPNNetworkMethodsWorkThroughTheTunnelAndStopWhenItIsDown(t *testing.T) 
 	}
 	if v := rig.guard.Violations(); v != 0 {
 		t.Errorf("WireGuard's socket sent beyond the VPN server %d times", v)
+	}
+}
+
+// logBuffer collects log output written from several goroutines.
+type logBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (l *logBuffer) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.Write(p)
+}
+
+func (l *logBuffer) String() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.String()
+}
+
+// The log says why the tunnel changed state: the state line names the
+// state it left, how long that lasted and how old the handshake was; each
+// handshake, nudge, lookup of the server's name and leak flag gets its own
+// line. And no log line, at any level (wireguard-go's own Debug chatter
+// included), ever holds the private key.
+func TestVPNLogsWhyItsStateChangedAndNeverAKey(t *testing.T) {
+	w := newTunnelWorld(t)
+	logs := &logBuffer{}
+	port := strconv.Itoa(w.server.Port())
+	text := w.server.ConfigText(w.client, "vpn.endpoint-test.invalid:"+port)
+	rig := newVPNRig(t, text, func(o *VPNOptions) {
+		o.Logger = slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		o.ResolveEndpoint = func(context.Context, string) ([]string, error) { return []string{"127.0.0.1"}, nil }
+	})
+	waitState(t, rig.vpn, VPNConnected, 15*time.Second)
+
+	// The server goes away and the handshake grows old: a drop, then nudges.
+	w.server.Stop()
+	rig.jump(200 * time.Second)
+	waitState(t, rig.vpn, VPNDown, 10*time.Second)
+	eventuallyWithin(t, 10*time.Second, "a nudge to be logged", func() bool {
+		return strings.Contains(logs.String(), `msg="nudging the VPN to try a new handshake" component=vpn state=down`)
+	})
+	w.server.Start()
+	waitState(t, rig.vpn, VPNConnected, 30*time.Second)
+	eventuallyWithin(t, 5*time.Second, "the renewed handshake to be logged", func() bool {
+		return regexp.MustCompile(`msg="the VPN's handshake renewed, \d+ s after the last" component=vpn gap=\S+ generation=1`).MatchString(logs.String())
+	})
+	rig.vpn.SetLeak(true)
+	rig.vpn.SetLeak(false)
+	out := logs.String()
+
+	// The line for each change of state, with the state it left.
+	stateLine := regexp.MustCompile(`msg="the VPN's state changed" component=vpn state=(\S+) from=(\S+) lasted=(\S+) handshake_age=(\S+) leak=(\S+) problem=(\S*) generation=(\d+)`)
+	var flips []string
+	var downAge time.Duration
+	for _, m := range stateLine.FindAllStringSubmatch(out, -1) {
+		flips = append(flips, m[2]+"→"+m[1])
+		if m[1] == "down" {
+			if downAge, _ = time.ParseDuration(m[4]); m[5] != "false" || m[6] != `""` {
+				t.Errorf("down line: leak=%s problem=%s", m[5], m[6])
+			}
+		}
+	}
+	if got := strings.Join(flips, ","); got != "connecting→connected,connected→down,down→connected" {
+		t.Errorf("state lines: %s\n%s", got, out)
+	}
+	// The drop came from the handshake growing old: its age is past
+	// DownAfter (the clock jumped 200 s).
+	if downAge < DefaultDownAfter {
+		t.Errorf("the down line's handshake age is %s; want at least %s", downAge, DefaultDownAfter)
+	}
+
+	for _, want := range []string{
+		`msg="looked up the VPN server's address" component=vpn host=vpn.endpoint-test.invalid address=127.0.0.1:` + port,
+		`msg="the VPN's first handshake" component=vpn`,
+		`msg="looked up the VPN server's address again; it hasn't changed"`,
+		`endpoint=127.0.0.1:` + port,
+		`msg="the IP check says the VPN shows the computer's own address; holding downloads" component=vpn state=connected`,
+		`msg="the IP check says the VPN hides the computer's address again"`,
+		`level=DEBUG msg="wireguard: `, // wireguard-go's chatter, at Debug only
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the log lacks %q", want)
+		}
+	}
+
+	// Never a key: neither as the config writes it (base64) nor as
+	// WireGuard's settings text does (hex), nor that text's field names.
+	for _, secret := range []string{
+		vpntest.B64(w.client.Priv), hex.EncodeToString(w.client.Priv[:]), "private_key", "preshared_key",
+	} {
+		if strings.Contains(out, secret) {
+			t.Errorf("the log contains %q", secret)
+		}
 	}
 }
