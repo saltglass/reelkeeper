@@ -536,3 +536,69 @@ func TestVPNLogsWhyItsStateChangedAndNeverAKey(t *testing.T) {
 		}
 	}
 }
+
+// A connection through the tunnel forgets its addresses once closed (gVisor's
+// gonet answers nil), and anacrolix asks for the peer's address after closing
+// an incoming connection it turns away ("don't want conns right now", a peer
+// reconnecting too soon), which crashed the whole app in production
+// (2026-11-02, 1.4.0, every 20-40 s). The VPN's connections remember their
+// addresses from when they opened.
+func TestVPNIncomingPeersTurnedAwayDontCrashTheEngine(t *testing.T) {
+	w := newTunnelWorld(t)
+	rig := newVPNRig(t, w.config(), nil)
+	waitState(t, rig.vpn, VPNConnected, 15*time.Second)
+
+	t.Run("a closed connection still knows its addresses", func(t *testing.T) {
+		l, err := rig.vpn.Listen(context.Background(), "tcp", ":51998")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer l.Close()
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if c, err := w.server.Net().DialContext(ctx, "tcp", vpntest.ClientIP+":51998"); err == nil {
+				_, _ = c.Write(peerHello)
+				<-ctx.Done()
+				_ = c.Close()
+			}
+		}()
+		c, err := l.Accept()
+		if err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(200 * time.Millisecond) // the peer's hello arrives, unread
+		_ = c.Close()                      // so closing resets the connection
+		if ra, ok := c.RemoteAddr().(*net.TCPAddr); !ok || ra.IP.String() != vpntest.ServerIP {
+			t.Errorf("remote address after close = %v", c.RemoteAddr())
+		}
+		if la, ok := c.LocalAddr().(*net.TCPAddr); !ok || la.IP.String() != vpntest.ClientIP || la.Port != 51998 {
+			t.Errorf("local address after close = %v", c.LocalAddr())
+		}
+	})
+
+	t.Run("the engine survives peers it turns away", func(t *testing.T) {
+		const port = 51997
+		e, _ := engineOverVPN(t, rig, engineOpts{cfg: func(c *Config) { c.ListenPort = port }})
+		if e.Port() != port {
+			t.Fatalf("the engine listens on %d", e.Port())
+		}
+		// With no torrents the engine wants no connections, so every one
+		// is turned away; the same peer coming back quickly is too.
+		for range 20 {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			c, err := w.server.Net().DialContext(ctx, "tcp", vpntest.ClientIP+":"+strconv.Itoa(port))
+			cancel()
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, _ = c.Write(peerHello)
+			time.Sleep(50 * time.Millisecond)
+			_ = c.Close()
+		}
+		time.Sleep(500 * time.Millisecond) // a crash would end the test binary here
+	})
+}
+
+// peerHello is the start of a BitTorrent handshake, as a peer sends it.
+var peerHello = append([]byte{19}, "BitTorrent protocol"...)
