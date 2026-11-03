@@ -674,7 +674,11 @@ func (v *VPNNetwork) Dial(ctx context.Context, network, addr string) (net.Conn, 
 	if err != nil {
 		return nil, err
 	}
-	return v.wrapConn(c), nil
+	w, ok := v.wrapConn(c)
+	if !ok {
+		return nil, fmt.Errorf("dial %s %s: the connection closed as it opened", network, addr)
+	}
+	return w, nil
 }
 
 // Probe dials through the tunnel for checking what address the world sees. It
@@ -759,18 +763,33 @@ func (v *VPNNetwork) bindAddr(addr string) (netip.AddrPort, error) {
 	return netip.AddrPortFrom(ip, uint16(p)), nil
 }
 
-func (v *VPNNetwork) wrapConn(c net.Conn) net.Conn {
-	w := &vpnConn{Conn: c, v: v}
+// wrapConn wraps a tunnel connection, noting its addresses now: gVisor's
+// connections answer nil once they are reset or closed, and anacrolix asks a
+// connection it has just closed for its address (an incoming peer it turns
+// away), which crashed the app. ok is false for a connection that was already
+// gone (it is closed).
+func (v *VPNNetwork) wrapConn(c net.Conn) (_ net.Conn, ok bool) {
+	local, remote := c.LocalAddr(), c.RemoteAddr()
+	if local == nil || remote == nil {
+		_ = c.Close()
+		return nil, false
+	}
+	w := &vpnConn{Conn: c, v: v, local: local, remote: remote}
 	v.track(w)
-	return w
+	return w, true
 }
 
 // vpnConn refuses to send while the tunnel isn't up, and is closed when it
-// goes down.
+// goes down. Its addresses are the ones it opened with, so they never turn
+// nil.
 type vpnConn struct {
 	net.Conn
-	v *VPNNetwork
+	v             *VPNNetwork
+	local, remote net.Addr
 }
+
+func (c *vpnConn) LocalAddr() net.Addr  { return c.local }
+func (c *vpnConn) RemoteAddr() net.Addr { return c.remote }
 
 func (c *vpnConn) Write(b []byte) (int, error) {
 	if !c.v.Usable() {
@@ -800,7 +819,9 @@ func (l *vpnListener) Accept() (net.Conn, error) {
 			_ = c.Close()
 			continue
 		}
-		return l.v.wrapConn(c), nil
+		if w, ok := l.v.wrapConn(c); ok {
+			return w, nil
+		}
 	}
 }
 
