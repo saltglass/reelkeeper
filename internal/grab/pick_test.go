@@ -2,6 +2,7 @@ package grab
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -167,8 +168,14 @@ func TestGrabMovieChoiceOutsideProfile(t *testing.T) {
 			}
 		}
 		evs := f.events(t, EventGrabbed)
+		// Decoded rather than matched as text: Postgres stores it as jsonb
+		// and gives it back with its own spacing.
+		var data EventData
+		if len(evs) == 1 {
+			_ = json.Unmarshal([]byte(evs[0].Data), &data)
+		}
 		if len(evs) != 1 || evs[0].Message != res.Message || evs[0].SourceTitle != "Ronin.1998.GERMAN.1080p.BluRay.x264-GER" ||
-			!strings.Contains(evs[0].Data, `"trigger":"picked"`) {
+			data.Trigger != TriggerPicked {
 			t.Errorf("History = %+v", evs)
 		}
 		// One use only.
