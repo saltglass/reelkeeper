@@ -169,7 +169,7 @@ export function BuiltinVpnSection({
     <section aria-labelledby="dc-vpn-title" className="space-y-4 rounded-lg border p-4">
       <div className="space-y-1">
         <h3 id="dc-vpn-title" className="flex items-center gap-2 text-sm font-semibold">
-          <ShieldCheck aria-hidden="true" className="size-4 text-primary" />
+          <ShieldCheck aria-hidden="true" className="size-4 text-link" />
           VPN (WireGuard)
         </h3>
         <p className="text-sm text-muted-foreground">

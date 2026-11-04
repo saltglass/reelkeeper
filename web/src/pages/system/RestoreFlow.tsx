@@ -199,7 +199,7 @@ export function RestartOverlay({ destination = "/system/backups" }: { destinatio
       className="fixed inset-0 z-[70] grid place-items-center bg-background p-6"
     >
       <div className="max-w-md space-y-3 text-center">
-        <span className="spin spin-lg mx-auto text-primary" aria-hidden="true" />
+        <span className="spin spin-lg mx-auto text-link" aria-hidden="true" />
         <h2 id="restart-title" className="text-lg font-semibold">
           Restarting to restore…
         </h2>

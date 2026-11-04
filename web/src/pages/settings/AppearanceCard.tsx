@@ -131,7 +131,7 @@ export function AppearanceCard() {
                   <span>{t.name}</span>
                   {on && (
                     <Check
-                      className="animate-pop-in size-3.5 text-primary"
+                      className="animate-pop-in size-3.5 text-link"
                       strokeWidth={3}
                       aria-hidden="true"
                     />

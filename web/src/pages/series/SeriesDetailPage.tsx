@@ -742,7 +742,7 @@ function MonitorToggle({
       onClick={() => onChange(!on)}
       className={cn(
         "inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-muted disabled:opacity-50 [&_svg]:size-4",
-        on ? "text-primary" : "text-muted-foreground",
+        on ? "text-link" : "text-muted-foreground",
         className,
       )}
     >

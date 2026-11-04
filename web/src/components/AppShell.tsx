@@ -285,10 +285,10 @@ function NavRow({
         "group flex min-h-11 items-center gap-2 pr-5 text-[15px] text-foreground/90 hover:bg-background/60 hover:text-foreground",
         indent ? "pl-10 text-sm" : "pl-5",
       )}
-      activeProps={{ className: "bg-background !text-primary", "aria-current": "page" }}
+      activeProps={{ className: "bg-background !text-accent-foreground", "aria-current": "page" }}
     >
       <span
-        className="w-3 font-mono text-xs text-muted-foreground/70 group-aria-[current=page]:text-primary"
+        className="w-3 font-mono text-xs text-muted-foreground/70 group-aria-[current=page]:text-accent-foreground"
         aria-hidden="true"
       >
         ▸
@@ -358,7 +358,7 @@ function TopBar({ pathname, onMenu }: { pathname: string; onMenu: () => void }) 
   return (
     <header className="sticky top-0 z-40 flex min-h-14 flex-wrap items-center gap-2.5 border-b bg-background px-4 py-2 md:px-7">
       <Button variant="outline" className="md:hidden" aria-label="Open menu" onClick={onMenu}>
-        <span className="font-mono text-primary" aria-hidden="true">
+        <span className="font-mono text-link" aria-hidden="true">
           ▸
         </span>
         Menu

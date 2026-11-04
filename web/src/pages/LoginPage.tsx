@@ -221,7 +221,7 @@ export function LoginPage() {
                 Moving from another install?{" "}
                 <button
                   type="button"
-                  className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
+                  className="font-medium text-foreground underline underline-offset-4 hover:text-link"
                   onClick={() => {
                     setNotice(undefined);
                     setRestoring(true);

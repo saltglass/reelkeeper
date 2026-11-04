@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  * buttons use it (variant "tile"), and so do the icons that head settings
  * cards.
  */
-export const tileClass = "border bg-card text-primary";
+export const tileClass = "border bg-card text-link";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap text-[15px] font-semibold transition-colors duration-[calc(120ms*var(--m))] disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer",
@@ -20,7 +20,7 @@ const buttonVariants = cva(
         outline: "border border-input bg-transparent hover:bg-muted",
         ghost: "hover:bg-muted",
         link: "text-link underline-offset-4 hover:underline",
-        tile: cn(tileClass, "hover:border-input aria-pressed:border-primary"),
+        tile: cn(tileClass, "hover:border-input aria-pressed:border-ring"),
       },
       size: {
         default: "min-h-11 px-4",

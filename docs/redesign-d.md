@@ -102,6 +102,24 @@ work stopped.
   servers, Notifications, Security, Status, Tasks, Backups). Worth a look in
   `just dev` with real data.
 
+## Beta check (2026-11-04, `just dev` on the dev stack)
+
+Checked in Dark, Light and High contrast at 1440×900 and 390×844 (phone),
+device scale 1, plus a text-contrast scan of every page (WCAG AA: 4.5:1, or
+3:1 for large text). The sidebar's grey ▸ markers are decorative and stay
+below that on purpose.
+
+- [x] Orange text and icons on the sheet used the button orange
+      (`text-primary`), 1.8:1 on cream in Light: the current sidebar item,
+      settings-card and icon-button symbols, the monitored eye on a series,
+      the VPN shield, the restore spinner and checked profile chips. They
+      now use `text-link` (the current nav item `text-accent-foreground`, a
+      pressed tile's border `border-ring`).
+- [ ] A series' page
+- [ ] Settings → Download client, Media servers, Notifications, Security
+- [ ] System → Status, Tasks, Backups
+- [ ] README screenshots retaken from a library with real posters
+
 ## Checking it visually
 
 `dev/` has no mock server, so screenshots were taken with a throwaway
