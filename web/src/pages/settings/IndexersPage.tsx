@@ -208,7 +208,7 @@ function IndexerCard({
             <div className="text-xl font-semibold tabular-nums">
               {s.avgMs > 0 ? avgLabel(s.avgMs) : "–"}
             </div>
-            <div className="minibar mt-2 h-1 overflow-hidden rounded-full bg-muted">
+            <div className="minibar mt-2 h-1 overflow-hidden bg-muted">
               <i
                 className={lat.color}
                 style={{

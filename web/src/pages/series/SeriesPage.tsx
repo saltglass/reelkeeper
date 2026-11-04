@@ -2,12 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
 import { CircleAlert, LayoutGrid, List, Plus, Search, Tv } from "lucide-react";
 import { useMemo, useState } from "react";
-import { PosterCaption, PosterName, usePosterTitles } from "@/components/PosterTitle";
+import { frameNumber, PosterCaption, PosterName, usePosterTitles } from "@/components/PosterTitle";
 import { QualityLabel } from "@/components/QualityLabel";
+import { SummaryLine } from "@/components/SummaryLine";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { useInBatches } from "@/hooks/batches";
@@ -196,20 +196,7 @@ export function SeriesPage() {
         )}
       </div>
 
-      <dl className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {stats.map(([label, n], i) => (
-          <Card
-            key={label}
-            className="animate-rise px-4 py-3.5"
-            style={{ animationDelay: `calc(${40 + i * 50}ms * var(--m))` }}
-          >
-            <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-            <dd className="mt-1 text-[22px]/7 font-semibold tracking-tight tabular-nums">
-              {series.data ? n : "—"}
-            </dd>
-          </Card>
-        ))}
-      </dl>
+      <SummaryLine items={stats.map(([label, n]) => ({ label, n: series.data ? n : undefined }))} />
 
       <div className="mb-5 flex flex-wrap items-center gap-2.5">
         <div className="relative min-w-60 flex-[1_1_260px]">
@@ -273,7 +260,7 @@ export function SeriesPage() {
               aria-pressed={filter === c.value}
               onClick={() => setFilter(c.value)}
               className={cn(
-                "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-[background-color,border-color,transform] duration-[calc(200ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] hover:-translate-y-px active:scale-95",
+                "inline-flex min-h-9 cursor-pointer items-center gap-1.5 border px-3.5 text-sm font-medium transition-[background-color,border-color,transform] duration-[calc(200ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] hover:-translate-y-px active:scale-95",
                 filter === c.value
                   ? "border-primary/55 bg-accent text-accent-foreground"
                   : "bg-card hover:border-input",
@@ -312,10 +299,10 @@ export function SeriesPage() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : shown.length === 0 ? (
         <div className="flex flex-col items-center gap-3 px-6 py-14 text-center text-muted-foreground">
-          <span className="relative grid size-28 place-items-center rounded-full bg-accent text-accent-foreground motion-safe:animate-[float_calc(4s*var(--m))_ease-in-out_infinite]">
+          <span className="relative grid size-28 place-items-center bg-accent text-accent-foreground motion-safe:animate-[float_calc(4s*var(--m))_ease-in-out_infinite]">
             <span
               aria-hidden="true"
-              className="absolute -inset-2.5 rounded-full border border-dashed border-primary/50"
+              className="absolute -inset-2.5 border border-dashed border-primary/50"
             />
             <Tv className="size-10" />
           </span>
@@ -393,8 +380,8 @@ function EpisodeProgress({ s }: { s: SeriesSummary }) {
   );
 }
 
-const posterTile =
-  "poster-tile group relative block aspect-[2/3] overflow-hidden rounded-[10px] bg-card text-white shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+/** A poster frame. Keyboard focus and selection draw the grease pencil. */
+const posterTile = "grease group relative block aspect-[2/3] bg-muted text-white";
 
 const selectClass =
   "min-h-10 rounded-lg border border-input bg-card px-3 text-sm transition-[border-color,box-shadow] duration-[calc(200ms*var(--m))] focus:border-ring focus:ring-4 focus:ring-ring/20 focus-visible:outline-none";
@@ -411,58 +398,36 @@ function statusOf(s: SeriesSummary): Status {
 }
 
 const toneColor: Record<Status["tone"], string> = {
-  ok: "text-[#4ade80]",
-  warn: "text-[#fbbf24]",
-  idle: "text-white/70",
+  ok: "text-edge",
+  warn: "text-warning",
+  idle: "text-muted-foreground",
 };
 
 function PosterGrid({ series, sel }: { series: SeriesSummary[]; sel: Selection }) {
   const titles = usePosterTitles();
   return (
     <NearScreen>
-      <ul className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-x-5 gap-y-6 sm:grid-cols-[repeat(auto-fill,minmax(156px,1fr))]">
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-y-5 sm:grid-cols-[repeat(auto-fill,minmax(166px,1fr))]">
         {series.map((s, i) => {
           const status = statusOf(s);
           const p = seriesProgress(s);
+          // Nothing on disk yet: not exposed, so the artwork is greyed out.
+          const unexposed = status.tone === "idle";
           return (
-            <NearItem
-              key={s.id}
-              className="poster-item animate-rise space-y-2"
-              style={{ animationDelay: `calc(min(${i}, 14) * 45ms * var(--m))` }}
-            >
+            <NearItem key={s.id} className="poster-item film-cell flex flex-col gap-2">
               {(near) => {
                 const body = (
                   <>
-                    {s.posterPath ? (
-                      near && (
-                        <img
-                          src={tmdbImage(s.posterPath, "w342")}
-                          alt=""
-                          className="absolute inset-0 size-full object-cover transition-transform duration-[calc(900ms*var(--m))] group-hover:scale-[1.08]"
-                        />
-                      )
-                    ) : (
-                      <span
-                        aria-hidden="true"
-                        className="absolute inset-0 bg-gradient-to-br from-primary/60 to-[#22d3ee]/40"
-                      />
-                    )}
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "absolute inset-0 bg-gradient-to-t",
-                        s.posterPath
-                          ? "from-black/30 via-transparent to-black/35"
-                          : "from-black/85 via-black/10 to-black/30",
-                      )}
-                    />
+                    {s.posterPath
+                      ? near && (
+                          <img
+                            src={tmdbImage(s.posterPath, "w342")}
+                            alt=""
+                            className="absolute inset-0 size-full object-cover"
+                          />
+                        )
+                      : null}
                     <PosterName title={s.title} year={s.year} onTile={!titles && !s.posterPath} />
-                    <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full bg-[rgba(7,6,11,0.75)] px-2.5 py-[3px] text-xs/4 font-medium">
-                      <span className={toneColor[status.tone]}>
-                        <span className="block size-[7px] rounded-full bg-current" />
-                      </span>
-                      {status.label}
-                    </span>
                   </>
                 );
                 return (
@@ -473,20 +438,29 @@ function PosterGrid({ series, sel }: { series: SeriesSummary[]; sel: Selection }
                         aria-pressed={sel.selected.has(s.id)}
                         aria-label={`${s.title} (${s.year})`}
                         onClick={() => sel.toggle(s.id)}
+                        data-selected={sel.selected.has(s.id)}
                         className={cn(
                           posterTile,
                           "w-full cursor-pointer text-left",
-                          sel.selected.has(s.id) && "outline-3 outline-offset-2 outline-primary",
+                          unexposed && "unexposed",
                         )}
                       >
                         {body}
                         <PosterCheck checked={sel.selected.has(s.id)} />
                       </button>
                     ) : (
-                      <Link to="/series/$id" params={{ id: String(s.id) }} className={posterTile}>
+                      <Link
+                        to="/series/$id"
+                        params={{ id: String(s.id) }}
+                        className={cn(posterTile, unexposed && "unexposed")}
+                      >
                         {body}
                       </Link>
                     )}
+                    <p className={cn("edge-print truncate", toneColor[status.tone])}>
+                      <span className="text-edge">{frameNumber(i)} ▸</span> {s.year || "—"} ·{" "}
+                      {status.label}
+                    </p>
                     <div className="space-y-1.5">
                       <div className="space-y-1">
                         <Progress value={p.percent} label={`${s.title} episodes on disk`} />

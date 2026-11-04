@@ -2,12 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { CircleAlert, Film, LayoutGrid, List, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { PosterCaption, PosterName, usePosterTitles } from "@/components/PosterTitle";
+import { frameNumber, PosterCaption, PosterName, usePosterTitles } from "@/components/PosterTitle";
 import { QualityLabel } from "@/components/QualityLabel";
+import { SummaryLine } from "@/components/SummaryLine";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useInBatches } from "@/hooks/batches";
 import { queueQuery } from "@/hooks/downloads";
@@ -230,20 +230,7 @@ export function MoviesPage() {
         )}
       </div>
 
-      <dl className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {stats.map(([label, n], i) => (
-          <Card
-            key={label}
-            className="animate-rise px-4 py-3.5"
-            style={{ animationDelay: `calc(${40 + i * 50}ms * var(--m))` }}
-          >
-            <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-            <dd className="mt-1 text-[22px]/7 font-semibold tracking-tight tabular-nums">
-              {movies.data ? n : "—"}
-            </dd>
-          </Card>
-        ))}
-      </dl>
+      <SummaryLine items={stats.map(([label, n]) => ({ label, n: movies.data ? n : undefined }))} />
 
       <div className="mb-5 flex flex-wrap items-center gap-2.5">
         <div className="relative min-w-60 flex-[1_1_260px]">
@@ -307,7 +294,7 @@ export function MoviesPage() {
               aria-pressed={filter === c.value}
               onClick={() => setFilter(c.value)}
               className={cn(
-                "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-[background-color,border-color,transform] duration-[calc(200ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] hover:-translate-y-px active:scale-95",
+                "inline-flex min-h-9 cursor-pointer items-center gap-1.5 border px-3.5 text-sm font-medium transition-[background-color,border-color,transform] duration-[calc(200ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] hover:-translate-y-px active:scale-95",
                 filter === c.value
                   ? "border-primary/55 bg-accent text-accent-foreground"
                   : "bg-card hover:border-input",
@@ -366,11 +353,10 @@ export function MoviesPage() {
   );
 }
 
-const posterTile =
-  "poster-tile group relative block aspect-[2/3] overflow-hidden rounded-[10px] bg-card text-white shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+/** A poster frame. Keyboard focus and selection draw the grease pencil. */
+const posterTile = "grease group relative block aspect-[2/3] bg-muted text-white";
 
-const selectClass =
-  "min-h-10 rounded-lg border border-input bg-card px-3 text-sm transition-[border-color,box-shadow] duration-[calc(200ms*var(--m))] focus:border-ring focus:ring-4 focus:ring-ring/20 focus-visible:outline-none";
+const selectClass = "min-h-11 border border-input bg-background px-3 text-sm focus:border-ring";
 
 function VersionBadges({ m }: { m: MovieSummary }) {
   // What labels show is chosen in Settings → General. Until that loads,
@@ -423,10 +409,10 @@ function statusOf(m: MovieSummary, progress: number | undefined): Status {
 }
 
 const toneColor: Record<Status["tone"], string> = {
-  ok: "text-[#4ade80]",
-  warn: "text-[#fbbf24]",
-  live: "text-[#22d3ee]",
-  idle: "text-white/70",
+  ok: "text-edge",
+  warn: "text-warning",
+  live: "text-downloading",
+  idle: "text-muted-foreground",
 };
 
 function PosterGrid({
@@ -441,53 +427,27 @@ function PosterGrid({
   const titles = usePosterTitles();
   return (
     <NearScreen>
-      <ul className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-x-5 gap-y-6 sm:grid-cols-[repeat(auto-fill,minmax(156px,1fr))]">
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-y-5 sm:grid-cols-[repeat(auto-fill,minmax(166px,1fr))]">
         {movies.map((m, i) => {
           const progress = downloading.get(m.id);
           const status = statusOf(m, progress);
+          // Wanted titles are not exposed yet: their artwork is greyed out.
+          const unexposed = status.tone === "idle";
           return (
-            <NearItem
-              key={m.id}
-              className="poster-item animate-rise space-y-2"
-              style={{ animationDelay: `calc(min(${i}, 14) * 45ms * var(--m))` }}
-            >
+            <NearItem key={m.id} className="poster-item film-cell flex flex-col gap-2">
               {(near) => {
                 const body = (
                   <>
-                    {m.posterPath ? (
-                      near && (
-                        <img
-                          src={tmdbImage(m.posterPath, "w342")}
-                          alt=""
-                          className="absolute inset-0 size-full object-cover transition-transform duration-[calc(900ms*var(--m))] group-hover:scale-[1.08]"
-                        />
-                      )
-                    ) : (
-                      <span
-                        aria-hidden="true"
-                        className="absolute inset-0 bg-gradient-to-br from-primary/60 to-[#22d3ee]/40"
-                      />
-                    )}
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "absolute inset-0 bg-gradient-to-t",
-                        m.posterPath
-                          ? "from-black/30 via-transparent to-black/35"
-                          : "from-black/85 via-black/10 to-black/30",
-                      )}
-                    />
+                    {m.posterPath
+                      ? near && (
+                          <img
+                            src={tmdbImage(m.posterPath, "w342")}
+                            alt=""
+                            className="absolute inset-0 size-full object-cover"
+                          />
+                        )
+                      : null}
                     <PosterName title={m.title} year={m.year} onTile={!titles && !m.posterPath} />
-                    <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-full bg-[rgba(7,6,11,0.75)] px-2.5 py-[3px] text-xs/4 font-medium">
-                      <span
-                        className={cn(toneColor[status.tone], status.tone === "live" && "ping-dot")}
-                      >
-                        {status.tone !== "live" && (
-                          <span className="block size-[7px] rounded-full bg-current" />
-                        )}
-                      </span>
-                      {status.label}
-                    </span>
                     {progress !== undefined && (
                       <span
                         role="progressbar"
@@ -495,10 +455,10 @@ function PosterGrid({
                         aria-valuemin={0}
                         aria-valuemax={100}
                         aria-valuenow={Math.round(progress * 100)}
-                        className="absolute inset-x-0 bottom-0 h-1 bg-white/20"
+                        className="absolute inset-x-0 bottom-0 h-1.5 bg-black/60"
                       >
                         <i
-                          className="block h-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)] transition-[width] duration-[calc(900ms*var(--m))] ease-linear"
+                          className="block h-full bg-frame-lit [mask:repeating-linear-gradient(90deg,#000_0_8px,transparent_8px_10px)]"
                           style={{ width: `${Math.round(progress * 100)}%` }}
                         />
                       </span>
@@ -513,20 +473,31 @@ function PosterGrid({
                         aria-pressed={sel.selected.has(m.id)}
                         aria-label={`${m.title} (${m.year})`}
                         onClick={() => sel.toggle(m.id)}
+                        data-selected={sel.selected.has(m.id)}
                         className={cn(
                           posterTile,
                           "w-full cursor-pointer text-left",
-                          sel.selected.has(m.id) && "outline-3 outline-offset-2 outline-primary",
+                          unexposed && "unexposed",
                         )}
                       >
                         {body}
                         <PosterCheck checked={sel.selected.has(m.id)} />
                       </button>
                     ) : (
-                      <Link to="/movies/$id" params={{ id: String(m.id) }} className={posterTile}>
+                      <Link
+                        to="/movies/$id"
+                        params={{ id: String(m.id) }}
+                        className={cn(posterTile, unexposed && "unexposed")}
+                      >
                         {body}
                       </Link>
                     )}
+                    <p className={cn("edge-print truncate", toneColor[status.tone])}>
+                      <span className="text-edge">{frameNumber(i)} ▸</span> {m.year || "—"} ·{" "}
+                      {progress !== undefined
+                        ? `${Math.round(progress * 100)}%`
+                        : status.label}
+                    </p>
                     {titles && (
                       <PosterCaption to="/movies/$id" id={m.id} title={m.title} year={m.year} />
                     )}

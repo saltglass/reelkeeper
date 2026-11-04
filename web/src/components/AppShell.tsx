@@ -383,7 +383,7 @@ function TopBar({ pathname, onMenu }: { pathname: string; onMenu: () => void }) 
       <button
         type="button"
         onClick={openJumpTo}
-        className="ml-auto flex min-h-11 min-w-0 flex-1 items-center gap-2.5 border border-input bg-film px-3 text-sm text-muted-foreground hover:text-film-foreground sm:max-w-72 sm:min-w-60 sm:flex-none"
+        className="ml-auto flex min-h-11 min-w-0 flex-1 items-center gap-2.5 border border-input bg-background px-3 text-sm text-muted-foreground hover:text-foreground sm:max-w-72 sm:min-w-60 sm:flex-none"
       >
         <Search className="size-4 shrink-0" aria-hidden="true" />
         <span className="truncate">Jump to a page or movie</span>

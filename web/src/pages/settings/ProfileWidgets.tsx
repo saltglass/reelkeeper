@@ -50,11 +50,11 @@ export function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className="relative inline-grid max-w-full auto-cols-fr grid-flow-col self-start rounded-[10px] border bg-muted p-1 md:shrink-0"
+      className="relative inline-grid max-w-full auto-cols-fr grid-flow-col self-start border bg-muted p-1 md:shrink-0"
     >
       <span
         aria-hidden="true"
-        className="absolute top-1 bottom-1 left-1 rounded-[7px] bg-card shadow-xs ring-1 ring-border transition-transform duration-[calc(420ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.35,.64,1)]"
+        className="absolute top-1 bottom-1 left-1 bg-card shadow-xs ring-1 ring-border transition-transform duration-[calc(420ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.35,.64,1)]"
         style={{
           width: `calc((100% - 8px) / ${options.length})`,
           transform: `translateX(${index * 100}%)`,
@@ -72,7 +72,7 @@ export function Segmented<T extends string>({
           />
           <span
             className={cn(
-              "flex min-h-8 items-center justify-center rounded-[7px] px-2.5 text-xs font-medium whitespace-nowrap transition-colors duration-[calc(200ms*var(--m))] peer-focus-visible:ring-2 peer-focus-visible:ring-ring sm:px-3",
+              "flex min-h-8 items-center justify-center  px-2.5 text-xs font-medium whitespace-nowrap transition-colors duration-[calc(200ms*var(--m))] peer-focus-visible:ring-2 peer-focus-visible:ring-ring sm:px-3",
               value === o.value ? "text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -117,7 +117,7 @@ export function TagInput({
           {value.map((v) => (
             <li
               key={v}
-              className="inline-flex items-center gap-1 rounded-full border bg-muted px-2 py-0.5 text-xs"
+              className="inline-flex items-center gap-1 border bg-muted px-2 py-0.5 text-xs"
             >
               {v}
               <button

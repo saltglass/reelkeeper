@@ -30,6 +30,12 @@
   --card-foreground: #e6e2d8;
   --film: #0b0b0a;
   --film-foreground: #e6e2d8;
+  --film-muted: #9e998e;
+  --film-success: #8fcb86;
+  --film-warning: #e8c15a;
+  --film-downloading: #7fb2e5;
+  --film-destructive: #f0a04b;
+  --film-well: #2a2927;
   --sidebar: #121211;
   --muted: #2a2927;
   --muted-foreground: #9e998e;
@@ -65,6 +71,12 @@
   --card-foreground: #1b1a19;
   --film: #0b0b0a;
   --film-foreground: #e6e2d8;
+  --film-muted: #9e998e;
+  --film-success: #8fcb86;
+  --film-warning: #e8c15a;
+  --film-downloading: #7fb2e5;
+  --film-destructive: #f0a04b;
+  --film-well: #2a2927;
   --sidebar: #e4dfd5;
   --muted: #e0dbd0;
   --muted-foreground: #5a554d;
@@ -100,6 +112,12 @@
   --card-foreground: #ffffff;
   --film: #0a0a0a;
   --film-foreground: #ffffff;
+  --film-muted: #d4d4d8;
+  --film-success: #6ee7a0;
+  --film-warning: #fcd34d;
+  --film-downloading: #9ccaff;
+  --film-destructive: #ff8a8a;
+  --film-well: #1a1a1a;
   --sidebar: #000000;
   --muted: #1a1a1a;
   --muted-foreground: #d4d4d8;
@@ -452,6 +470,35 @@
  * Contact-sheet parts (docs/redesign-d.md). All static: nothing here
  * animates, so long lists and the poster grid stay cheap on phones.
  */
+
+/* Inside film, every colour switches to its on-film version, so text,
+   edge print and status stay readable on black in the light theme too. */
+.film,
+.film-v,
+.film-cell {
+  --foreground: var(--film-foreground);
+  --muted-foreground: var(--film-muted);
+  --edge: var(--edge-film);
+  --success: var(--film-success);
+  --warning: var(--film-warning);
+  --downloading: var(--film-downloading);
+  --destructive: var(--film-destructive);
+  --muted: var(--film-well);
+  --border: var(--sprocket);
+  --input: var(--film-muted);
+  color: var(--film-foreground);
+}
+
+/* One poster's cell in a grid: its own piece of film, with holes above and
+   below. Cells sit edge to edge, so each row of the grid reads as a strip. */
+.film-cell {
+  --holes: repeating-linear-gradient(90deg, transparent 0 9px, var(--sprocket) 9px 19px);
+  background:
+    var(--holes) 0 4px / 100% 9px no-repeat,
+    var(--holes) 0 calc(100% - 4px) / 100% 9px no-repeat,
+    var(--film);
+  padding: 20px 8px 20px;
+}
 
 /* A film strip: black stock with a row of sprocket holes along the top and
    bottom edges (.film) or down both sides (.film-v). The holes are

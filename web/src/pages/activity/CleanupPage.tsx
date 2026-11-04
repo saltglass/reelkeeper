@@ -241,7 +241,7 @@ function SeedingRow({
           label={`${Math.floor(progress * 100)}% of the way to the seeding goal`}
         />
       ) : (
-        <span aria-hidden="true" className="size-12 rounded-full border-4 border-muted" />
+        <span aria-hidden="true" className="size-12 border-4 border-muted" />
       )}
       <div className="min-w-0 space-y-0.5">
         <p className="font-semibold break-words">

@@ -83,7 +83,7 @@ export function MovieDetailPage() {
           className="absolute inset-0 bg-gradient-to-r from-card via-card/70 to-transparent"
         />
         <div className="relative flex flex-col gap-5 p-5 sm:flex-row">
-          <div className="aspect-[2/3] w-36 shrink-0 overflow-hidden rounded-[10px] border bg-muted shadow-lg sm:w-44">
+          <div className="aspect-[2/3] w-36 shrink-0 overflow-hidden border bg-muted shadow-lg sm:w-44">
             {m.posterPath && (
               <img
                 src={tmdbImage(m.posterPath, "w342")}

@@ -137,7 +137,7 @@ export function ProfileSimpleEditor({ options, value: v, onChange, errors, forMo
                   })
                 }
               />
-              <span className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-input bg-card px-3.5 text-sm font-medium transition-[background-color,border-color,color] duration-[calc(200ms*var(--m))] hover:bg-muted peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+              <span className="inline-flex min-h-9 items-center gap-1.5 border border-input bg-card px-3.5 text-sm font-medium transition-[background-color,border-color,color] duration-[calc(200ms*var(--m))] hover:bg-muted peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
                 {r.label}
               </span>
             </label>

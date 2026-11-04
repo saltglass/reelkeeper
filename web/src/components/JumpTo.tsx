@@ -122,7 +122,7 @@ export function JumpTo() {
         <DialogPrimitive.Overlay className="animate-fade-in fixed inset-0 z-50 bg-[rgba(5,4,10,.55)] backdrop-blur-[6px]" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
-          className="animate-pal-in fixed top-24 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[580px] -translate-x-1/2 overflow-hidden rounded-[14px] border bg-card shadow-md ring-1 ring-primary/20"
+          className="animate-pal-in fixed top-24 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[580px] -translate-x-1/2 overflow-hidden border bg-card shadow-md ring-1 ring-primary/20"
         >
           <DialogPrimitive.Title className="sr-only">Jump to</DialogPrimitive.Title>
           <div className="flex items-center gap-2.5 border-b px-4 text-muted-foreground">

@@ -41,11 +41,11 @@ export function PosterCaption({
   to,
   id,
   title,
-  year,
 }: {
   to: "/movies/$id" | "/series/$id";
   id: number;
   title: string;
+  /** Not shown: the year is in the edge print above the caption. */
   year?: number;
 }) {
   return (
@@ -56,8 +56,13 @@ export function PosterCaption({
       aria-hidden="true"
       className="block min-w-0 hover:underline"
     >
+      {/* The year is in the edge print above. */}
       <span className="line-clamp-2 text-sm/5 font-medium">{title}</span>
-      <span className="block text-xs/4 text-muted-foreground">{year || "—"}</span>
     </Link>
   );
+}
+
+/** A frame number as printed on a contact sheet: 1, 1A, 2, 2A… */
+export function frameNumber(i: number) {
+  return `${Math.floor(i / 2) + 1}${i % 2 ? "A" : ""}`;
 }

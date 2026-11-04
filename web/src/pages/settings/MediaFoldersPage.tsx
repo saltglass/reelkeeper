@@ -159,7 +159,7 @@ function RootCard({ root, index }: { root: RootFolder; index: number }) {
             <div
               role="img"
               aria-label={`Reelkeeper's files here are ${usedPct}% of the files plus free space`}
-              className="slib-bar flex h-2.5 overflow-hidden rounded-full bg-muted"
+              className="slib-bar flex h-2.5 overflow-hidden bg-muted"
             >
               <i className="bg-primary" style={{ width: `${usedPct}%` }} />
             </div>
@@ -169,7 +169,7 @@ function RootCard({ root, index }: { root: RootFolder; index: number }) {
                 {formatBytes(root.size)} of {noun} here
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-muted-foreground/40" aria-hidden="true" />
+                <span className="size-2 bg-muted-foreground/40" aria-hidden="true" />
                 {formatBytes(root.freeSpace)} free on the disk
               </span>
             </div>

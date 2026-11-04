@@ -36,10 +36,10 @@ export function ReviewPage() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : data.length === 0 ? (
         <div className="flex flex-col items-center gap-3 px-6 py-14 text-center text-muted-foreground">
-          <span className="relative grid size-28 place-items-center rounded-full bg-accent text-accent-foreground motion-safe:animate-[float_calc(4s*var(--m))_ease-in-out_infinite]">
+          <span className="relative grid size-28 place-items-center bg-accent text-accent-foreground motion-safe:animate-[float_calc(4s*var(--m))_ease-in-out_infinite]">
             <span
               aria-hidden="true"
-              className="absolute -inset-2.5 rounded-full border border-dashed border-primary/50"
+              className="absolute -inset-2.5 border border-dashed border-primary/50"
             />
             <Check className="size-10" />
           </span>

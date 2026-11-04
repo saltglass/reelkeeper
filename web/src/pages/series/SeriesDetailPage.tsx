@@ -116,7 +116,7 @@ export function SeriesDetailPage() {
           className="absolute inset-0 bg-gradient-to-r from-card via-card/70 to-transparent"
         />
         <div className="relative flex flex-col gap-5 p-5 sm:flex-row">
-          <div className="aspect-[2/3] w-36 shrink-0 overflow-hidden rounded-[10px] border bg-muted shadow-lg sm:w-44">
+          <div className="aspect-[2/3] w-36 shrink-0 overflow-hidden border bg-muted shadow-lg sm:w-44">
             {s.posterPath && (
               <img
                 src={tmdbImage(s.posterPath, "w342")}
@@ -607,7 +607,7 @@ function SeasonSection({
           <span className="mr-auto font-medium">{title}</span>
           <span
             className={cn(
-              "rounded-full border px-2.5 py-0.5 text-xs tabular-nums",
+              " border px-2.5 py-0.5 text-xs tabular-nums",
               !hideProgress && have > 0 && have >= aired.length && aired.length > 0
                 ? "border-success/40 bg-success/10 text-success"
                 : "text-muted-foreground",

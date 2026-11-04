@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, CircleAlert, CircleCheck, Info, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
+import { SummaryLine } from "@/components/SummaryLine";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { downloadClientQuery, queueQuery } from "@/hooks/downloads";
@@ -209,10 +210,7 @@ export function HomePage() {
                   {s.done ? (
                     <CircleCheck className="size-5 text-success" aria-hidden="true" />
                   ) : (
-                    <span
-                      className="size-5 rounded-full border-2 border-input"
-                      aria-hidden="true"
-                    />
+                    <span className="size-5 border-2 border-input" aria-hidden="true" />
                   )}
                   <span className={cn(s.done && "text-muted-foreground line-through")}>
                     {s.text}
@@ -255,21 +253,7 @@ export function HomePage() {
         )
       )}
 
-      <dl className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {numbers.map((x, i) => (
-          <Link key={x.label} to={x.to} className="group">
-            <Card
-              className="animate-rise px-4 py-3.5 transition-colors group-hover:border-input"
-              style={{ animationDelay: `calc(${40 + i * 50}ms * var(--m))` }}
-            >
-              <dt className="text-xs font-medium text-muted-foreground">{x.label}</dt>
-              <dd className="mt-1 text-[22px]/7 font-semibold tracking-tight tabular-nums">
-                {x.n ?? "—"}
-              </dd>
-            </Card>
-          </Link>
-        ))}
-      </dl>
+      <SummaryLine items={numbers.map((x) => ({ label: x.label, n: x.n, to: x.to }))} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section aria-labelledby="home-now" className="min-w-0 space-y-6">

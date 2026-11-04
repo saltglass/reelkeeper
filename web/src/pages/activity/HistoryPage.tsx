@@ -53,7 +53,7 @@ function Chip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex min-h-9 cursor-pointer items-center rounded-full border bg-card px-3.5 text-sm font-medium transition-[background-color,border-color,transform] duration-200 hover:-translate-y-px hover:border-input active:scale-95",
+        "inline-flex min-h-9 cursor-pointer items-center  border bg-card px-3.5 text-sm font-medium transition-[background-color,border-color,transform] duration-200 hover:-translate-y-px hover:border-input active:scale-95",
         active && "border-primary/55 bg-accent text-accent-foreground",
       )}
     >

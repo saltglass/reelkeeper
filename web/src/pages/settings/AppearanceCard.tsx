@@ -162,7 +162,7 @@ export function AppearanceCard() {
                   className="peer absolute inset-0 size-full cursor-pointer opacity-0"
                 />
                 <span
-                  className="block size-12 rounded-full ring-1 ring-border ring-offset-[3px] ring-offset-card transition-[transform,background-color] duration-[calc(320ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] peer-hover:scale-[1.08] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-ring"
+                  className="block size-12 ring-1 ring-border ring-offset-[3px] ring-offset-card transition-[transform,background-color] duration-[calc(320ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] peer-hover:scale-[1.08] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-ring"
                   style={{ background: appearance.customAccent }}
                 />
               </label>
@@ -186,7 +186,7 @@ export function AppearanceCard() {
                     aria-pressed={p.hex === accent}
                     onClick={() => update({ customAccent: p.hex })}
                     className={cn(
-                      "size-8 cursor-pointer rounded-full border-2 border-transparent transition-[transform,box-shadow] duration-[calc(300ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] hover:scale-[1.15]",
+                      "size-8 cursor-pointer  border-2 border-transparent transition-[transform,box-shadow] duration-[calc(300ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] hover:scale-[1.15]",
                       p.hex === accent &&
                         "ring-2 ring-foreground ring-offset-2 ring-offset-background",
                     )}
@@ -244,7 +244,7 @@ export function AppearanceCard() {
                 {checks.map((c) => (
                   <li key={c.label}>
                     <Badge variant={c.pass ? "success" : "warning"} className="px-2.5 py-1">
-                      <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+                      <span className="size-1.5 bg-current" aria-hidden="true" />
                       {c.label} {c.ratio.toFixed(1)}:1
                       <span className="sr-only">{c.pass ? " passes" : " falls short"}</span>
                     </Badge>

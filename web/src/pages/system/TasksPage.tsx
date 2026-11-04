@@ -241,7 +241,7 @@ function TaskRow({
         </p>
         {!active && share !== undefined && (
           <div
-            className="nextbar mt-2 h-1 max-w-sm overflow-hidden rounded-full bg-muted"
+            className="nextbar mt-2 h-1 max-w-sm overflow-hidden bg-muted"
             role="img"
             aria-label={`${Math.round(share * 100)}% of the wait until the next run has passed`}
           >
