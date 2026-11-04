@@ -366,7 +366,7 @@ function VersionBadges({ m }: { m: MovieSummary }) {
   const parts = labels.data?.parts ?? (labels.isError ? defaultLabelParts : undefined);
   if (!parts) return null;
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-x-3 gap-y-1">
       {m.versions.map((v) => {
         const pieces =
           v.files === 0
@@ -521,26 +521,30 @@ function MovieTable({
   sel: Selection;
 }) {
   return (
-    <div className="animate-rise overflow-x-auto rounded-lg border bg-card">
+    // The table sits on a strip of film; each row starts with its frame number.
+    <div className="film overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="border-b text-left text-xs text-muted-foreground">
+        <thead className="label-caps border-b text-left">
           <tr>
             {sel.selecting && (
               <th className="w-10 px-3 py-2">
                 <span className="sr-only">Selected</span>
               </th>
             )}
-            <th className="px-3 py-2 font-medium">Title</th>
-            <th className="px-3 py-2 font-medium">Year</th>
-            <th className="px-3 py-2 font-medium">Versions</th>
-            <th className="hidden px-3 py-2 text-right font-medium sm:table-cell">Size</th>
+            <th className="w-12 px-3 py-2 font-normal">
+              <span className="sr-only">Frame</span>
+            </th>
+            <th className="px-3 py-2 font-normal">Title</th>
+            <th className="px-3 py-2 font-normal">Year</th>
+            <th className="px-3 py-2 font-normal">Versions</th>
+            <th className="hidden px-3 py-2 text-right font-normal sm:table-cell">Size</th>
           </tr>
         </thead>
         <tbody className="divide-y">
-          {movies.map((m) => (
+          {movies.map((m, i) => (
             <tr key={m.id} className="hover:bg-muted/50">
               {sel.selecting && (
-                <td className="px-3 py-2">
+                <td className="px-3 py-3">
                   <input
                     type="checkbox"
                     className="size-4"
@@ -550,7 +554,12 @@ function MovieTable({
                   />
                 </td>
               )}
-              <td className="px-3 py-2">
+              <td className="edge-print px-3 py-3 align-top">{frameNumber(i)}</td>
+              {/* A selected row gets the grease-pencil loop around its title. */}
+              <td
+                className="grease grease-row px-3 py-3"
+                data-selected={sel.selecting && sel.selected.has(m.id)}
+              >
                 <Link
                   to="/movies/$id"
                   params={{ id: String(m.id) }}
@@ -564,11 +573,13 @@ function MovieTable({
                   </Badge>
                 )}
               </td>
-              <td className="px-3 py-2 text-muted-foreground">{m.year || "—"}</td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-3 font-mono text-[13px] text-muted-foreground">
+                {m.year || "—"}
+              </td>
+              <td className="px-3 py-3">
                 <VersionBadges m={m} />
               </td>
-              <td className="hidden px-3 py-2 text-right whitespace-nowrap text-muted-foreground sm:table-cell">
+              <td className="hidden px-3 py-3 text-right font-mono text-[13px] whitespace-nowrap text-muted-foreground sm:table-cell">
                 {totalSize(m) > 0 ? formatBytes(totalSize(m)) : "—"}
               </td>
             </tr>

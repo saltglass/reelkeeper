@@ -81,7 +81,8 @@ work stopped.
       styles/activity.css), stat cards replaced by `SummaryLine`, History (a
       `.film-v` strip with square markers), Wanted (titles on `.film`, posters
       `.unexposed`). Seeding & cleanup (lists on `.film`, the goal ring is now ten frames
-      lighting up, `GoalFrames`). Left: the Movies/Series table views,
+      lighting up, `GoalFrames`). The Movies/Series table views (on `.film`, frame numbers, mono
+      year and size, grease loop around a selected title). Left:
       a look over every settings page.
       Original plan: FilmStrip/Frame components; Movies and Series poster grids
       in strips with sprockets and edge print ("14 ▸ 1995 · 1080P", wanted
