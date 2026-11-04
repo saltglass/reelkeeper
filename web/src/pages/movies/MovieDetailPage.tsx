@@ -249,8 +249,13 @@ function VersionCard({
   });
 
   return (
-    <Card className="animate-rise">
+    // Each version is its own piece of film, with its state as edge print.
+    <Card className="film border-0">
       <CardHeader className="flex flex-row flex-wrap items-center gap-3">
+        <p className="edge-print basis-full">
+          {v.profileName} ▸ {qualityLabel(v) || "No quality yet"} ▸{" "}
+          {v.mediaFiles.length > 0 ? "On disk" : "Not on disk yet"}
+        </p>
         <CardTitle className="mr-auto">
           {v.profileName}
           {qualityLabel(v) && (

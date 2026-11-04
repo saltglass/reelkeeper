@@ -90,8 +90,9 @@ work stopped.
       progress as lit frames; grease-pencil focus.
 - [~] 5. Done: Home summary line and condensed headings, Login on film
       leader, Movie and Series detail heroes on `.film` with condensed titles.
-      Left: version cards as frames, episode rows on a vertical strip
-      (`.film-v`). Not yet seen in a screenshot: the detail pages (the mock
+      Version cards on `.film` with an edge-print line, episode lists on a
+      vertical strip (`.film-v`) with the episode code as edge print. The
+      series detail page was not screenshotted (no series in the mock). Not yet seen in a screenshot: the detail pages (the mock
       data in the throwaway screenshot script was too thin to render them).
 - [~] 6. CLAUDE.md Branding updated. Left: `just lint`, `just test`, screenshots at device scale 1 in dark,
       light and phone width; update CLAUDE.md (Branding section) and
