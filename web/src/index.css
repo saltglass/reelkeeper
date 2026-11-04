@@ -40,6 +40,7 @@
   --sidebar: #121211;
   --muted: #2a2927;
   --muted-foreground: #9e998e;
+  --placeholder: #9e998e;
   --border: #2b2a28;
   --input: #77736a;
   --ring: #f0a04b;
@@ -82,6 +83,7 @@
   --sidebar: #e4dfd5;
   --muted: #e0dbd0;
   --muted-foreground: #5a554d;
+  --placeholder: #5a554d;
   --border: #d3cdc1;
   --input: #77716a;
   --ring: #874d0b;
@@ -124,6 +126,9 @@
   --sidebar: #000000;
   --muted: #1a1a1a;
   --muted-foreground: #d4d4d8;
+  /* Dimmer than the white of a real value, so an example isn't mistaken
+     for a setting (still 7.8:1). */
+  --placeholder: #a1a1aa;
   --border: #a1a1aa;
   --input: #d4d4d8;
   --ring: #ffff66;
@@ -158,6 +163,7 @@
   --color-sidebar: var(--sidebar);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-placeholder: var(--placeholder);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

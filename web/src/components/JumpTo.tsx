@@ -142,7 +142,7 @@ export function JumpTo() {
                 setActive(0);
               }}
               onKeyDown={onKeyDown}
-              className="min-h-14 flex-1 border-0 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground"
+              className="min-h-14 flex-1 border-0 bg-transparent text-base text-foreground outline-none placeholder:text-placeholder"
             />
             <kbd className="rounded border px-1.5 text-xs">esc</kbd>
           </div>

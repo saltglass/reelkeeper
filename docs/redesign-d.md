@@ -47,6 +47,7 @@ work stopped.
 | sidebar | #121211 | #e4dfd5 | #000000 | sidebar, phone top bar |
 | muted | #2a2927 | #e0dbd0 | #1a1a1a | wells, unexposed frames |
 | muted-foreground | #9e998e | #5a554d | #d4d4d8 | secondary text |
+| placeholder | #9e998e | #5a554d | #a1a1aa | input placeholders |
 | border | #2b2a28 | #d3cdc1 | #a1a1aa | hairlines |
 | input | #77736a | #77716a | #d4d4d8 | control borders (3:1) |
 | ring | #f0a04b | #874d0b | #ffff66 | focus ring |
@@ -123,6 +124,11 @@ below that on purpose.
       than three choices now wrap into two columns below 640px; the chosen
       one is filled in place (no sliding indicator), and its badge takes the
       fill's text colour so it stays readable when chosen.
+- [x] High contrast: placeholders (examples such as
+      `http://192.168.1.30:8096`) were nearly as bright as real values, so an
+      unset Jellyfin or Plex looked filled in. New token `--placeholder`
+      (same as muted-foreground in Dark and Light; `#a1a1aa`, 7.8:1, in High
+      contrast), used by inputs and Jump to.
 - [ ] A series' page
 - [ ] Settings → Download client, Media servers, Notifications, Security
 - [ ] System → Status, Tasks, Backups
