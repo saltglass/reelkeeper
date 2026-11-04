@@ -74,7 +74,13 @@ work stopped.
 - [x] 3. Primitives in components/ui: button, badge (edge print), card (square,
       no shadow), input, switch, segmented, progress (frames), alert, dialog,
       dropdown, field; Toaster; PageHeader (condensed uppercase title).
-- [ ] 4. Film strips: FilmStrip/Frame components; Movies and Series poster grids
+- [~] 4. Film strips. Done: Movies and Series poster grids (`.film-cell`,
+      edge print, frame numbers via `frameNumber` in PosterTitle.tsx, wanted
+      artwork greyed with `.unexposed`, grease pencil on focus/selection),
+      Queue (one `.film` strip, numbered rows, frames-lighting progress in
+      styles/activity.css), stat cards replaced by `SummaryLine`. Left:
+      History and Wanted rows as frames, Seeding & cleanup, the table views.
+      Original plan: FilmStrip/Frame components; Movies and Series poster grids
       in strips with sprockets and edge print ("14 ▸ 1995 · 1080P", wanted
       frames greyed but titles legible); Queue/History/Wanted rows as frames;
       progress as lit frames; grease-pencil focus.
@@ -83,6 +89,15 @@ work stopped.
 - [ ] 6. `just lint`, `just test`, screenshots at device scale 1 in dark,
       light and phone width; update CLAUDE.md (Branding section) and
       docs/screenshots if they show the UI.
+
+## Checking it visually
+
+`dev/` has no mock server, so screenshots were taken with a throwaway
+Playwright script that runs `npx vite` (port 7676) and answers
+`/api/v1/*` with made-up data (poster images as flat SVG). Inside `.film`
+and `.film-cell` every colour switches to its on-film version (`--film-*`
+tokens), so text on black stays readable in the light theme; check new
+film-strip parts in Light as well as Dark.
 
 ## Resuming locally
 

@@ -31,7 +31,7 @@ import { formatBytes } from "@/lib/format";
 import { shortDuration } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/pages/PageHeader";
-import { MovieName, PosterThumb, posterKey, riseStyle, useLeaving, usePosters } from "./shared";
+import { MovieName, PosterThumb, posterKey, useLeaving, usePosters } from "./shared";
 
 /** Whether someone stopped the download before it finished. */
 export function isPaused(state: TorrentState): boolean {
@@ -152,7 +152,11 @@ export function QueuePage() {
               for what Reelkeeper has done lately.
             </Card>
           ) : (
-            <Card className="overflow-hidden">
+            <div className="film">
+              <p className="edge-print flex justify-between pb-1" aria-hidden="true">
+                <span>Reelkeeper 5063</span>
+                <span>Queue</span>
+              </p>
               <ul>
                 {rows.map(({ item, leaving }, i) => (
                   <QueueRow
@@ -168,7 +172,7 @@ export function QueuePage() {
                   />
                 ))}
               </ul>
-            </Card>
+            </div>
           )}
         </div>
       )}
@@ -251,11 +255,14 @@ function QueueRow({
   return (
     <li
       className={cn(
-        "q-row animate-rise grid grid-cols-[minmax(0,1fr)] items-start gap-x-4 gap-y-3 border-b px-4 py-4 last:border-b-0 sm:grid-cols-[2.75rem_minmax(0,1fr)_auto] sm:px-5",
+        "q-row grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-3 gap-y-3 border-t px-1 py-4 sm:grid-cols-[2rem_2.75rem_minmax(0,1fr)_auto] sm:gap-x-4 sm:px-2",
         leaving && "row-leave",
       )}
-      style={riseStyle(index)}
     >
+      {/* The frame number, as printed along the film's edge. */}
+      <span className="edge-print pt-0.5 text-[13px]" aria-hidden="true">
+        {String(index + 1).padStart(2, "0")}
+      </span>
       <PosterThumb path={poster} className="hidden sm:block" />
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
@@ -355,7 +362,12 @@ function QueueRow({
           </p>
         )}
       </div>
-      <div className={cn("flex flex-wrap gap-2", !symbols && "sm:flex-col")}>
+      <div
+        className={cn(
+          "col-start-2 flex flex-wrap gap-2 sm:col-start-auto",
+          !symbols && "sm:flex-col",
+        )}
+      >
         {failed && (
           <RowButton
             symbols={symbols}

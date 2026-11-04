@@ -1,9 +1,10 @@
 /* Styles for the redesigned activity pages (animations and effects Tailwind classes cannot express). Durations scale with --m (motion setting). */
 
 /* ---- Queue ---- */
+/* Progress as a strip of frames that light up as the download fills
+   (static: no shimmer, so a long queue costs nothing to draw). */
 .q-bar {
-  height: 8px;
-  border-radius: 999px;
+  height: 14px;
   background: var(--muted);
   overflow: hidden;
   position: relative;
@@ -11,34 +12,15 @@
 }
 .q-fill {
   height: 100%;
-  border-radius: inherit;
-  background: var(--downloading);
-  position: relative;
-  overflow: hidden;
+  background: var(--frame-lit);
+  mask: repeating-linear-gradient(90deg, #000 0 12px, transparent 12px 15px);
   transition: width calc(900ms * var(--m)) linear;
 }
-.q-fill::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
-  transform: translateX(-100%);
-  animation: q-shim calc(1.8s * var(--m)) linear infinite;
-}
 .q-fill.warn {
-  background-color: var(--warning);
-  background-image: repeating-linear-gradient(
-    45deg,
-    rgba(0, 0, 0, 0.2) 0 6px,
-    transparent 6px 12px
-  );
+  background: var(--warning);
 }
 .q-fill.done {
-  background: var(--success);
-}
-.q-fill.warn::after,
-.q-fill.done::after {
-  display: none;
+  background: var(--edge);
 }
 .q-indet {
   position: absolute;
@@ -46,14 +28,9 @@
   bottom: 0;
   left: 0;
   width: 30%;
-  border-radius: inherit;
-  background: var(--primary);
+  background: var(--frame-lit);
+  mask: repeating-linear-gradient(90deg, #000 0 12px, transparent 12px 15px);
   animation: q-indet calc(1.5s * var(--m)) ease-in-out infinite;
-}
-@keyframes q-shim {
-  to {
-    transform: translateX(100%);
-  }
 }
 @keyframes q-indet {
   from {

@@ -36,6 +36,7 @@
   --film-downloading: #7fb2e5;
   --film-destructive: #f0a04b;
   --film-well: #2a2927;
+  --film-link: #f0a04b;
   --sidebar: #121211;
   --muted: #2a2927;
   --muted-foreground: #9e998e;
@@ -77,6 +78,7 @@
   --film-downloading: #7fb2e5;
   --film-destructive: #f0a04b;
   --film-well: #2a2927;
+  --film-link: #f0a04b;
   --sidebar: #e4dfd5;
   --muted: #e0dbd0;
   --muted-foreground: #5a554d;
@@ -118,6 +120,7 @@
   --film-downloading: #9ccaff;
   --film-destructive: #ff8a8a;
   --film-well: #1a1a1a;
+  --film-link: #ffc266;
   --sidebar: #000000;
   --muted: #1a1a1a;
   --muted-foreground: #d4d4d8;
@@ -486,6 +489,12 @@
   --muted: var(--film-well);
   --border: var(--sprocket);
   --input: var(--film-muted);
+  --link: var(--film-link);
+  --ring: var(--film-link);
+  --accent-foreground: var(--film-link);
+  --card: var(--film);
+  --card-foreground: var(--film-foreground);
+  --background: var(--film);
   color: var(--film-foreground);
 }
 

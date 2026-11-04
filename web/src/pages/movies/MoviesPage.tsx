@@ -494,9 +494,7 @@ function PosterGrid({
                     )}
                     <p className={cn("edge-print truncate", toneColor[status.tone])}>
                       <span className="text-edge">{frameNumber(i)} ▸</span> {m.year || "—"} ·{" "}
-                      {progress !== undefined
-                        ? `${Math.round(progress * 100)}%`
-                        : status.label}
+                      {progress !== undefined ? `${Math.round(progress * 100)}%` : status.label}
                     </p>
                     {titles && (
                       <PosterCaption to="/movies/$id" id={m.id} title={m.title} year={m.year} />
