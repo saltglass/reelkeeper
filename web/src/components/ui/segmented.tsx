@@ -2,8 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 /**
- * A row of exactly-one-of choices with an indicator that slides to the chosen
- * one. Each choice is a button with aria-pressed, in a labelled group. A choice
+ * A row of exactly-one-of choices; the chosen one is filled, like a chip
+ * pressed down. Each choice is a button with aria-pressed, in a labelled group. A choice
  * may carry a small badge ("Experimental").
  */
 export function Segmented<T extends string>({
@@ -30,15 +30,15 @@ export function Segmented<T extends string>({
       role="group"
       aria-label={label}
       className={cn(
-        "relative inline-grid max-w-full auto-cols-fr grid-flow-col self-start rounded-[10px] border bg-muted p-1",
+        "relative inline-grid max-w-full auto-cols-fr grid-flow-col self-start border border-input",
         className,
       )}
     >
       <span
         aria-hidden="true"
-        className="absolute top-1 bottom-1 left-1 rounded-[7px] bg-card shadow-xs ring-1 ring-border transition-transform duration-[calc(420ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.35,.64,1)]"
+        className="absolute top-0 bottom-0 left-0 bg-foreground transition-transform duration-[calc(160ms*var(--m))]"
         style={{
-          width: `calc((100% - 8px) / ${options.length})`,
+          width: `calc(100% / ${options.length})`,
           transform: `translateX(${index * 100}%)`,
         }}
       />
@@ -49,8 +49,8 @@ export function Segmented<T extends string>({
           aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "relative z-[1] min-h-9 cursor-pointer rounded-[7px] px-1 text-[13px] sm:px-4 sm:text-sm font-medium transition-colors duration-[calc(200ms*var(--m))]",
-            o.value === value ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            "relative z-[1] min-h-11 cursor-pointer px-2 text-sm font-medium transition-colors duration-[calc(160ms*var(--m))] sm:px-4",
+            o.value === value ? "text-background" : "text-foreground/80 hover:text-foreground",
           )}
         >
           {o.label}

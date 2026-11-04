@@ -11,23 +11,22 @@ import { cn } from "@/lib/utils";
 export const tileClass = "border bg-card text-primary";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-[transform,box-shadow,background-color,border-color,color] duration-[calc(180ms*var(--m))] hover:-translate-y-px active:translate-y-0 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-[15px] font-semibold transition-colors duration-[calc(120ms*var(--m))] disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer",
   {
     variants: {
       variant: {
-        default:
-          "bg-primary text-primary-foreground hover:shadow-[0_8px_24px_-8px_color-mix(in_srgb,var(--primary)_80%,transparent)]",
+        default: "bg-primary text-primary-foreground hover:brightness-110",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-card hover:bg-muted",
+        outline: "border border-input bg-transparent hover:bg-muted",
         ghost: "hover:bg-muted",
         link: "text-link underline-offset-4 hover:underline",
         tile: cn(tileClass, "hover:border-input aria-pressed:border-primary"),
       },
       size: {
-        default: "min-h-10 px-4",
-        sm: "min-h-8 px-3 text-xs",
+        default: "min-h-11 px-4",
+        sm: "min-h-9 px-3 text-sm",
         lg: "min-h-11 px-6",
-        icon: "size-10",
+        icon: "size-11",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

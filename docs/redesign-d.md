@@ -71,7 +71,7 @@ work stopped.
 - [x] 2. Shell: AppShell sidebar (▸ markers, mono counts, Settings/System
       fold open only when inside them), top bar (breadcrumb `LIBRARY ▸ MOVIES`
       in mono), VPN indicator, Jump to, phone menu.
-- [ ] 3. Primitives in components/ui: button, badge (edge print), card (square,
+- [x] 3. Primitives in components/ui: button, badge (edge print), card (square,
       no shadow), input, switch, segmented, progress (frames), alert, dialog,
       dropdown, field; Toaster; PageHeader (condensed uppercase title).
 - [ ] 4. Film strips: FilmStrip/Frame components; Movies and Series poster grids
