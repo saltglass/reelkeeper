@@ -74,29 +74,33 @@ work stopped.
 - [x] 3. Primitives in components/ui: button, badge (edge print), card (square,
       no shadow), input, switch, segmented, progress (frames), alert, dialog,
       dropdown, field; Toaster; PageHeader (condensed uppercase title).
-- [~] 4. Film strips. Done: Movies and Series poster grids (`.film-cell`,
-      edge print, frame numbers via `frameNumber` in PosterTitle.tsx, wanted
-      artwork greyed with `.unexposed`, grease pencil on focus/selection),
-      Queue (one `.film` strip, numbered rows, frames-lighting progress in
-      styles/activity.css), stat cards replaced by `SummaryLine`, History (a
-      `.film-v` strip with square markers), Wanted (titles on `.film`, posters
-      `.unexposed`). Seeding & cleanup (lists on `.film`, the goal ring is now ten frames
-      lighting up, `GoalFrames`). The Movies/Series table views (on `.film`, frame numbers, mono
-      year and size, grease loop around a selected title). Left:
-      a look over every settings page.
-      Original plan: FilmStrip/Frame components; Movies and Series poster grids
-      in strips with sprockets and edge print ("14 ▸ 1995 · 1080P", wanted
-      frames greyed but titles legible); Queue/History/Wanted rows as frames;
-      progress as lit frames; grease-pencil focus.
-- [~] 5. Done: Home summary line and condensed headings, Login on film
-      leader, Movie and Series detail heroes on `.film` with condensed titles.
-      Version cards on `.film` with an edge-print line, episode lists on a
-      vertical strip (`.film-v`) with the episode code as edge print. The
-      series detail page was not screenshotted (no series in the mock). Not yet seen in a screenshot: the detail pages (the mock
-      data in the throwaway screenshot script was too thin to render them).
-- [~] 6. CLAUDE.md Branding updated. Left: `just lint`, `just test`, screenshots at device scale 1 in dark,
-      light and phone width; update CLAUDE.md (Branding section) and
-      docs/screenshots if they show the UI.
+- [x] 4. Film strips: Movies and Series poster grids (`.film-cell`, edge
+      print, frame numbers via `frameNumber` in PosterTitle.tsx, wanted
+      artwork greyed with `.unexposed`, grease pencil on focus/selection) and
+      table views (on `.film`, frame numbers, mono year and size); Queue (one
+      `.film` strip, numbered rows, progress as frames lighting up); History
+      (a `.film-v` strip with square markers); Wanted (titles on `.film`,
+      posters `.unexposed`); Seeding & cleanup (lists on `.film`, goal shown as
+      ten frames, `GoalFrames`). Stat cards became `SummaryLine`.
+- [x] 5. Home (summary line, condensed headings), Login (film leader), Movie
+      and Series pages (hero, versions and episode lists on film). Settings
+      and System pages use the restyled parts; the last old-look details went
+      (blurs, pulsing dot, Status heartbeat line and memory ring, bouncy
+      pop-ins).
+- [x] 6. CLAUDE.md Branding updated; Biome, tsc and Vitest pass (no Go code
+      changed). Screenshots checked at device scale 1 in Dark, Light, High
+      contrast and phone width for Home, Movies (posters and table), Queue,
+      History, Wanted, Seeding & cleanup, a movie's page, Settings → General
+      and Media folders, and Login.
+
+## Follow-ups
+
+- The README's screenshots (docs/screenshots/*.png) still show the old look.
+  Retake them from a real library (real posters) once this is merged.
+- Not seen in a screenshot, only covered by tests: a series' page and the
+  settings/system pages the mock data couldn't fill (Download client, Media
+  servers, Notifications, Security, Status, Tasks, Backups). Worth a look in
+  `just dev` with real data.
 
 ## Checking it visually
 
