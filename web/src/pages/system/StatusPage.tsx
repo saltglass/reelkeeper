@@ -6,15 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { indexersQuery } from "@/hooks/indexers";
 import { PageHeader } from "@/pages/PageHeader";
 
-const heartbeat =
-  "M0 24 H90 L102 24 L110 8 L120 40 L128 18 L136 24 H210 L222 24 L230 10 L240 38 L248 20 L256 24 H300";
-const line = {
-  fill: "none",
-  strokeWidth: 2,
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-} as const;
-
 export function StatusPage() {
   const { data, error } = useQuery({
     queryKey: ["system", "status"],
@@ -77,19 +68,9 @@ export function StatusPage() {
         <Card className="animate-rise">
           <CardContent className="space-y-0">
             <div className="text-xs text-muted-foreground">Running for</div>
-            <div className="mt-1 text-3xl font-bold tracking-tight tabular-nums">
+            <div className="mt-1 font-mono text-3xl tabular-nums">
               {formatDuration(data.uptimeSeconds)}
             </div>
-            <svg
-              viewBox="0 0 300 48"
-              width="100%"
-              height="48"
-              aria-hidden="true"
-              className="mt-3 block"
-            >
-              <path d={heartbeat} {...line} className="stroke-border" />
-              <path d={heartbeat} {...line} className="hb stroke-primary" />
-            </svg>
             <div className="text-xs text-muted-foreground">
               Started {new Date(data.startedAt).toLocaleString()}
             </div>
@@ -97,27 +78,22 @@ export function StatusPage() {
         </Card>
         <Card className="animate-rise" style={{ animationDelay: "calc(80ms * var(--m))" }}>
           <CardContent className="flex items-center gap-5">
-            <svg
-              width="104"
-              height="104"
-              viewBox="0 0 44 44"
+            {/* Memory as a strip of frames that light up, like the Queue. */}
+            <div
               role="img"
               aria-label={`${formatBytes(data.memory.heapBytes)} of ${formatBytes(data.memory.totalBytes)} in use`}
-              className="shrink-0"
+              className="grid h-10 w-32 shrink-0 grid-cols-10 gap-0.5 bg-film p-1"
             >
-              <circle cx="22" cy="22" r="16" fill="none" strokeWidth="4" className="stroke-muted" />
-              <circle
-                className="ring-fill stroke-primary"
-                cx="22"
-                cy="22"
-                r="16"
-                fill="none"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeDasharray={`${memShare * 100.5} 101`}
-                transform="rotate(-90 22 22)"
-              />
-            </svg>
+              {Array.from({ length: 10 }, (_, i) => (
+                <span
+                  // biome-ignore lint/suspicious/noArrayIndexKey: ten fixed frames
+                  key={i}
+                  className={
+                    i < Math.round(memShare * 10) ? "bg-frame-lit" : "bg-[var(--film-well)]"
+                  }
+                />
+              ))}
+            </div>
             <div>
               <div className="text-xs text-muted-foreground">Memory in use</div>
               <div className="text-xl font-semibold">{formatBytes(data.memory.heapBytes)}</div>

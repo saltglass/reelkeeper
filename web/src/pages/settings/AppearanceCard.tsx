@@ -12,12 +12,12 @@ const motionChoices: { value: Motion; label: string; help: string }[] = [
   {
     value: "lively",
     label: "Lively",
-    help: "Pages glide in, posters lift and shine, progress shimmers.",
+    help: "Pages fade in, and switches and menus move as you use them.",
   },
   {
     value: "subtle",
     label: "Subtle",
-    help: "Faster, quieter transitions. Ambient effects pause.",
+    help: "Faster, quieter transitions.",
   },
   {
     value: "off",

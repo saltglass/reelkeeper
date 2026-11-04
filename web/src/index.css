@@ -318,13 +318,6 @@
     opacity: 1;
   }
 }
-@keyframes ping {
-  75%,
-  100% {
-    transform: scale(2.8);
-    opacity: 0;
-  }
-}
 @keyframes eq {
   from {
     height: 3px;
@@ -353,22 +346,13 @@
   animation: pop-in calc(520ms * var(--m)) cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-/* A live dot: a dot with a ring that pulses outwards. */
+/* A live marker: a small square in the current colour. It stays still,
+   like the rest of the contact sheet; the words beside it say what's live. */
 .ping-dot {
-  position: relative;
   width: 7px;
   height: 7px;
-  border-radius: 50%;
   background: currentColor;
   flex: none;
-}
-.ping-dot::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: currentColor;
-  animation: ping calc(1.6s * var(--m)) cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 /* The sidebar's "downloading" equaliser. */

@@ -17,7 +17,7 @@
   }
 }
 .slib-pop {
-  animation: slib-pop calc(520ms * var(--m)) cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: slib-pop calc(520ms * var(--m)) ease-out both;
 }
 @keyframes slib-pop {
   from {

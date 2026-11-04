@@ -196,7 +196,7 @@ export function RestartOverlay({ destination = "/system/backups" }: { destinatio
       aria-modal="true"
       aria-labelledby="restart-title"
       aria-describedby="restart-text"
-      className="fixed inset-0 z-[70] grid place-items-center bg-background/95 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-[70] grid place-items-center bg-background p-6"
     >
       <div className="max-w-md space-y-3 text-center">
         <span className="spin spin-lg mx-auto text-primary" aria-hidden="true" />

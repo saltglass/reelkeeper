@@ -70,7 +70,7 @@ export function PosterCheck({ checked }: { checked: boolean }) {
     <span
       aria-hidden="true"
       className={cn(
-        "absolute top-2.5 right-2.5 grid size-6 place-items-center  border-2 border-white shadow-md",
+        "absolute top-2.5 right-2.5 grid size-6 place-items-center border-2 border-white shadow-md",
         checked ? "bg-primary text-primary-foreground" : "bg-black/40",
       )}
     >
