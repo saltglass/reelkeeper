@@ -103,7 +103,7 @@ export function SeriesDetailPage() {
         <ArrowLeft className="size-4" /> Series
       </Link>
 
-      <div className="animate-rise relative overflow-hidden rounded-xl border bg-card shadow-md">
+      <div className="film relative overflow-hidden">
         {s.backdropPath && (
           <img
             src={tmdbImage(s.backdropPath, "w1280")}
@@ -111,12 +111,9 @@ export function SeriesDetailPage() {
             className="absolute inset-0 size-full object-cover opacity-20"
           />
         )}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-r from-card via-card/70 to-transparent"
-        />
-        <div className="relative flex flex-col gap-5 p-5 sm:flex-row">
-          <div className="aspect-[2/3] w-36 shrink-0 overflow-hidden border bg-muted shadow-lg sm:w-44">
+        <div aria-hidden="true" className="absolute inset-0 bg-film/75" />
+        <div className="relative flex flex-col gap-5 px-2 py-3 sm:flex-row">
+          <div className="aspect-[2/3] w-36 shrink-0 overflow-hidden bg-muted sm:w-44">
             {s.posterPath && (
               <img
                 src={tmdbImage(s.posterPath, "w342")}
@@ -127,7 +124,9 @@ export function SeriesDetailPage() {
           </div>
           <div className="min-w-0 space-y-3">
             <div>
-              <h1 className="text-2xl font-semibold">{s.title}</h1>
+              <h1 className="font-condensed text-[44px]/none font-bold tracking-[0.02em] uppercase">
+                {s.title}
+              </h1>
               {s.originalTitle && s.originalTitle !== s.title && (
                 <p className="text-sm text-muted-foreground">{s.originalTitle}</p>
               )}

@@ -78,15 +78,19 @@ work stopped.
       edge print, frame numbers via `frameNumber` in PosterTitle.tsx, wanted
       artwork greyed with `.unexposed`, grease pencil on focus/selection),
       Queue (one `.film` strip, numbered rows, frames-lighting progress in
-      styles/activity.css), stat cards replaced by `SummaryLine`. Left:
-      History and Wanted rows as frames, Seeding & cleanup, the table views.
+      styles/activity.css), stat cards replaced by `SummaryLine`, History (a
+      `.film-v` strip with square markers), Wanted (titles on `.film`, posters
+      `.unexposed`). Left: Seeding & cleanup, the Movies/Series table views,
+      a look over every settings page.
       Original plan: FilmStrip/Frame components; Movies and Series poster grids
       in strips with sprockets and edge print ("14 ▸ 1995 · 1080P", wanted
       frames greyed but titles legible); Queue/History/Wanted rows as frames;
       progress as lit frames; grease-pencil focus.
-- [~] 5. Done: Home summary line, Login on film leader. Left: Home section
-      headings (custom h2s, not yet condensed), Movie and Series detail pages
-      (versions as frames, episode rows on a vertical strip `.film-v`).
+- [~] 5. Done: Home summary line and condensed headings, Login on film
+      leader, Movie and Series detail heroes on `.film` with condensed titles.
+      Left: version cards as frames, episode rows on a vertical strip
+      (`.film-v`). Not yet seen in a screenshot: the detail pages (the mock
+      data in the throwaway screenshot script was too thin to render them).
 - [~] 6. CLAUDE.md Branding updated. Left: `just lint`, `just test`, screenshots at device scale 1 in dark,
       light and phone width; update CLAUDE.md (Branding section) and
       docs/screenshots if they show the UI.
