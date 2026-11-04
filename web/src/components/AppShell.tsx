@@ -169,9 +169,6 @@ export function AppShell() {
       </Dialog>
 
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <div className="page-glow" aria-hidden="true">
-          <span />
-        </div>
         <TopBar pathname={pathname} onMenu={() => setMenuOpen(true)} />
         <main
           // A new key per page replays the entrance animation.
@@ -203,7 +200,7 @@ function Sidebar({ name }: { name: string }) {
         <Link to="/" className="group flex items-center gap-2.5 rounded-md px-2.5">
           <Logo className="size-8 transition-transform duration-[calc(500ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] group-hover:scale-110 group-hover:-rotate-6" />
           <span className="flex min-w-0 flex-col">
-            <span className="font-wordmark truncate text-[28px] leading-none tracking-wide">
+            <span className="font-condensed truncate text-[26px] leading-none font-semibold tracking-[0.04em] uppercase">
               {name}
             </span>
             {status?.version && (

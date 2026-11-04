@@ -1,22 +1,14 @@
-import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * The Reelkeeper mark: a strip of film that ends as a bookmark. Its gradient
- * follows the theme's brand colours (--brand-from to --brand-to). The browser
- * icon is a fixed copy in public/brand/reelkeeper.svg.
+ * The Reelkeeper mark: a strip of film that ends as a bookmark, in one
+ * colour (--logo, orange in the dark theme). The browser icon is a fixed copy
+ * in public/brand/reelkeeper.svg.
  */
 export function Logo({ className }: { className?: string }) {
-  const id = useId();
   return (
     <svg viewBox="0 0 64 64" aria-hidden="true" className={cn("shrink-0", className)}>
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" style={{ stopColor: "var(--brand-from)" }} />
-          <stop offset="1" style={{ stopColor: "var(--brand-to)" }} />
-        </linearGradient>
-      </defs>
-      <path fill={`url(#${id})`} fillRule="evenodd" d={markPath} />
+      <path fill="var(--logo)" fillRule="evenodd" d={markPath} />
     </svg>
   );
 }

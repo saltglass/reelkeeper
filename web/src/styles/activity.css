@@ -12,7 +12,7 @@
 .q-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--brand-from), var(--brand-to));
+  background: var(--downloading);
   position: relative;
   overflow: hidden;
   transition: width calc(900ms * var(--m)) linear;

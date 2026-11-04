@@ -15,7 +15,14 @@ work stopped.
   stay black (a printed contact sheet). `contrast` = High contrast in D's
   style, 7:1. `midnight`, `ember`, `moss` and `paper` are removed; a saved
   dark one falls back to `dark`, `paper` to `light`. The page glow and its
-  setting are removed. "Match system" and the Custom accent stay.
+  setting are removed. "Match system" and the Custom accent stay; Custom now
+  only swaps the orange (buttons, links, edge print, focus ring, logo).
+- CSS helpers in index.css: `.film` / `.film-v` (strips with sprocket holes),
+  `.edge-print`, `.label-caps`, `.grease` / `.grease-row` (red loop on
+  `:focus-visible` or `data-selected="true"`), `.unexposed` (wanted artwork).
+  Tailwind: `bg-film text-film-foreground`, `text-edge`, `text-edge-film`,
+  `font-condensed`, `font-mono`, `bg-sidebar`, `text-downloading`. All
+  `rounded-*` radii are 0 and `shadow-xs/sm/md` are none via the theme.
 - Logo: same shape (`Logo.tsx`), one colour (`--logo`, orange in dark). The
   gradient tokens `--brand-from/--brand-to` are removed from the UI.
 - Fonts, self-hosted with @fontsource (SIL OFL): Barlow (interface), Barlow
@@ -34,22 +41,23 @@ work stopped.
 |---|---|---|---|---|
 | background | #1b1a19 | #efebe3 | #000000 | the sheet |
 | foreground | #e6e2d8 | #1b1a19 | #ffffff | text |
-| card | #0b0b0a | #0b0b0a | #0a0a0a | film: strips, raised panels |
-| card-foreground | #e6e2d8 | #e6e2d8 | #ffffff | text on film |
+| card | #0b0b0a | #f7f4ee | #0a0a0a | raised panels (cards, menus) |
+| card-foreground | #e6e2d8 | #1b1a19 | #ffffff | text on panels |
+| film / film-foreground | #0b0b0a / #e6e2d8 | same | #0a0a0a / #ffffff | film strips (black in every theme) |
 | sidebar | #121211 | #e4dfd5 | #000000 | sidebar, phone top bar |
 | muted | #2a2927 | #e0dbd0 | #1a1a1a | wells, unexposed frames |
-| muted-foreground | #9e998e | #5f5a52 | #d4d4d8 | secondary text |
+| muted-foreground | #9e998e | #5a554d | #d4d4d8 | secondary text |
 | border | #2b2a28 | #d3cdc1 | #a1a1aa | hairlines |
-| input | #77736a | #857f73 | #d4d4d8 | control borders (3:1) |
-| ring | #f0a04b | #9a5a12 | #ffff66 | focus ring |
+| input | #77736a | #77716a | #d4d4d8 | control borders (3:1) |
+| ring | #f0a04b | #874d0b | #ffff66 | focus ring |
 | primary | #f0a04b | #f0a04b | #ffc266 | main button fill |
 | primary-foreground | #1a1208 | #1a1208 | #000000 | text on primary |
-| accent / accent-foreground | #2a2927 / #f0a04b | #e0dbd0 / #9a5a12 | #1a1a1a / #ffc266 | current nav item |
-| link | #f0a04b | #9a5a12 | #ffc266 | links on the sheet |
-| edge | #e08a2e | #9a5a12 | #ffb060 | edge print on the sheet |
+| accent / accent-foreground | #2a2927 / #f0a04b | #e0dbd0 / #874d0b | #1a1a1a / #ffc266 | current nav item |
+| link | #f0a04b | #874d0b | #ffc266 | links on the sheet |
+| edge | #e08a2e | #874d0b | #ffb060 | edge print on the sheet |
 | edge-film | #e08a2e | #e08a2e | #ffb060 | edge print on film |
 | selection | #e5483b | #c8352a | #ff6b5e | grease pencil (marks only) |
-| destructive | #f0a04b | #a8341b | #ff8a8a | failed / remove |
+| destructive | #f0a04b | #9e3019 | #ff8a8a | failed / remove |
 | success | #8fcb86 | #2e6b37 | #6ee7a0 | |
 | warning | #e8c15a | #7a5800 | #fcd34d | |
 | downloading | #7fb2e5 | #1f5f99 | #9ccaff | downloading only |
@@ -57,7 +65,7 @@ work stopped.
 
 ## Steps
 
-- [ ] 1. Foundations: fonts, tokens, themes (index.css, hooks/theme.ts,
+- [x] 1. Foundations: fonts, tokens, themes (index.css, hooks/theme.ts,
       web/index.html, AppearanceCard, theme tests), remove glow/gradients,
       Logo one colour.
 - [ ] 2. Shell: AppShell sidebar (▸ markers, mono counts, Settings/System

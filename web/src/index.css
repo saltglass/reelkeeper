@@ -3,9 +3,9 @@
 /*
  * Theme tokens. All colours in the UI come from these variables, so a
  * public release can be rebranded by changing these blocks (and the files in
- * public/brand/ and components/Logo.tsx). The default, Reelkeeper Dark:
- * near-black #07060b, violet #8b5cf6 to cyan #22d3ee (chosen from the
- * redesign prototype).
+ * public/brand/). The look is a photographer's contact sheet (direction D,
+ * docs/redesign-d.md): a warm dark sheet, black film strips with sprocket
+ * holes, orange edge print, and a red grease pencil for the selected item.
  *
  * One theme is active at a time, chosen with data-theme on <html> (see
  * src/hooks/theme.ts). Every theme defines the same names. Every text pair
@@ -13,197 +13,117 @@
  * get the .dark class. The theme ids are listed here, in theme.ts and in the
  * script in web/index.html; keep the three in step (theme.test.tsx checks
  * theme.ts).
+ *
+ * Film (--film) stays black in every theme: the light theme is a contact
+ * sheet printed on cream paper, so text on film uses --film-foreground and
+ * edge print on film uses --edge-film. --card is a raised panel (settings
+ * cards, menus): black film in the dark themes, lighter paper in light.
  */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Reelkeeper Dark (the default) */
+/* Reelkeeper Dark (the default): the contact sheet. */
 :root,
 [data-theme="dark"] {
-  --background: #07060b;
-  --foreground: #ece9f5;
-  --card: #110f1c;
-  --muted: #1a1727;
-  --muted-foreground: #a8a3ba;
-  --border: #262236;
-  --input: #6f6890;
-  --ring: #a78bfa;
-  --primary: #8b5cf6;
-  --primary-foreground: #0b0713;
-  --accent: #221c38;
-  --accent-foreground: #ddd6fe;
-  --destructive: #f87171;
-  --destructive-foreground: #1a0707;
-  --success: #4ade80;
-  --warning: #fbbf24;
-  --link: #a78bfa;
-  --brand-from: #8b5cf6;
-  --brand-to: #22d3ee;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --background: #1b1a19;
+  --foreground: #e6e2d8;
+  --card: #0b0b0a;
+  --card-foreground: #e6e2d8;
+  --film: #0b0b0a;
+  --film-foreground: #e6e2d8;
+  --sidebar: #121211;
+  --muted: #2a2927;
+  --muted-foreground: #9e998e;
+  --border: #2b2a28;
+  --input: #77736a;
+  --ring: #f0a04b;
+  --primary: #f0a04b;
+  --primary-foreground: #1a1208;
+  --accent: #2a2927;
+  --accent-foreground: #f0a04b;
+  --destructive: #f0a04b;
+  --destructive-foreground: #1a1208;
+  --success: #8fcb86;
+  --warning: #e8c15a;
+  --link: #f0a04b;
+  --edge: #e08a2e;
+  --edge-film: #e08a2e;
+  --selection: #e5483b;
+  --downloading: #7fb2e5;
+  --sprocket: #33312e;
+  --frame-lit: #e6e2d8;
+  --logo: #f0a04b;
+  --shadow-card: none;
   --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.6);
-  /* Strength of the colour glow behind the top of each page. */
-  --glow-alpha: 0.22;
   color-scheme: dark;
 }
 
-/* Reelkeeper Light */
+/* Reelkeeper Light: the same contact sheet printed on cream paper. */
 [data-theme="light"] {
-  --background: #f7f7fa;
-  --foreground: #17141f;
-  --card: #ffffff;
-  --muted: #efeef4;
-  --muted-foreground: #5f5b6e;
-  --border: #e2e0ea;
-  --input: #8a859c;
-  --ring: #6d28d9;
-  --primary: #7c3aed;
-  --primary-foreground: #ffffff;
-  --accent: #ede9fe;
-  --accent-foreground: #4c1d95;
-  --destructive: #dc2626;
+  --background: #efebe3;
+  --foreground: #1b1a19;
+  --card: #f7f4ee;
+  --card-foreground: #1b1a19;
+  --film: #0b0b0a;
+  --film-foreground: #e6e2d8;
+  --sidebar: #e4dfd5;
+  --muted: #e0dbd0;
+  --muted-foreground: #5a554d;
+  --border: #d3cdc1;
+  --input: #77716a;
+  --ring: #874d0b;
+  --primary: #f0a04b;
+  --primary-foreground: #1a1208;
+  --accent: #e0dbd0;
+  --accent-foreground: #874d0b;
+  --destructive: #9e3019;
   --destructive-foreground: #ffffff;
-  --success: #15803d;
-  --warning: #b45309;
-  --link: #6d28d9;
-  --brand-from: #8b5cf6;
-  --brand-to: #22d3ee;
-  --shadow-card: 0 1px 2px rgba(23, 20, 31, 0.06);
-  --shadow-pop: 0 12px 32px rgba(23, 20, 31, 0.14);
-  --glow-alpha: 0.16;
+  --success: #2e6b37;
+  --warning: #7a5800;
+  --link: #874d0b;
+  --edge: #874d0b;
+  --edge-film: #e08a2e;
+  --selection: #c8352a;
+  --downloading: #1f5f99;
+  --sprocket: #33312e;
+  --frame-lit: #e6e2d8;
+  --logo: #b8631a;
+  --shadow-card: none;
+  --shadow-pop: 0 12px 32px rgba(27, 26, 25, 0.22);
   color-scheme: light;
 }
 
-/* Midnight */
-[data-theme="midnight"] {
-  --background: #050b14;
-  --foreground: #e6eef9;
-  --card: #0c1626;
-  --muted: #14223a;
-  --muted-foreground: #9fb1cc;
-  --border: #1e3050;
-  --input: #5f7aa3;
-  --ring: #60a5fa;
-  --primary: #3b82f6;
-  --primary-foreground: #04101f;
-  --accent: #12284a;
-  --accent-foreground: #bfdbfe;
-  --destructive: #f87171;
-  --destructive-foreground: #1a0707;
-  --success: #4ade80;
-  --warning: #fbbf24;
-  --link: #7db3fa;
-  --brand-from: #3b82f6;
-  --brand-to: #2dd4bf;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.6);
-  --glow-alpha: 0.22;
-  color-scheme: dark;
-}
-
-/* Ember */
-[data-theme="ember"] {
-  --background: #0c0706;
-  --foreground: #f6ebe4;
-  --card: #17100d;
-  --muted: #241915;
-  --muted-foreground: #b9a89e;
-  --border: #33241d;
-  --input: #8a6f60;
-  --ring: #fb923c;
-  --primary: #f97316;
-  --primary-foreground: #1a0a02;
-  --accent: #33190d;
-  --accent-foreground: #fed7aa;
-  --destructive: #f87171;
-  --destructive-foreground: #1a0707;
-  --success: #4ade80;
-  --warning: #fbbf24;
-  --link: #fb923c;
-  --brand-from: #f97316;
-  --brand-to: #f43f5e;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.6);
-  --glow-alpha: 0.2;
-  color-scheme: dark;
-}
-
-/* Moss */
-[data-theme="moss"] {
-  --background: #060b08;
-  --foreground: #e8f2ea;
-  --card: #0d1710;
-  --muted: #16231a;
-  --muted-foreground: #9db3a2;
-  --border: #1f3326;
-  --input: #5f8068;
-  --ring: #4ade80;
-  --primary: #22c55e;
-  --primary-foreground: #04140a;
-  --accent: #133020;
-  --accent-foreground: #bbf7d0;
-  --destructive: #f87171;
-  --destructive-foreground: #1a0707;
-  --success: #86efac;
-  --warning: #fbbf24;
-  --link: #4ade80;
-  --brand-from: #22c55e;
-  --brand-to: #a3e635;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.6);
-  --glow-alpha: 0.2;
-  color-scheme: dark;
-}
-
-/* Paper */
-[data-theme="paper"] {
-  --background: #faf6f0;
-  --foreground: #2b2118;
-  --card: #fffdf9;
-  --muted: #f0e9de;
-  --muted-foreground: #6a5c4e;
-  --border: #e4dacb;
-  --input: #8c7b69;
-  --ring: #9a3412;
-  --primary: #c2410c;
-  --primary-foreground: #ffffff;
-  --accent: #fde8d6;
-  --accent-foreground: #7c2d12;
-  --destructive: #b91c1c;
-  --destructive-foreground: #ffffff;
-  --success: #166534;
-  --warning: #92400e;
-  --link: #9a3412;
-  --brand-from: #ea580c;
-  --brand-to: #ca8a04;
-  --shadow-card: 0 1px 2px rgba(43, 33, 24, 0.08);
-  --shadow-pop: 0 12px 32px rgba(43, 33, 24, 0.16);
-  --glow-alpha: 0.12;
-  color-scheme: light;
-}
-
-/* High contrast */
+/* High contrast: 7:1 for every text pair, borders instead of shades. */
 [data-theme="contrast"] {
   --background: #000000;
   --foreground: #ffffff;
   --card: #0a0a0a;
+  --card-foreground: #ffffff;
+  --film: #0a0a0a;
+  --film-foreground: #ffffff;
+  --sidebar: #000000;
   --muted: #1a1a1a;
   --muted-foreground: #d4d4d8;
   --border: #a1a1aa;
   --input: #d4d4d8;
   --ring: #ffff66;
-  --primary: #c4b5fd;
+  --primary: #ffc266;
   --primary-foreground: #000000;
-  --accent: #2e1065;
-  --accent-foreground: #ffffff;
+  --accent: #1a1a1a;
+  --accent-foreground: #ffc266;
   --destructive: #ff8a8a;
   --destructive-foreground: #000000;
   --success: #6ee7a0;
   --warning: #fcd34d;
-  --link: #c4b5fd;
-  --brand-from: #c4b5fd;
-  --brand-to: #67e8f9;
+  --link: #ffc266;
+  --edge: #ffb060;
+  --edge-film: #ffb060;
+  --selection: #ff6b5e;
+  --downloading: #9ccaff;
+  --sprocket: #555555;
+  --frame-lit: #ffffff;
+  --logo: #ffc266;
   --shadow-card: none;
   --shadow-pop: none;
-  --glow-alpha: 0;
   color-scheme: dark;
 }
 
@@ -211,7 +131,10 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
-  --color-card-foreground: var(--foreground);
+  --color-card-foreground: var(--card-foreground);
+  --color-film: var(--film);
+  --color-film-foreground: var(--film-foreground);
+  --color-sidebar: var(--sidebar);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
@@ -225,23 +148,36 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
-  /* Text links and info badges: --primary is too faint for small text in some themes. */
+  /* Text links and info badges. */
   --color-link: var(--link);
-  --color-brand-from: var(--brand-from);
-  --color-brand-to: var(--brand-to);
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
-  /* Shadows come from the active theme (none in High contrast). */
+  /* Edge print: status and frame numbers, in mono capitals. */
+  --color-edge: var(--edge);
+  --color-edge-film: var(--edge-film);
+  /* The grease pencil: only the selected or keyboard-focused item. */
+  --color-selection: var(--selection);
+  --color-downloading: var(--downloading);
+  --color-sprocket: var(--sprocket);
+  --color-frame-lit: var(--frame-lit);
+  --color-logo: var(--logo);
+  /* Film is square: no rounded corners anywhere. The names stay so existing
+     classes keep working. */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  /* No shadows except on menus and dialogs. */
   --shadow-xs: var(--shadow-card);
-  --shadow-md: var(--shadow-pop);
+  --shadow-sm: var(--shadow-card);
+  --shadow-md: var(--shadow-card);
   --shadow-lg: var(--shadow-pop);
-  --font-sans:
-    "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-  /* The Reelkeeper wordmark (marquee capitals). Not for other text. */
-  --font-wordmark: "Bebas Neue", Impact, sans-serif;
+  --shadow-xl: var(--shadow-pop);
+  --font-sans: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "DM Mono", ui-monospace, Menlo, Consolas, monospace;
+  /* Headings, page titles and the wordmark: condensed capitals. */
+  --font-condensed: "Barlow Condensed", "Barlow", system-ui, sans-serif;
 }
 
 @layer base {
@@ -267,14 +203,6 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
-}
-
-/* The brand gradient, for small accents only. */
-.text-brand-gradient {
-  background: linear-gradient(90deg, var(--brand-from), var(--brand-to));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 /*
@@ -305,47 +233,6 @@
     /* biome-ignore lint/complexity/noImportantStyles: "no motion" must beat every component's own animation */
     transition: none !important;
   }
-}
-
-/* The soft colour glow behind the top of each page (AppShell). */
-.page-glow {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 460px;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 0;
-}
-[data-glow="off"] .page-glow {
-  display: none;
-}
-/* One glow from the top centre, as wide as the page, blending the theme's
-   two brand colours left to right. It breathes slowly in place. */
-.page-glow span {
-  position: absolute;
-  top: -240px;
-  left: 50%;
-  width: 92%;
-  height: 440px;
-  border-radius: 50%;
-  background: linear-gradient(90deg, var(--brand-from), var(--brand-to));
-  filter: blur(90px);
-  /* One wide glow spreads its colour thinner than the old two spots did. */
-  opacity: calc(var(--glow-alpha) * 1.5);
-  transform: translateX(-50%);
-  animation: glow-breathe calc(18s * var(--m)) ease-in-out infinite alternate;
-  will-change: transform;
-}
-@keyframes glow-breathe {
-  from {
-    transform: translateX(-50%) scale(1);
-  }
-  to {
-    transform: translateX(-50%) scale(1.08, 1.15);
-  }
-}
-[data-motion="subtle"] .page-glow span {
-  animation-play-state: paused;
 }
 
 /* Shared animations; durations scale with --m. */
@@ -558,32 +445,89 @@
   content-visibility: visible;
 }
 
-/* Poster tiles (Movies and Series) lift on hover and a soft shine sweeps
-   across them; durations scale with --m. */
-.poster-tile {
-  transition:
-    transform calc(300ms * var(--m)) cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow calc(300ms * var(--m));
+/* Poster frames (Movies and Series): no lift, shine or shadow. Hover and
+   keyboard focus draw the grease-pencil loop (.grease, below). */
+
+/*
+ * Contact-sheet parts (docs/redesign-d.md). All static: nothing here
+ * animates, so long lists and the poster grid stay cheap on phones.
+ */
+
+/* A film strip: black stock with a row of sprocket holes along the top and
+   bottom edges (.film) or down both sides (.film-v). The holes are
+   backgrounds, so children are free to use ::before and ::after. */
+.film {
+  --holes: repeating-linear-gradient(90deg, transparent 0 9px, var(--sprocket) 9px 19px);
+  background:
+    var(--holes) 0 4px / 100% 9px no-repeat,
+    var(--holes) 0 calc(100% - 4px) / 100% 9px no-repeat,
+    var(--film);
+  color: var(--film-foreground);
+  padding: 20px 16px;
 }
-.poster-tile::after {
+.film-v {
+  --holes: repeating-linear-gradient(180deg, transparent 0 9px, var(--sprocket) 9px 19px);
+  background:
+    var(--holes) 4px 0 / 9px 100% no-repeat,
+    var(--holes) calc(100% - 4px) 0 / 9px 100% no-repeat,
+    var(--film);
+  color: var(--film-foreground);
+  padding: 6px 22px;
+}
+
+/* Edge print: status and frame numbers, as printed along a film's edge. */
+.edge-print {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--edge);
+}
+.film .edge-print,
+.film-v .edge-print {
+  color: var(--edge-film);
+}
+/* A section label: mono capitals, spaced, muted. */
+.label-caps {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* The grease pencil: a hand-drawn red loop around the selected item, and
+   around a poster or row that has keyboard focus (it replaces the focus
+   ring there). Static, so it costs nothing on long lists. */
+.grease {
+  position: relative;
+}
+.grease:focus-visible {
+  outline: none;
+}
+.grease:focus-visible::after,
+.grease[data-selected="true"]::after {
   content: "";
   position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    105deg,
-    transparent 35%,
-    rgba(255, 255, 255, 0.16) 50%,
-    transparent 65%
-  );
-  transform: translateX(-120%);
+  inset: -8px -7px;
+  border: 3px solid var(--selection);
+  border-radius: 46% 54% 50% 50% / 52% 48% 52% 48%;
+  transform: rotate(-2deg);
   pointer-events: none;
+  z-index: 2;
 }
-.poster-tile:hover,
-.poster-tile:focus-visible {
-  transform: translateY(-4px);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+/* Wide rows get a flatter loop. */
+.grease-row:focus-visible::after,
+.grease-row[data-selected="true"]::after {
+  inset: -4px -6px;
+  border-radius: 4% 3% 5% 3% / 40% 50% 45% 55%;
+  transform: rotate(-0.4deg);
 }
-.poster-tile:hover::after {
-  transform: translateX(120%);
-  transition: transform calc(700ms * var(--m)) ease;
+
+/* Wanted titles: not exposed yet. The artwork goes dark and grey; titles and
+   captions stay full strength, so they remain readable. */
+.unexposed img,
+.unexposed .poster-art {
+  filter: grayscale(1) brightness(0.4);
 }

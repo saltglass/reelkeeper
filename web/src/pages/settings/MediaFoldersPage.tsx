@@ -161,14 +161,11 @@ function RootCard({ root, index }: { root: RootFolder; index: number }) {
               aria-label={`Reelkeeper's files here are ${usedPct}% of the files plus free space`}
               className="slib-bar flex h-2.5 overflow-hidden rounded-full bg-muted"
             >
-              <i
-                className="rounded-full bg-gradient-to-r from-brand-from to-brand-to"
-                style={{ width: `${usedPct}%` }}
-              />
+              <i className="bg-primary" style={{ width: `${usedPct}%` }} />
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-brand-from" aria-hidden="true" />
+                <span className="size-2 bg-primary" aria-hidden="true" />
                 {formatBytes(root.size)} of {noun} here
               </span>
               <span className="flex items-center gap-1.5">

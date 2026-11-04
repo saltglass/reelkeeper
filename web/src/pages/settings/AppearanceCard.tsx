@@ -26,22 +26,22 @@ const motionChoices: { value: Motion; label: string; help: string }[] = [
   },
 ];
 
-const violet = "#8b5cf6";
+const orange = "#f0a04b";
 
 type Swatch = {
   id: Theme;
   name: string;
-  /** CSS backgrounds for the preview: ground, gradient square, card bar, primary chip. */
+  /** CSS backgrounds for the preview: the sheet, a strip of film, the accent
+   * button and the edge print. */
   ground: string;
-  gradient: string;
-  card: string;
+  film: string;
   chip: string;
-  light: boolean;
+  edge: string;
 };
 
 /**
- * Settings → General → Appearance: theme, the Custom theme builder, motion,
- * the page glow, poster titles and symbols on the Queue buttons. Everything applies at once
+ * Settings → General → Appearance: theme, the Custom accent, motion, poster
+ * titles and symbols on the Queue buttons. Everything applies at once
  * and is remembered in this browser only (hooks/theme.ts), so there's no Save button.
  */
 export function AppearanceCard() {
@@ -52,33 +52,30 @@ export function AppearanceCard() {
     {
       id: "system",
       name: "Match system",
-      ground: "linear-gradient(135deg, #07060b 0 50%, #f7f7fa 50% 100%)",
-      gradient: "linear-gradient(135deg, #8b5cf6, #22d3ee)",
-      card: "linear-gradient(135deg, #110f1c 0 50%, #ffffff 50% 100%)",
-      chip: "#8b5cf6",
-      light: false,
+      ground: "linear-gradient(135deg, #1b1a19 0 50%, #efebe3 50% 100%)",
+      film: "#0b0b0a",
+      chip: "#f0a04b",
+      edge: "#e08a2e",
     },
     ...themes.map((t) => ({
       id: t.id as Theme,
       name: t.name,
       ground: t.swatch[0],
-      gradient: `linear-gradient(135deg, ${t.swatch[3]}, ${t.swatch[4]})`,
-      card: t.swatch[1],
+      film: t.swatch[1],
       chip: t.swatch[2],
-      light: !t.dark,
+      edge: t.swatch[3],
     })),
     {
       id: "custom",
       name: "Custom",
-      ground: custom.background,
-      gradient: `linear-gradient(135deg, ${custom["brand-from"]}, ${custom["brand-to"]})`,
-      card: custom.card,
+      ground: appearance.customBase === "light" ? "#efebe3" : "#1b1a19",
+      film: "#0b0b0a",
       chip: custom.primary,
-      light: appearance.customBase === "light",
+      edge: custom.edge,
     },
   ];
 
-  const checks = contrastChecks(custom);
+  const checks = contrastChecks(custom, appearance.customBase);
   const allPass = checks.every((c) => c.pass);
   const motion = motionChoices.find((m) => m.value === appearance.motion) ?? motionChoices[0];
   const resolvedName = themes.find((t) => t.id === resolved)?.name ?? "Reelkeeper Dark";
@@ -106,29 +103,28 @@ export function AppearanceCard() {
                 aria-pressed={on}
                 onClick={() => update({ theme: t.id })}
                 className={cn(
-                  "cursor-pointer rounded-[10px] border bg-background p-2 text-left transition-[transform,border-color,box-shadow] duration-[calc(300ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] hover:-translate-y-[3px]",
-                  on && "border-primary ring-2 ring-primary/45",
+                  "grease cursor-pointer border bg-background p-2 text-left hover:border-input",
+                  on && "border-primary",
                 )}
               >
                 <span
-                  className="relative block h-16 overflow-hidden rounded-[7px]"
+                  className="relative block h-16 overflow-hidden"
                   style={{ background: t.ground }}
                   aria-hidden="true"
                 >
                   <span
-                    className="absolute top-2 left-2 size-4 rounded-[5px]"
-                    style={{ background: t.gradient }}
+                    className="absolute top-2 left-2 h-2.5 w-7"
+                    style={{ background: t.chip }}
                   />
                   <span
-                    className="absolute right-2 bottom-2 left-2 h-6 rounded-[5px]"
+                    className="absolute right-2 bottom-2 left-2 h-7"
                     style={{
-                      background: t.card,
-                      border: `1px solid ${t.light ? "rgba(0,0,0,.08)" : "rgba(255,255,255,.08)"}`,
+                      background: `repeating-linear-gradient(90deg, transparent 0 4px, #33312e 4px 8px) 0 2px / 100% 3px no-repeat, repeating-linear-gradient(90deg, transparent 0 4px, #33312e 4px 8px) 0 calc(100% - 2px) / 100% 3px no-repeat, ${t.film}`,
                     }}
                   />
                   <span
-                    className="absolute right-3.5 bottom-[15px] h-2.5 w-[22px] rounded-[3px]"
-                    style={{ background: t.chip }}
+                    className="absolute bottom-[19px] left-3.5 h-1 w-10"
+                    style={{ background: t.edge }}
                   />
                 </span>
                 <span className="mt-2 flex items-center justify-between gap-1.5 px-0.5 text-xs/4 font-medium">
@@ -155,7 +151,7 @@ export function AppearanceCard() {
         )}
 
         {appearance.theme === "custom" && (
-          <div className="animate-rise flex flex-col gap-4 rounded-[10px] border border-primary/35 bg-background p-4">
+          <div className="animate-rise flex flex-col gap-4 border border-input bg-background p-4">
             <div className="flex flex-wrap items-center gap-3.5">
               <label className="relative size-12 flex-none cursor-pointer">
                 <input
@@ -212,19 +208,17 @@ export function AppearanceCard() {
                 ]}
               />
               <span className="text-sm text-muted-foreground">
-                Reelkeeper works out the surfaces, text, links and focus ring from your accent.
+                Your accent replaces the orange: buttons, links, edge print and the focus ring.
+                Reelkeeper adjusts it until every pair is easy to read.
               </span>
             </div>
 
             <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5">
               {(
                 [
-                  ["Background", custom.background],
-                  ["Card", custom.card],
-                  ["Primary", custom.primary],
-                  ["Accent fill", custom.accent],
-                  ["Link", custom.link],
-                  ["Brand end", custom["brand-to"]],
+                  ["Buttons", custom.primary],
+                  ["Links and edge print", custom.link],
+                  ["Logo", custom.logo],
                 ] as const
               ).map(([name, hex], i) => (
                 <div
@@ -268,9 +262,9 @@ export function AppearanceCard() {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => update({ customAccent: violet })}
+                onClick={() => update({ customAccent: orange })}
               >
-                Reset to violet
+                Reset to orange
               </Button>
             </div>
           </div>
@@ -287,23 +281,6 @@ export function AppearanceCard() {
             />
             <p key={motion?.value} className="animate-crumb-in text-sm text-muted-foreground">
               {motion?.help}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <Switch
-            id="glow"
-            checked={appearance.glow}
-            onCheckedChange={(glow) => update({ glow })}
-            aria-describedby="glow-help"
-          />
-          <div>
-            <label htmlFor="glow" className="cursor-pointer text-sm font-medium">
-              Glow behind pages
-            </label>
-            <p id="glow-help" className="text-sm text-muted-foreground">
-              A soft wash of the theme's colours at the top of each page.
             </p>
           </div>
         </div>

@@ -2,17 +2,18 @@ import { useCallback, useSyncExternalStore } from "react";
 import { buildCustomTheme, type ThemeVars } from "@/lib/color";
 
 /**
- * Appearance: the theme, motion, the colour glow, poster titles and queue
- * button symbols, remembered per browser (Settings → General → Appearance).
- * Changes apply at once, everywhere,
- * because every component reads one shared store.
+ * Appearance: the theme, motion, poster titles and queue button symbols,
+ * remembered per browser (Settings → General → Appearance). Changes apply at
+ * once, everywhere, because every component reads one shared store.
  *
  * The themes are blocks of colours in index.css, selected with data-theme on
- * <html>. "system" follows the browser between Reelkeeper Dark and Light.
- * "custom" builds a theme from one accent colour (lib/color.ts) and sets its
- * colours on <html> directly, over its base theme. `dark` says whether a
- * theme has a dark ground (it also gets the .dark class). `swatch` is
- * [ground, card, primary, brand-from, brand-to], for the picker's preview.
+ * <html>. All three are the contact sheet (docs/redesign-d.md): "dark" is the
+ * default, "light" is the same sheet printed on cream paper, "contrast" meets
+ * 7:1. "system" follows the browser between Dark and Light. "custom" swaps
+ * the orange for one accent colour (lib/color.ts), set on <html> over its
+ * base theme. `dark` says whether a theme has a dark ground (it also gets the
+ * .dark class). `swatch` is [sheet, film, accent, edge print], for the
+ * picker's preview.
  *
  * Adding a theme: a [data-theme="id"] block in index.css, an entry here, and
  * the id in the script in web/index.html, which applies the saved choice
@@ -23,45 +24,29 @@ export const themes = [
     id: "dark",
     name: "Reelkeeper Dark",
     dark: true,
-    swatch: ["#07060b", "#110f1c", "#8b5cf6", "#8b5cf6", "#22d3ee"],
+    swatch: ["#1b1a19", "#0b0b0a", "#f0a04b", "#e08a2e"],
   },
   {
     id: "light",
     name: "Reelkeeper Light",
     dark: false,
-    swatch: ["#f7f7fa", "#ffffff", "#7c3aed", "#8b5cf6", "#22d3ee"],
-  },
-  {
-    id: "midnight",
-    name: "Midnight",
-    dark: true,
-    swatch: ["#050b14", "#0c1626", "#3b82f6", "#3b82f6", "#2dd4bf"],
-  },
-  {
-    id: "ember",
-    name: "Ember",
-    dark: true,
-    swatch: ["#0c0706", "#17100d", "#f97316", "#f97316", "#f43f5e"],
-  },
-  {
-    id: "moss",
-    name: "Moss",
-    dark: true,
-    swatch: ["#060b08", "#0d1710", "#22c55e", "#22c55e", "#a3e635"],
-  },
-  {
-    id: "paper",
-    name: "Paper",
-    dark: false,
-    swatch: ["#faf6f0", "#fffdf9", "#c2410c", "#ea580c", "#ca8a04"],
+    swatch: ["#efebe3", "#0b0b0a", "#f0a04b", "#874d0b"],
   },
   {
     id: "contrast",
     name: "High contrast",
     dark: true,
-    swatch: ["#000000", "#0a0a0a", "#c4b5fd", "#c4b5fd", "#67e8f9"],
+    swatch: ["#000000", "#0a0a0a", "#ffc266", "#ffb060"],
   },
 ] as const;
+
+/** Themes from before the contact-sheet redesign, and the one each became. */
+const retiredThemes: Record<string, ThemeId> = {
+  midnight: "dark",
+  ember: "dark",
+  moss: "dark",
+  paper: "light",
+};
 
 export type ThemeId = (typeof themes)[number]["id"];
 export type Theme = ThemeId | "system" | "custom";
@@ -70,8 +55,6 @@ export type Motion = "lively" | "subtle" | "off";
 export type Appearance = {
   theme: Theme;
   motion: Motion;
-  /** The soft colour glow behind the top of each page. */
-  glow: boolean;
   /** Title and year under each poster in the Movies and Series grids. */
   posterTitles: boolean;
   /** Symbols instead of words on the row buttons of Activity → Queue (Retry import, Pause, Resume, Move to top, Remove). */
@@ -84,7 +67,6 @@ export type Appearance = {
 export const defaultAppearance: Appearance = {
   theme: "system",
   motion: "lively",
-  glow: true,
   posterTitles: true,
   queueSymbols: true,
   customAccent: "#14b8a6",
@@ -108,8 +90,11 @@ function read(): Appearance {
     ) as Partial<Appearance> | null;
     if (saved && typeof saved === "object") {
       if (isTheme(saved.theme)) a.theme = saved.theme;
+      else if (typeof saved.theme === "string") {
+        const now = retiredThemes[saved.theme];
+        if (now) a.theme = now;
+      }
       if (isMotion(saved.motion)) a.motion = saved.motion;
-      if (typeof saved.glow === "boolean") a.glow = saved.glow;
       if (typeof saved.posterTitles === "boolean") a.posterTitles = saved.posterTitles;
       if (typeof saved.queueSymbols === "boolean") a.queueSymbols = saved.queueSymbols;
       if (isHex(saved.customAccent)) a.customAccent = saved.customAccent;
@@ -121,6 +106,11 @@ function read(): Appearance {
       const t = localStorage.getItem(key);
       if (isThemeId(t)) {
         a.theme = t;
+        break;
+      }
+      const now = t ? retiredThemes[t] : undefined;
+      if (now) {
+        a.theme = now;
         break;
       }
     }
@@ -141,7 +131,7 @@ export function resolveTheme(a: Appearance): ThemeId {
   return a.theme;
 }
 
-const customVarNames = Object.keys(buildCustomTheme("#8b5cf6", "dark")) as (keyof ThemeVars)[];
+const customVarNames = Object.keys(buildCustomTheme("#f0a04b", "dark")) as (keyof ThemeVars)[];
 
 function apply(a: Appearance) {
   const root = document.documentElement;
@@ -149,7 +139,6 @@ function apply(a: Appearance) {
   root.dataset.theme = id;
   root.classList.toggle("dark", themes.find((t) => t.id === id)?.dark ?? true);
   root.dataset.motion = a.motion;
-  root.dataset.glow = a.glow ? "on" : "off";
   const vars = a.theme === "custom" ? buildCustomTheme(a.customAccent, a.customBase) : null;
   for (const name of customVarNames) {
     if (vars) root.style.setProperty(`--${name}`, vars[name]);

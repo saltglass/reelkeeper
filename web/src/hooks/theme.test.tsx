@@ -24,15 +24,15 @@ describe("appearance", () => {
 
   it("applies a chosen theme and remembers it", () => {
     const { result } = renderHook(() => useTheme());
-    act(() => result.current.setTheme("paper"));
-    expect(root.dataset.theme).toBe("paper");
+    act(() => result.current.setTheme("light"));
+    expect(root.dataset.theme).toBe("light");
     expect(root.classList.contains("dark")).toBe(false);
-    expect(saved().theme).toBe("paper");
+    expect(saved().theme).toBe("light");
   });
 
   it("marks dark-ground themes with the dark class", () => {
     const { result } = renderHook(() => useTheme());
-    act(() => result.current.setTheme("midnight"));
+    act(() => result.current.setTheme("contrast"));
     expect(root.classList.contains("dark")).toBe(true);
   });
 
@@ -41,7 +41,6 @@ describe("appearance", () => {
     expect(result.current.theme).toBe("system");
     expect(root.dataset.theme).toBe("dark");
     expect(root.dataset.motion).toBe("lively");
-    expect(root.dataset.glow).toBe("on");
   });
 
   it("ignores unknown saved values", () => {
@@ -62,10 +61,22 @@ describe("appearance", () => {
     expect(renderHook(() => useAppearance()).result.current.appearance.queueSymbols).toBe(false);
   });
 
-  it("keeps a theme chosen before the redesign", () => {
-    localStorage.setItem("reelkeeper-theme", "moss");
+  it("keeps a theme chosen before the first redesign", () => {
+    localStorage.setItem("reelkeeper-theme", "light");
     const { result } = renderHook(() => useTheme());
-    expect(result.current.theme).toBe("moss");
+    expect(result.current.theme).toBe("light");
+  });
+
+  it("moves a retired theme to the nearest contact-sheet theme", () => {
+    localStorage.setItem("reelkeeper.appearance", JSON.stringify({ theme: "moss" }));
+    expect(renderHook(() => useTheme()).result.current.theme).toBe("dark");
+    resetAppearanceForTests();
+    localStorage.setItem("reelkeeper.appearance", JSON.stringify({ theme: "paper" }));
+    expect(renderHook(() => useTheme()).result.current.theme).toBe("light");
+    resetAppearanceForTests();
+    localStorage.clear();
+    localStorage.setItem("reelkeeper-theme", "ember");
+    expect(renderHook(() => useTheme()).result.current.theme).toBe("dark");
   });
 
   it("builds a custom theme from one accent and sets its colours on the page", () => {
@@ -81,24 +92,15 @@ describe("appearance", () => {
     expect(root.style.getPropertyValue("--primary")).toBe("");
   });
 
-  it("applies motion and the glow, shared between every user of the hook", () => {
+  it("applies motion, shared between every user of the hook", () => {
     const a = renderHook(() => useAppearance());
     const b = renderHook(() => useAppearance());
-    act(() => a.result.current.update({ motion: "off", glow: false }));
+    act(() => a.result.current.update({ motion: "off" }));
     expect(root.dataset.motion).toBe("off");
-    expect(root.dataset.glow).toBe("off");
     expect(b.result.current.appearance.motion).toBe("off");
   });
 
   it("offers every theme the stylesheet defines", () => {
-    expect(themes.map((t) => t.id)).toEqual([
-      "dark",
-      "light",
-      "midnight",
-      "ember",
-      "moss",
-      "paper",
-      "contrast",
-    ]);
+    expect(themes.map((t) => t.id)).toEqual(["dark", "light", "contrast"]);
   });
 });

@@ -21,10 +21,10 @@ beforeEach(() => {
 describe("appearance card", () => {
   it("picks a theme at once and marks it", async () => {
     await open();
-    const ember = screen.getByRole("button", { name: /Ember/ });
-    await userEvent.click(ember);
-    expect(ember).toHaveAttribute("aria-pressed", "true");
-    expect(document.documentElement.dataset.theme).toBe("ember");
+    const hc = screen.getByRole("button", { name: /High contrast/ });
+    await userEvent.click(hc);
+    expect(hc).toHaveAttribute("aria-pressed", "true");
+    expect(document.documentElement.dataset.theme).toBe("contrast");
   });
 
   it("says what Match system follows, and hides the builder", async () => {
@@ -33,27 +33,26 @@ describe("appearance card", () => {
     expect(screen.queryByLabelText("Accent colour")).not.toBeInTheDocument();
   });
 
-  it("builds a custom theme with contrast checks and resets to violet", async () => {
+  it("builds a custom accent with contrast checks and resets to orange", async () => {
     await open();
     await userEvent.click(screen.getByRole("button", { name: /^Custom/ }));
     const picker = screen.getByLabelText("Accent colour");
     fireEvent.change(picker, { target: { value: "#f43f5e" } });
     expect(document.documentElement.style.getPropertyValue("--primary")).not.toBe("");
     expect(screen.getAllByText("#f43f5e").length).toBeGreaterThan(0);
-    expect(screen.getByText(/Body text \d+\.\d:1/)).toBeInTheDocument();
+    expect(screen.getByText(/Button label \d+\.\d:1/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Light" }));
     expect(document.documentElement.dataset.theme).toBe("light");
-    await userEvent.click(screen.getByRole("button", { name: "Reset to violet" }));
-    expect(screen.getAllByText("#8b5cf6").length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("button", { name: "Reset to orange" }));
+    expect(screen.getAllByText("#f0a04b").length).toBeGreaterThan(0);
   });
 
-  it("changes motion and the glow", async () => {
+  it("changes motion", async () => {
     await open();
     await userEvent.click(screen.getByRole("button", { name: "Off" }));
     expect(document.documentElement.dataset.motion).toBe("off");
     expect(screen.getByText(/No motion at all/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("switch", { name: "Glow behind pages" }));
-    expect(document.documentElement.dataset.glow).toBe("off");
+    expect(screen.queryByRole("switch", { name: /Glow/ })).not.toBeInTheDocument();
   });
 
   it("turns titles under posters off and remembers it", async () => {

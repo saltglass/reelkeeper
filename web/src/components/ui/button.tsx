@@ -4,12 +4,11 @@ import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * The app's icon look: a rounded square tinted with the brand gradient and a
- * violet symbol. Icon-only buttons use it (variant "tile"), and so do the
- * icons that head settings cards.
+ * The app's icon look: a square of film with an orange symbol. Icon-only
+ * buttons use it (variant "tile"), and so do the icons that head settings
+ * cards.
  */
-export const tileClass =
-  "rounded-[10px] border bg-gradient-to-br from-brand-from/15 to-brand-to/15 text-primary";
+export const tileClass = "border bg-card text-primary";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-[transform,box-shadow,background-color,border-color,color] duration-[calc(180ms*var(--m))] hover:-translate-y-px active:translate-y-0 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer",
@@ -22,10 +21,7 @@ const buttonVariants = cva(
         outline: "border border-input bg-card hover:bg-muted",
         ghost: "hover:bg-muted",
         link: "text-link underline-offset-4 hover:underline",
-        tile: cn(
-          tileClass,
-          "hover:from-brand-from/25 hover:to-brand-to/25 aria-pressed:from-brand-from/35 aria-pressed:to-brand-to/35 aria-pressed:border-primary/60",
-        ),
+        tile: cn(tileClass, "hover:border-input aria-pressed:border-primary"),
       },
       size: {
         default: "min-h-10 px-4",

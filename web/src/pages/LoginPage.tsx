@@ -105,24 +105,21 @@ export function LoginPage() {
 
   return (
     <div className="relative flex min-h-full items-center justify-center overflow-hidden p-4">
-      <div className="page-glow" aria-hidden="true">
-        <span />
-      </div>
       <div className="animate-rise relative z-[1] w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-3 text-center">
-          <Logo className="size-14 drop-shadow-[0_6px_20px_color-mix(in_srgb,var(--brand-from)_55%,transparent)]" />
+          <Logo className="size-14" />
           <h1 className="text-2xl font-semibold">
             {setupMode ? (
               <>
                 Welcome to{" "}
-                <span className="font-wordmark text-brand-gradient text-[34px] tracking-wide">
+                <span className="font-condensed text-[34px] font-semibold tracking-[0.04em] uppercase">
                   Reelkeeper
                 </span>
               </>
             ) : (
               <>
                 Sign in to{" "}
-                <span className="font-wordmark text-brand-gradient text-[34px] tracking-wide">
+                <span className="font-condensed text-[34px] font-semibold tracking-[0.04em] uppercase">
                   Reelkeeper
                 </span>
               </>

@@ -4,8 +4,15 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RequestError } from "@/api/client";
 import { makeRouter } from "@/router";
-// Bebas Neue (SIL Open Font License), for the Reelkeeper wordmark only.
-import "@fontsource/bebas-neue/latin-400.css";
+// The contact-sheet fonts (all SIL Open Font License): Barlow for the
+// interface, Barlow Condensed for headings, DM Mono for numbers and edge print.
+import "@fontsource/barlow/latin-400.css";
+import "@fontsource/barlow/latin-500.css";
+import "@fontsource/barlow/latin-600.css";
+import "@fontsource/barlow-condensed/latin-600.css";
+import "@fontsource/barlow-condensed/latin-700.css";
+import "@fontsource/dm-mono/latin-400.css";
+import "@fontsource/dm-mono/latin-500.css";
 import "./index.css";
 import "./styles/movies.css";
 import "./styles/activity.css";

@@ -18,7 +18,7 @@ describe("colour maths", () => {
   for (const { name, hex } of accentPresets) {
     for (const base of ["dark", "light"] as const) {
       it(`${name} on ${base} passes every contrast check`, () => {
-        const failing = contrastChecks(buildCustomTheme(hex, base)).filter((c) => !c.pass);
+        const failing = contrastChecks(buildCustomTheme(hex, base), base).filter((c) => !c.pass);
         expect(failing).toEqual([]);
       });
     }

@@ -20,7 +20,7 @@ export function Progress({
       className={cn("h-1.5 w-full overflow-hidden rounded-full bg-muted", className)}
     >
       <div
-        className="h-full rounded-full bg-gradient-to-r from-brand-from to-brand-to transition-[width]"
+        className="h-full bg-primary"
         style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
       />
     </div>
