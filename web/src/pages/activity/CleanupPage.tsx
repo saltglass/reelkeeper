@@ -127,35 +127,27 @@ function goalProgress(
   return Math.min(1, Math.max(...parts));
 }
 
-function GoalRing({ progress, label }: { progress: number; label: string }) {
+/** How far a torrent is towards its seeding goal: ten frames that light up,
+ * with the percentage printed under them (static, no animation). */
+function GoalFrames({ progress, label }: { progress: number; label: string }) {
   const pct = Math.floor(progress * 100);
+  const lit = Math.floor(pct / 10);
   return (
-    <svg width="48" height="48" viewBox="0 0 44 44" role="img" aria-label={label}>
-      <circle cx="22" cy="22" r="16" fill="none" strokeWidth="4" stroke="var(--muted)" />
-      <circle
-        className="seed-ring"
-        cx="22"
-        cy="22"
-        r="16"
-        fill="none"
-        strokeWidth="4"
-        strokeLinecap="round"
-        pathLength={100}
-        strokeDasharray={`${pct} 101`}
-        transform="rotate(-90 22 22)"
-        stroke={progress >= 1 ? "var(--success)" : "var(--primary)"}
-      />
-      <text
-        x="22"
-        y="26"
-        textAnchor="middle"
-        fontSize="10"
-        fontWeight="600"
-        fill="var(--foreground)"
-      >
-        {pct}%
-      </text>
-    </svg>
+    <div role="img" aria-label={label} className="flex w-12 flex-col gap-1">
+      <div className="grid h-3.5 grid-cols-5 gap-0.5">
+        {Array.from({ length: 10 }, (_, i) => (
+          <span
+            // biome-ignore lint/suspicious/noArrayIndexKey: ten fixed frames
+            key={i}
+            className={cn(
+              "h-1.5",
+              i < lit ? (progress >= 1 ? "bg-success" : "bg-frame-lit") : "bg-muted",
+            )}
+          />
+        ))}
+      </div>
+      <span className="edge-print text-[11px]">{pct}%</span>
+    </div>
   );
 }
 
@@ -175,7 +167,7 @@ function SeedingCard() {
           {goal && (goal.seedRatio > 0 || goal.seedHours > 0) && (
             <>
               {" "}
-              Each ring fills toward your goal:{" "}
+              Each row of frames fills toward your goal:{" "}
               {[
                 goal.seedRatio > 0 && `ratio ${goal.seedRatio}`,
                 goal.seedHours > 0 && `${goal.seedHours} hours`,
@@ -197,7 +189,7 @@ function SeedingCard() {
               them.
             </p>
           ) : (
-            <ul>
+            <ul className="film mx-4 mb-4">
               {data.items.map((it, i) => (
                 <SeedingRow key={it.downloadId} item={it} off={off} index={i} goal={goal} />
               ))}
@@ -232,16 +224,16 @@ function SeedingRow({
   else pill = <Badge variant="success">Ready to remove</Badge>;
   return (
     <li
-      className="animate-rise grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-t px-5 py-4 sm:grid-cols-[3rem_minmax(0,1fr)_auto]"
+      className="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-t px-1 py-4 first:border-t-0 sm:grid-cols-[3rem_minmax(0,1fr)_auto]"
       style={riseStyle(index)}
     >
       {progress != null ? (
-        <GoalRing
+        <GoalFrames
           progress={progress}
           label={`${Math.floor(progress * 100)}% of the way to the seeding goal`}
         />
       ) : (
-        <span aria-hidden="true" className="size-12 border-4 border-muted" />
+        <span aria-hidden="true" className="h-3.5 w-12 bg-muted" />
       )}
       <div className="min-w-0 space-y-0.5">
         <p className="font-semibold break-words">
@@ -300,14 +292,14 @@ function LogCard() {
           </p>
         )}
         {shown.length > 0 && (
-          <ul>
+          <ul className="film mx-4 mb-4">
             {shown.map((e, i) => {
               const badge = actionBadges[e.action];
               const dry = e.action.startsWith("would");
               return (
                 <li
                   key={e.id}
-                  className="animate-rise grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-4 border-t px-5 py-4"
+                  className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-4 border-t px-1 py-4 first:border-t-0"
                   style={riseStyle(i)}
                 >
                   <span

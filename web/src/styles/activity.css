@@ -98,14 +98,6 @@
 }
 
 /* ---- Seeding ring ---- */
-.seed-ring {
-  animation: seed-ring-in calc(1100ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-@keyframes seed-ring-in {
-  from {
-    stroke-dasharray: 0 101;
-  }
-}
 
 /* ---- Leaving rows ---- */
 .row-leave {
