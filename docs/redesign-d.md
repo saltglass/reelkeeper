@@ -29,8 +29,14 @@ work stopped.
   Condensed (headings, uppercase), DM Mono (numbers, metadata, edge print).
   Bebas Neue is dropped.
 - Corners 0 everywhere. No shadows except menus/dialogs (`--shadow-pop`).
-  No blur. Nothing animates or blurs `<main>` or the poster grid (iPhone
-  Safari memory; see index.css comments).
+  No blur, and nothing blurs `<main>` or the poster grid (iPhone Safari
+  memory; see index.css comments).
+- Motion (Dan, 2026-11-04): frames, rows and cards *develop* in, fading up
+  from the dark one after another (`.animate-rise`, opacity only, the first
+  24 of a list), on the poster grids and tables, movie and series pages,
+  Queue, History, Seeding & cleanup and everywhere else that already used
+  it. Settings → Appearance → Motion scales or turns it off. No hover
+  shimmer on posters: Dan agreed it would clash with the contact sheet.
 - Status is shown as edge print (DM Mono caps, orange) in words, not
   coloured pills. Red `--selection` is only the grease-pencil mark for the
   selected or keyboard-focused poster/queue row.
@@ -129,6 +135,10 @@ below that on purpose.
       unset Jellyfin or Plex looked filled in. New token `--placeholder`
       (same as muted-foreground in Dark and Light; `#a1a1aa`, 7.8:1, in High
       contrast), used by inputs and Jump to.
+- [x] Motion had almost nothing left to do: the redesign took the
+      entrance animation off Movies, Series, Queue, History, Seeding &
+      cleanup and the movie page. It's back as a fade-only "develop" (see
+      Decisions), checked under Lively (0.52 s), Subtle (0.29 s) and Off.
 - [ ] A series' page
 - [x] Settings → Download client, Media servers, Notifications, Security
       (with the fixes above; nothing else of the old look found)

@@ -102,7 +102,7 @@ export function SeriesDetailPage() {
         <ArrowLeft className="size-4" /> Series
       </Link>
 
-      <div className="film relative overflow-hidden">
+      <div className="film animate-rise relative overflow-hidden">
         {s.backdropPath && (
           <img
             src={tmdbImage(s.backdropPath, "w1280")}

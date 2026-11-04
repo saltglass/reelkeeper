@@ -224,7 +224,7 @@ function SeedingRow({
   else pill = <Badge variant="success">Ready to remove</Badge>;
   return (
     <li
-      className="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-t px-1 py-4 first:border-t-0 sm:grid-cols-[3rem_minmax(0,1fr)_auto]"
+      className="animate-rise grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-t px-1 py-4 first:border-t-0 sm:grid-cols-[3rem_minmax(0,1fr)_auto]"
       style={riseStyle(index)}
     >
       {progress != null ? (
@@ -299,7 +299,7 @@ function LogCard() {
               return (
                 <li
                   key={e.id}
-                  className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-4 border-t px-1 py-4 first:border-t-0"
+                  className="animate-rise grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-4 border-t px-1 py-4 first:border-t-0"
                   style={riseStyle(i)}
                 >
                   <span

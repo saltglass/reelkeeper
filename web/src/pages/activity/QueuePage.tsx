@@ -31,7 +31,7 @@ import { formatBytes } from "@/lib/format";
 import { shortDuration } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/pages/PageHeader";
-import { MovieName, PosterThumb, posterKey, useLeaving, usePosters } from "./shared";
+import { MovieName, PosterThumb, posterKey, riseStyle, useLeaving, usePosters } from "./shared";
 
 /** Whether someone stopped the download before it finished. */
 export function isPaused(state: TorrentState): boolean {
@@ -256,8 +256,9 @@ function QueueRow({
     <li
       className={cn(
         "q-row grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-3 gap-y-3 border-t px-1 py-4 sm:grid-cols-[2rem_2.75rem_minmax(0,1fr)_auto] sm:gap-x-4 sm:px-2",
-        leaving && "row-leave",
+        leaving ? "row-leave" : "animate-rise",
       )}
+      style={leaving ? undefined : riseStyle(index)}
     >
       {/* The frame number, as printed along the film's edge. */}
       <span className="edge-print pt-0.5 text-[13px]" aria-hidden="true">

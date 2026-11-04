@@ -70,7 +70,7 @@ export function MovieDetailPage() {
         <ArrowLeft className="size-4" /> Movies
       </Link>
 
-      <div className="film relative overflow-hidden">
+      <div className="film animate-rise relative overflow-hidden">
         {m.backdropPath && (
           <img
             src={tmdbImage(m.backdropPath, "w1280")}
@@ -250,7 +250,7 @@ function VersionCard({
 
   return (
     // Each version is its own piece of film, with its state as edge print.
-    <Card className="film border-0">
+    <Card className="film animate-rise border-0">
       <CardHeader className="flex flex-row flex-wrap items-center gap-3">
         <p className="edge-print basis-full">
           {v.profileName} ▸ {qualityLabel(v) || "No quality yet"} ▸{" "}

@@ -276,14 +276,14 @@
     transform: none;
   }
 }
+/* Lists, frames and cards develop in: they fade up from the dark, like a
+   print in the tray. Opacity only, nothing slides, scales or bounces. */
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(16px) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 @keyframes bar-in {
@@ -338,7 +338,7 @@
   animation: page-in calc(460ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 .animate-rise {
-  animation: rise calc(560ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  animation: rise calc(520ms * var(--m)) ease-out backwards;
 }
 /* Only the first items of a long list rise in. Every animated item gets its
    own GPU layer, and thousands at once (the Movies page) crash iPhone Safari. */
