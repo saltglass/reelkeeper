@@ -117,6 +117,12 @@ below that on purpose.
       pressed tile's border `border-ring`).
 - [x] System → Tasks on a phone: "Run now" sat beside each task and left
       its description a narrow column; below 640px it goes underneath.
+- [x] Four-way choices (the download client: qBittorrent, Transmission,
+      Deluge, Built-in) didn't fit a phone: "Transmission" was cut off and
+      Built-in lost its "Experimental" badge. Segmented controls with more
+      than three choices now wrap into two columns below 640px; the chosen
+      one is filled in place (no sliding indicator), and its badge takes the
+      fill's text colour so it stays readable when chosen.
 - [ ] A series' page
 - [ ] Settings → Download client, Media servers, Notifications, Security
 - [ ] System → Status, Tasks, Backups

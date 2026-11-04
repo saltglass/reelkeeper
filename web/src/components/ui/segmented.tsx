@@ -3,8 +3,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * A row of exactly-one-of choices; the chosen one is filled, like a chip
- * pressed down. Each choice is a button with aria-pressed, in a labelled group. A choice
- * may carry a small badge ("Experimental").
+ * pressed down. Four or more wrap into two columns on a phone. Each choice
+ * is a button with aria-pressed, in a labelled group. A choice may carry a
+ * small badge ("Experimental").
  */
 export function Segmented<T extends string>({
   label,
@@ -20,28 +21,22 @@ export function Segmented<T extends string>({
   onChange: (value: T) => void;
   className?: string;
 }) {
-  const index = Math.max(
-    0,
-    options.findIndex((o) => o.value === value),
-  );
+  // More than three choices don't fit one row on a phone: they wrap into
+  // two columns there, and sit in one row from the sm breakpoint up.
+  const wrap = options.length > 3;
   return (
-    // biome-ignore lint/a11y/useSemanticElements: a fieldset can't hold the sliding indicator layout
+    // biome-ignore lint/a11y/useSemanticElements: a fieldset's legend and border don't suit a row of buttons
     <div
       role="group"
       aria-label={label}
       className={cn(
-        "relative inline-grid max-w-full auto-cols-fr grid-flow-col self-start border border-input",
+        "inline-grid max-w-full self-start border border-input",
+        wrap
+          ? "grid-cols-2 sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none"
+          : "auto-cols-fr grid-flow-col",
         className,
       )}
     >
-      <span
-        aria-hidden="true"
-        className="absolute top-0 bottom-0 left-0 bg-foreground transition-transform duration-[calc(160ms*var(--m))]"
-        style={{
-          width: `calc(100% / ${options.length})`,
-          transform: `translateX(${index * 100}%)`,
-        }}
-      />
       {options.map((o) => (
         <button
           key={o.value}
@@ -49,13 +44,18 @@ export function Segmented<T extends string>({
           aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "relative z-[1] min-h-11 cursor-pointer px-2 text-sm font-medium transition-colors duration-[calc(160ms*var(--m))] sm:px-4",
-            o.value === value ? "text-background" : "text-foreground/80 hover:text-foreground",
+            "inline-flex min-h-11 cursor-pointer flex-wrap items-center justify-center gap-x-2 px-2 py-1 text-sm font-medium transition-colors duration-[calc(160ms*var(--m))] sm:px-4",
+            o.value === value
+              ? "bg-foreground text-background"
+              : "text-foreground/80 hover:text-foreground",
           )}
         >
           {o.label}
           {o.badge && (
-            <Badge variant="warning" className="ml-2 hidden px-1.5 py-0 text-[11px] sm:inline-flex">
+            <Badge
+              variant="warning"
+              className={cn("px-1.5 py-0 text-[11px]", o.value === value && "text-background")}
+            >
               {o.badge}
             </Badge>
           )}
