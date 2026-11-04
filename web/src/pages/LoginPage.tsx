@@ -108,7 +108,7 @@ export function LoginPage() {
       <div className="animate-rise relative z-[1] w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-3 text-center">
           <Logo className="size-14" />
-          <h1 className="text-2xl font-semibold">
+          <h1 className="font-condensed text-2xl font-semibold tracking-[0.03em] uppercase">
             {setupMode ? (
               <>
                 Welcome to{" "}
@@ -135,7 +135,12 @@ export function LoginPage() {
           )}
         </div>
 
-        <Card className="shadow-lg">
+        {/* The form sits on a strip of film leader, sprockets down both sides. */}
+        <Card className="film-v border-0">
+          <p className="edge-print flex justify-between px-5 pt-4" aria-hidden="true">
+            <span>Reelkeeper 5063</span>
+            <span>Leader</span>
+          </p>
           <CardContent>
             {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
             {stateError && (

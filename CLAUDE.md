@@ -435,9 +435,13 @@ These mirror Radarr's options, but cleaner:
     own cards as edited and the other page's as saved
     (`NotificationParts.tsx`). Split 2026-10-20 (Dan).
   - System: Status, Tasks, Logs, Backups, Blocklist
-- **Branding:** the Gryphon palette (near-black `#07060b`, violet `#8b5cf6` →
-  cyan `#22d3ee`) through theme tokens, so a public release can be rebranded.
-  Support light and dark.
+- **Branding:** the contact sheet (direction D, Dan 2026-11-04; see
+  docs/redesign-d.md): a warm dark sheet, black film strips with sprocket
+  holes, orange accent and edge print, a red grease pencil only for the
+  selected or focused item; Barlow, Barlow Condensed and DM Mono; square
+  corners, no gradients, glow or soft shadows. Colours come from theme
+  tokens, so a public release can be rebranded. Dark, Light (the same sheet
+  on cream paper) and High contrast.
 - Usable on a phone.
 - Every list supports sorting, filtering and search. The library has poster
   and table views.

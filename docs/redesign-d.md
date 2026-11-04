@@ -84,9 +84,10 @@ work stopped.
       in strips with sprockets and edge print ("14 ▸ 1995 · 1080P", wanted
       frames greyed but titles legible); Queue/History/Wanted rows as frames;
       progress as lit frames; grease-pencil focus.
-- [ ] 5. Home (no stat cards: one mono summary line), Login (film leader),
-      detail pages.
-- [ ] 6. `just lint`, `just test`, screenshots at device scale 1 in dark,
+- [~] 5. Done: Home summary line, Login on film leader. Left: Home section
+      headings (custom h2s, not yet condensed), Movie and Series detail pages
+      (versions as frames, episode rows on a vertical strip `.film-v`).
+- [~] 6. CLAUDE.md Branding updated. Left: `just lint`, `just test`, screenshots at device scale 1 in dark,
       light and phone width; update CLAUDE.md (Branding section) and
       docs/screenshots if they show the UI.
 
