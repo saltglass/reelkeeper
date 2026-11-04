@@ -73,3 +73,14 @@
 .trow2:first-child {
   border-top: 0;
 }
+/* On a phone the button beside the text left the description a narrow
+   column; it goes underneath instead, and the text gets the full width. */
+@media (max-width: 639px) {
+  .trow2 {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .trow2 > :last-child {
+    justify-self: start;
+  }
+}

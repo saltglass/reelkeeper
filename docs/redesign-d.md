@@ -115,6 +115,8 @@ below that on purpose.
       the VPN shield, the restore spinner and checked profile chips. They
       now use `text-link` (the current nav item `text-accent-foreground`, a
       pressed tile's border `border-ring`).
+- [x] System → Tasks on a phone: "Run now" sat beside each task and left
+      its description a narrow column; below 640px it goes underneath.
 - [ ] A series' page
 - [ ] Settings → Download client, Media servers, Notifications, Security
 - [ ] System → Status, Tasks, Backups
