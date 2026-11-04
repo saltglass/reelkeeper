@@ -272,8 +272,9 @@ export function WantedPage() {
                   : "No movies below their profile's target quality."}
             </Card>
           ) : (
-            <Card className="overflow-hidden">
-              <div className="flex items-center gap-3 border-b px-4 py-2.5 text-sm sm:px-5">
+            // Wanted titles sit on film, not exposed yet: their posters are greyed.
+            <div className="film">
+              <div className="flex min-h-11 items-center gap-3 border-b px-1 text-sm sm:px-2">
                 <input
                   type="checkbox"
                   id="wanted-all"
@@ -300,7 +301,7 @@ export function WantedPage() {
                   />
                 ))}
               </ul>
-            </Card>
+            </div>
           )}
 
           {chosen.length > 0 && (
@@ -385,7 +386,7 @@ function WantedRow({
   const name = isShow ? `${it.title}, ${seasonName.toLowerCase()}` : it.title;
   return (
     <li
-      className="q-row animate-rise grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 border-b px-4 py-4 last:border-b-0 sm:grid-cols-[auto_2.75rem_minmax(0,1fr)_auto] sm:px-5"
+      className="q-row unexposed animate-rise grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 border-b px-1 py-4 last:border-b-0 sm:grid-cols-[auto_2.75rem_minmax(0,1fr)_auto] sm:px-2"
       style={riseStyle(index)}
     >
       <input

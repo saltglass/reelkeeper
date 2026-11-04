@@ -195,7 +195,9 @@ export function HomePage() {
 
       {settingUp && steps ? (
         <Card className="mb-6 animate-rise p-5">
-          <h2 className="mb-1 font-semibold">Finish setting up</h2>
+          <h2 className="mb-1 font-condensed text-xl font-semibold tracking-[0.03em] uppercase">
+            Finish setting up
+          </h2>
           <p className="mb-3 text-sm text-muted-foreground">
             Three steps and Reelkeeper can find, download and organize on its own.
           </p>
@@ -231,7 +233,9 @@ export function HomePage() {
               </p>
             ) : (
               <>
-                <h2 className="border-b px-5 py-3 text-sm font-semibold">Needs your attention</h2>
+                <h2 className="border-b px-5 py-3 font-condensed text-xl font-semibold tracking-[0.03em] uppercase">
+                  Needs your attention
+                </h2>
                 <ul className="divide-y">
                   {problems.map((p) => (
                     <li key={p.text}>
@@ -281,7 +285,9 @@ function Panel({
   return (
     <Card className="animate-rise overflow-hidden">
       <div className="flex items-center gap-2 border-b px-5 py-3">
-        <h3 className="text-sm font-semibold">{title}</h3>
+        <h3 className="font-condensed text-xl font-semibold tracking-[0.03em] uppercase">
+          {title}
+        </h3>
         {link && (
           <Link to={link.to} className="ml-auto text-sm text-link hover:underline">
             {link.text}
@@ -440,7 +446,10 @@ function ComingUp({ summary }: { summary?: Summary }) {
     <section aria-labelledby="home-coming" className="min-w-0">
       <Card className="animate-rise overflow-hidden">
         <div className="border-b px-5 py-3">
-          <h2 id="home-coming" className="text-sm font-semibold">
+          <h2
+            id="home-coming"
+            className="font-condensed text-xl font-semibold tracking-[0.03em] uppercase"
+          >
             Coming up this week
           </h2>
         </div>

@@ -98,13 +98,13 @@ export function HistoryRow({
     const Icon = node?.icon ?? Search;
     return (
       <li
-        className="tl-row animate-rise grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[2.5rem_minmax(0,1fr)] sm:gap-3.5"
+        className="tl-row grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[2.5rem_minmax(0,1fr)] sm:gap-3.5"
         style={riseStyle(index)}
       >
         <span className={cn("tl-node size-8 sm:size-10", node?.tone)} aria-hidden="true">
           <Icon className="size-4 sm:size-[18px]" />
         </span>
-        <div className="tl-body min-w-0 rounded-lg border bg-card text-card-foreground shadow-xs">
+        <div className="tl-body min-w-0">
           {/* biome-ignore lint/a11y/noStaticElementInteractions: the chevron button below is the keyboard way to do the same */}
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above */}
           <div

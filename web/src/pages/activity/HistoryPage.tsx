@@ -102,7 +102,7 @@ function HistoryList({ events: kinds }: { events: HistoryEventKind[] }) {
   }
   return (
     <div className="space-y-4">
-      <ul className="tl flex flex-col gap-2.5">
+      <ul className="tl film-v flex flex-col py-3">
         {shown.map((e, i) => (
           <HistoryRow key={e.id} event={e} variant="timeline" index={i} />
         ))}

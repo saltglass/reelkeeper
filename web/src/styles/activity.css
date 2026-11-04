@@ -48,45 +48,32 @@
 }
 
 /* ---- History timeline ---- */
+/* History: a vertical strip of film, one square marker per event, events
+   separated by hairlines. Static: nothing moves on hover. */
 .tl {
   position: relative;
 }
 .tl::before {
   content: "";
   position: absolute;
-  left: 19px;
-  top: 20px;
-  bottom: 20px;
-  width: 2px;
+  left: calc(22px + 19px);
+  top: 26px;
+  bottom: 26px;
+  width: 1px;
   background: var(--border);
-  border-radius: 1px;
 }
 .tl-node {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--card);
+  background: var(--film);
   border: 1px solid var(--border);
   position: relative;
   z-index: 1;
-  transition:
-    transform calc(360ms * var(--m)) cubic-bezier(0.34, 1.56, 0.64, 1),
-    border-color calc(200ms * var(--m));
 }
-.tl-row:hover .tl-node {
-  transform: scale(1.12);
-  border-color: currentColor;
-}
-.tl-body {
-  transition:
-    transform calc(300ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1),
-    border-color calc(200ms * var(--m));
-}
-.tl-row:hover .tl-body {
-  transform: translateX(4px);
-  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+.tl-row + .tl-row .tl-body {
+  border-top: 1px solid var(--border);
 }
 .k-grab,
 .k-import {
