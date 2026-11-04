@@ -18,6 +18,7 @@ import {
 import { type ReactNode, useState } from "react";
 import { api, unwrap } from "@/api/client";
 import { BlockedReleases } from "@/components/BlockedReleases";
+import { DevelopImg } from "@/components/DevelopImg";
 import { QualityLabel } from "@/components/QualityLabel";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -114,7 +115,7 @@ export function SeriesDetailPage() {
         <div className="relative flex flex-col gap-5 px-2 py-3 sm:flex-row">
           <div className="aspect-[2/3] w-36 shrink-0 overflow-hidden bg-muted sm:w-44">
             {s.posterPath && (
-              <img
+              <DevelopImg
                 src={tmdbImage(s.posterPath, "w342")}
                 alt=""
                 className="size-full object-cover"

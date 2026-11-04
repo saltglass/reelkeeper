@@ -345,6 +345,14 @@
 .animate-rise:nth-child(n + 25) {
   animation: none;
 }
+/* Pictures develop: clear until loaded, then they fade up (DevelopImg). */
+.develop {
+  opacity: 0;
+  transition: opacity calc(700ms * var(--m)) ease-out;
+}
+.develop[data-developed] {
+  opacity: 1;
+}
 .animate-crumb-in {
   animation: crumb-in calc(360ms * var(--m)) cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }

@@ -12,6 +12,7 @@ import {
 import { useState } from "react";
 import { api, unwrap } from "@/api/client";
 import { BlockedReleases } from "@/components/BlockedReleases";
+import { DevelopImg } from "@/components/DevelopImg";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,7 +83,7 @@ export function MovieDetailPage() {
         <div className="relative flex flex-col gap-5 px-2 py-3 sm:flex-row">
           <div className="aspect-[2/3] w-36 shrink-0 overflow-hidden bg-muted sm:w-44">
             {m.posterPath && (
-              <img
+              <DevelopImg
                 src={tmdbImage(m.posterPath, "w342")}
                 alt=""
                 className="size-full object-cover"

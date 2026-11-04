@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
 import { CircleAlert, LayoutGrid, List, Plus, Search, Tv } from "lucide-react";
 import { useMemo, useState } from "react";
+import { DevelopImg } from "@/components/DevelopImg";
 import { frameNumber, PosterCaption, PosterName, usePosterTitles } from "@/components/PosterTitle";
 import { QualityLabel } from "@/components/QualityLabel";
 import { SummaryLine } from "@/components/SummaryLine";
@@ -425,7 +426,7 @@ function PosterGrid({ series, sel }: { series: SeriesSummary[]; sel: Selection }
                   <>
                     {s.posterPath
                       ? near && (
-                          <img
+                          <DevelopImg
                             src={tmdbImage(s.posterPath, "w342")}
                             alt=""
                             className="absolute inset-0 size-full object-cover"

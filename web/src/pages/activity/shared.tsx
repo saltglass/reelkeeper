@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DevelopImg } from "@/components/DevelopImg";
 import { moviesQuery, seriesListQuery } from "@/hooks/library";
 import { tmdbImage } from "@/lib/images";
 import { cn } from "@/lib/utils";
@@ -72,7 +73,7 @@ export function PosterThumb({ path, className }: { path?: string; className?: st
       )}
     >
       {path && (
-        <img
+        <DevelopImg
           src={tmdbImage(path, "w185")}
           alt=""
           loading="lazy"

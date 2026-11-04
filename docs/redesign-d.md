@@ -35,7 +35,10 @@ work stopped.
   from the dark one after another (`.animate-rise`, opacity only, the first
   24 of a list), on the poster grids and tables, movie and series pages,
   Queue, History, Seeding & cleanup and everywhere else that already used
-  it. Settings → Appearance → Motion scales or turns it off. No hover
+  it. Posters themselves develop too (`DevelopImg`, `.develop`): clear until
+  the picture has loaded, then a 700 ms fade, because a black frame fading
+  in on the dark sheet is invisible and the poster then popped in after it.
+  Settings → Appearance → Motion scales or turns both off. No hover
   shimmer on posters: Dan agreed it would clash with the contact sheet.
 - Status is shown as edge print (DM Mono caps, orange) in words, not
   coloured pills. Red `--selection` is only the grease-pencil mark for the
