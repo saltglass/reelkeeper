@@ -33,7 +33,8 @@ work stopped.
   memory; see index.css comments).
 - Motion (Dan, 2026-11-04): frames, rows and cards *develop* in, fading up
   from the dark one after another (`.animate-rise`, opacity only, the first
-  24 of a list), on the poster grids and tables, movie and series pages,
+  24 of a list; the poster grids fade in all together, since a per-poster
+  stagger read as a choppy cascade), on the poster grids and tables, movie and series pages,
   Queue, History, Seeding & cleanup and everywhere else that already used
   it. Posters themselves develop too (`DevelopImg`, `.develop`): clear until
   the picture has loaded, then a 700 ms fade, because a black frame fading

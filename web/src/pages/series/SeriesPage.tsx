@@ -24,7 +24,6 @@ import { labelSettingsQuery } from "@/hooks/settings";
 import { defaultLabelParts, formatBytes, versionLabel } from "@/lib/format";
 import { tmdbImage } from "@/lib/images";
 import { cn } from "@/lib/utils";
-import { riseStyle } from "@/pages/activity/shared";
 import { PosterCheck, type Selection, SelectionBar, useSelection } from "../library/BulkEdit";
 import { PageHeader } from "../PageHeader";
 import { AddSeriesDialog } from "./AddSeriesDialog";
@@ -416,11 +415,7 @@ function PosterGrid({ series, sel }: { series: SeriesSummary[]; sel: Selection }
           // Nothing on disk yet: not exposed, so the artwork is greyed out.
           const unexposed = status.tone === "idle";
           return (
-            <NearItem
-              key={s.id}
-              className="poster-item film-cell animate-rise flex flex-col gap-2"
-              style={riseStyle(i)}
-            >
+            <NearItem key={s.id} className="poster-item film-cell animate-rise flex flex-col gap-2">
               {(near) => {
                 const body = (
                   <>
