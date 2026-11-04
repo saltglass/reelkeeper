@@ -4,7 +4,6 @@ import {
   Activity,
   Ban,
   Bell,
-  ChevronRight,
   DatabaseBackup,
   Download,
   Eraser,
@@ -19,7 +18,6 @@ import {
   ListOrdered,
   ListTodo,
   LogOut,
-  Menu,
   MonitorPlay,
   Moon,
   Palette,
@@ -157,12 +155,12 @@ export function AppShell() {
   return (
     <div className="flex min-h-full">
       {/* The menu stays put while the page scrolls. */}
-      <aside className="sticky top-0 hidden h-svh w-64 shrink-0 overflow-y-auto border-r bg-card md:block">
+      <aside className="sticky top-0 hidden h-svh w-58 shrink-0 overflow-y-auto border-r bg-sidebar md:block">
         <Sidebar name={name} />
       </aside>
 
       <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
-        <DialogContent className="top-0 left-0 h-full max-w-72 translate-x-0 translate-y-0 overflow-y-auto rounded-none p-0">
+        <DialogContent className="top-0 left-0 h-full max-w-72 translate-x-0 translate-y-0 overflow-y-auto rounded-none border-0 bg-sidebar p-0">
           <DialogTitle className="sr-only">Menu</DialogTitle>
           <Sidebar name={name} />
         </DialogContent>
@@ -189,78 +187,125 @@ export function AppShell() {
 
 function Sidebar({ name }: { name: string }) {
   const counts = useNavCounts();
+  const pathname = useRouterState({ select: (st) => st.location.pathname });
   const { data: status } = useQuery({
     queryKey: ["system", "status"],
     queryFn: () => unwrap(api.GET("/system/status")),
     staleTime: 60_000,
   });
+  // Settings and System are long; each shows as one row, and its pages
+  // fold out only while you are on one of them.
+  const folded = (section: NavSection) =>
+    folding.has(section.title) && !section.items.some((i) => pathname.startsWith(i.to));
   return (
-    <nav className="flex min-h-full flex-col gap-0.5 px-3 pt-5 pb-5" aria-label="Main">
-      <div className="mb-2 pb-3">
-        <Link to="/" className="group flex items-center gap-2.5 rounded-md px-2.5">
-          <Logo className="size-8 transition-transform duration-[calc(500ms*var(--m))] [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] group-hover:scale-110 group-hover:-rotate-6" />
+    <nav className="flex min-h-full flex-col pt-5 pb-4" aria-label="Main">
+      <div className="mb-3 px-5">
+        <Link to="/" className="flex min-h-11 items-center gap-2.5">
+          <Logo className="size-7" />
           <span className="flex min-w-0 flex-col">
             <span className="font-condensed truncate text-[26px] leading-none font-semibold tracking-[0.04em] uppercase">
               {name}
             </span>
             {status?.version && (
-              <span className="text-xs text-muted-foreground tabular-nums">{status.version}</span>
+              <span className="font-mono text-[11px] text-muted-foreground">{status.version}</span>
             )}
           </span>
         </Link>
-        {/* Lined up with the name: the link's padding, the logo and the gap (2.5 + 8 + 2.5). */}
-        <VpnIndicator className="mt-1.5 ml-13" />
       </div>
-      {nav.map((section) => (
-        <div key={section.title} className="flex flex-col gap-0.5">
-          {section.title && (
-            <p className="px-3 pt-4 pb-1.5 text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase">
-              {section.title}
-            </p>
-          )}
-          {section.items.map((item) => {
-            const n = item.count ? counts[item.count] : undefined;
-            const full = item.count === "queue" && counts.queueFull;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                // Home ("/") is active only on itself, not under every page.
-                activeOptions={{ exact: item.to === "/" }}
-                className="group relative flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-[calc(180ms*var(--m))] hover:bg-muted active:scale-[0.98] [&_svg]:size-[18px] [&_svg]:shrink-0 [&_svg]:text-muted-foreground [&_svg]:transition-transform [&_svg]:duration-[calc(320ms*var(--m))] hover:[&_svg]:scale-110 hover:[&_svg]:-rotate-6 hover:[&_svg]:text-foreground"
-                // The active item gets the accent fill and a bar on its left
-                // edge that grows in.
-                activeProps={{
-                  className:
-                    "bg-accent text-accent-foreground [&_svg]:!text-accent-foreground before:absolute before:top-2 before:bottom-2 before:left-0 before:w-[3px] before:rounded-sm before:bg-primary before:animate-[bar-in_calc(380ms*var(--m))_cubic-bezier(.34,1.56,.64,1)_both]",
-                }}
-              >
-                {item.icon}
-                <span className="truncate">{item.label}</span>
-                {((n !== undefined && n > 0) || full) && (
-                  <span
-                    className={cn(
-                      "ml-auto rounded-full px-2 text-xs leading-5 font-medium",
-                      full
-                        ? "border border-warning/30 bg-warning/10 text-warning"
-                        : item.count === "queue"
-                          ? "bg-primary/25 text-accent-foreground"
-                          : "bg-muted text-muted-foreground",
-                    )}
-                    title={
-                      full ? "The queue is full: no new grabs until downloads finish" : undefined
-                    }
-                  >
-                    {full ? "Full" : n}
-                  </span>
+      {nav.map((section, si) => {
+        // Settings and System sit together under one heading, as in the design.
+        const heading =
+          section.title === "Settings" ? "Setup" : folding.has(section.title) ? "" : section.title;
+        return (
+          <div key={section.title || si} className="flex flex-col">
+            {heading && <p className="label-caps px-5 pt-4 pb-1">{heading}</p>}
+            {folded(section) ? (
+              <NavRow to={section.items[0]?.to ?? "/"} label={section.title} />
+            ) : (
+              <>
+                {folding.has(section.title) && (
+                  <p className="flex min-h-11 items-center gap-2 px-5 text-[15px] text-foreground">
+                    <span className="w-3 font-mono text-xs" aria-hidden="true">
+                      ▾
+                    </span>
+                    {section.title}
+                  </p>
                 )}
-              </Link>
-            );
-          })}
-        </div>
-      ))}
-      <LiveCard />
+                {section.items.map((item) => {
+                  const n = item.count ? counts[item.count] : undefined;
+                  const full = item.count === "queue" && counts.queueFull;
+                  return (
+                    <NavRow
+                      key={item.to}
+                      to={item.to}
+                      label={item.label}
+                      indent={folding.has(section.title)}
+                      count={full ? undefined : n}
+                      full={full}
+                    />
+                  );
+                })}
+              </>
+            )}
+          </div>
+        );
+      })}
+      <div className="mt-auto flex flex-col gap-1 px-5 pt-5">
+        <VpnIndicator />
+        <LiveCard />
+      </div>
     </nav>
+  );
+}
+
+/** The sections that fold up to one row unless you are inside them. */
+const folding = new Set(["Settings", "System"]);
+
+/** One menu row: a ▸ marker, the page name and, on the right, a number in
+ * mono. The current page is orange on the sheet's own colour. */
+function NavRow({
+  to,
+  label,
+  count,
+  full,
+  indent,
+}: {
+  to: string;
+  label: string;
+  count?: number;
+  full?: boolean;
+  indent?: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      // Home ("/") is active only on itself, not under every page.
+      activeOptions={{ exact: to === "/" }}
+      className={cn(
+        "group flex min-h-11 items-center gap-2 pr-5 text-[15px] text-foreground/90 hover:bg-background/60 hover:text-foreground",
+        indent ? "pl-10 text-sm" : "pl-5",
+      )}
+      activeProps={{ className: "bg-background !text-primary", "aria-current": "page" }}
+    >
+      <span
+        className="w-3 font-mono text-xs text-muted-foreground/70 group-aria-[current=page]:text-primary"
+        aria-hidden="true"
+      >
+        ▸
+      </span>
+      <span className="truncate">{label}</span>
+      {((count !== undefined && count > 0) || full) && (
+        <span
+          className={cn(
+            "ml-auto font-mono text-xs",
+            full ? "text-warning uppercase" : "text-muted-foreground",
+          )}
+          title={full ? "The queue is full: no new grabs until downloads finish" : undefined}
+        >
+          {full ? "Full" : count}
+        </span>
+      )}
+    </Link>
   );
 }
 
@@ -281,7 +326,7 @@ function useNavCounts() {
   };
 }
 
-/** The sidebar's live card: what's downloading right now. */
+/** The sidebar's last line: what's downloading right now, as edge print. */
 function LiveCard() {
   const { data: queue } = useQuery({ ...queueQuery, refetchInterval: 15_000 });
   if (!queue) return null;
@@ -294,18 +339,10 @@ function LiveCard() {
   return (
     <Link
       to="/activity/queue"
-      className="mx-1 mt-auto flex flex-col gap-2 rounded-lg border bg-background p-3.5 transition-colors hover:border-input"
+      className="flex min-h-11 flex-col justify-center font-mono text-xs text-muted-foreground hover:text-foreground"
     >
-      <span className="flex items-center gap-2">
-        <span className={cn("eq", speed === 0 && "idle")} aria-hidden="true">
-          <i />
-          <i />
-          <i />
-          <i />
-        </span>
-        <b className="tabular-nums">{formatSpeed(speed)}</b>
-      </span>
-      <span className="text-xs text-muted-foreground">{text}</span>
+      <span className="text-[13px] text-foreground">{formatSpeed(speed)}</span>
+      <span>{text}</span>
     </Link>
   );
 }
@@ -319,38 +356,38 @@ function formatSpeed(bytesPerSecond: number): string {
 function TopBar({ pathname, onMenu }: { pathname: string; onMenu: () => void }) {
   const here = whereAmI(pathname);
   return (
-    <header className="sticky top-0 z-40 flex min-h-14 flex-wrap items-center gap-2.5 border-b bg-card/80 px-4 py-2.5 backdrop-blur-md md:px-8">
-      <Button
-        variant="tile"
-        size="icon"
-        className="md:hidden"
-        aria-label="Open menu"
-        onClick={onMenu}
-      >
-        <Menu />
+    <header className="sticky top-0 z-40 flex min-h-14 flex-wrap items-center gap-2.5 border-b bg-background px-4 py-2 md:px-7">
+      <Button variant="outline" className="md:hidden" aria-label="Open menu" onClick={onMenu}>
+        <span className="font-mono text-primary" aria-hidden="true">
+          ▸
+        </span>
+        Menu
       </Button>
       <Logo className="size-6 md:hidden" />
       {here && (
-        <div className="hidden min-w-0 flex-1 items-center gap-2 text-sm text-muted-foreground sm:flex">
+        <nav
+          aria-label="Breadcrumb"
+          className="label-caps hidden min-w-0 flex-1 items-center gap-2 sm:flex"
+        >
           {here.section && (
             <>
               <span>{here.section}</span>
-              <ChevronRight className="size-3.5" aria-hidden="true" />
+              <span aria-hidden="true">▸</span>
             </>
           )}
-          <b key={here.page} className="animate-crumb-in truncate font-semibold text-foreground">
+          <span className="truncate text-foreground" aria-current="page">
             {here.page}
-          </b>
-        </div>
+          </span>
+        </nav>
       )}
       <button
         type="button"
         onClick={openJumpTo}
-        className="ml-auto flex min-h-10 min-w-0 flex-1 items-center gap-2.5 rounded-md border bg-background px-3 text-sm text-muted-foreground transition-[border-color,transform] duration-[calc(180ms*var(--m))] hover:-translate-y-px hover:border-input sm:max-w-72 sm:flex-none sm:min-w-60"
+        className="ml-auto flex min-h-11 min-w-0 flex-1 items-center gap-2.5 border border-input bg-film px-3 text-sm text-muted-foreground hover:text-film-foreground sm:max-w-72 sm:min-w-60 sm:flex-none"
       >
         <Search className="size-4 shrink-0" aria-hidden="true" />
         <span className="truncate">Jump to a page or movie</span>
-        <kbd className="ml-auto hidden rounded border px-1.5 text-xs sm:inline">
+        <kbd className="ml-auto hidden font-mono text-xs sm:inline">
           {isMac() ? "⌘K" : "Ctrl K"}
         </kbd>
       </button>
@@ -373,9 +410,7 @@ function ThemeFlip() {
       aria-label={dark ? "Switch to the light theme" : "Switch to the dark theme"}
       onClick={() => update({ theme: dark ? "light" : "dark" })}
     >
-      <span key={String(dark)} className="animate-pop-in">
-        {dark ? <Sun /> : <Moon />}
-      </span>
+      {dark ? <Sun /> : <Moon />}
     </Button>
   );
 }
@@ -408,9 +443,9 @@ function AccountMenu() {
           <button
             type="button"
             aria-label="Account menu"
-            className="flex min-h-10 items-center gap-2 rounded-full border py-1 pr-3 pl-1 text-sm font-medium hover:bg-muted"
+            className="flex min-h-11 items-center gap-2 border border-input py-1 pr-3 pl-1 text-sm font-medium hover:bg-muted"
           >
-            <span className="grid size-8 place-items-center rounded-full bg-accent font-semibold text-accent-foreground uppercase">
+            <span className="grid size-8 place-items-center bg-accent font-mono font-medium text-accent-foreground uppercase">
               {who.slice(0, 1) || "?"}
             </span>
             <span className="hidden sm:inline">{who}</span>

@@ -52,11 +52,14 @@ describe("account menu", () => {
 
 describe("navigation", () => {
   it("lists Indexers right after Quality profiles in Settings", async () => {
-    open(signedIn);
+    renderApp("/settings/general", {
+      "GET /auth/state": json(signedIn),
+      "GET /settings/general": json({ instanceName: "Reelkeeper", logLevel: "info" }),
+    });
     await screen.findAllByRole("link", { name: "Indexers" });
     const labels = screen
       .getAllByRole("link")
-      .map((l) => l.textContent)
+      .map((l) => l.textContent?.replace("▸", ""))
       .filter((t) =>
         ["Media folders", "Quality profiles", "Indexers", "General"].includes(t ?? ""),
       );
@@ -66,6 +69,19 @@ describe("navigation", () => {
       "Indexers",
       "General",
     ]);
+  });
+});
+
+describe("sidebar", () => {
+  it("folds Settings and System into one row each, unless you are inside them", async () => {
+    open(signedIn);
+    // On System → Status: System is open, Settings is one row.
+    expect(await screen.findByRole("link", { name: "Status" })).toBeInTheDocument();
+    const settings = screen
+      .getAllByRole("link")
+      .find((l) => l.getAttribute("href") === "/settings/media");
+    expect(settings?.textContent).toBe("▸Settings");
+    expect(screen.queryByRole("link", { name: "Indexers" })).not.toBeInTheDocument();
   });
 });
 

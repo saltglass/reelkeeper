@@ -109,7 +109,7 @@ describe("series page", () => {
     const names = within(nav)
       .getAllByRole("link")
       // Without the counts beside some of them ("Series 3").
-      .map((l) => l.textContent?.replace(/\d+$/, ""));
+      .map((l) => l.textContent?.replace(/^▸/, "").replace(/\d+$/, ""));
     expect(names.indexOf("Series")).toBe(names.indexOf("Movies") + 1);
   });
 

@@ -47,11 +47,11 @@ export function VpnIndicator({ className }: { className?: string }) {
       to="/settings/download-client"
       title={s.detail}
       className={cn(
-        "flex w-fit items-center gap-1.5 rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground",
+        "flex min-h-11 w-fit items-center gap-1.5 font-mono text-xs text-muted-foreground uppercase hover:text-foreground",
         className,
       )}
     >
-      <span className={cn("size-2 shrink-0 rounded-full", s.dot)} aria-hidden="true" />
+      <span className={cn("size-2 shrink-0", s.dot)} aria-hidden="true" />
       <span>{s.label}</span>
       <span className="sr-only">: {s.detail}</span>
     </Link>

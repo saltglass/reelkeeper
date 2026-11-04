@@ -68,7 +68,7 @@ work stopped.
 - [x] 1. Foundations: fonts, tokens, themes (index.css, hooks/theme.ts,
       web/index.html, AppearanceCard, theme tests), remove glow/gradients,
       Logo one colour.
-- [ ] 2. Shell: AppShell sidebar (▸ markers, mono counts, Settings/System
+- [x] 2. Shell: AppShell sidebar (▸ markers, mono counts, Settings/System
       fold open only when inside them), top bar (breadcrumb `LIBRARY ▸ MOVIES`
       in mono), VPN indicator, Jump to, phone menu.
 - [ ] 3. Primitives in components/ui: button, badge (edge print), card (square,
