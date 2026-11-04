@@ -130,8 +130,9 @@ below that on purpose.
       (same as muted-foreground in Dark and Light; `#a1a1aa`, 7.8:1, in High
       contrast), used by inputs and Jump to.
 - [ ] A series' page
-- [ ] Settings → Download client, Media servers, Notifications, Security
-- [ ] System → Status, Tasks, Backups
+- [x] Settings → Download client, Media servers, Notifications, Security
+      (with the fixes above; nothing else of the old look found)
+- [x] System → Status, Tasks, Backups (with the Tasks fix above)
 - [ ] README screenshots retaken from a library with real posters
 
 ## Checking it visually
