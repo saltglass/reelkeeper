@@ -143,7 +143,10 @@ below that on purpose.
       entrance animation off Movies, Series, Queue, History, Seeding &
       cleanup and the movie page. It's back as a fade-only "develop" (see
       Decisions), checked under Lively (0.52 s), Subtle (0.29 s) and Off.
-- [ ] A series' page
+- [x] A series' page (Severance; Law & Order: SVU with upcoming episodes),
+      Dark, Light, High contrast and phone, from a real library: on film
+      as designed. Fix: an episode's "Not monitored" was muted at 70%
+      (3.9:1 on film); now full muted (above 4.5:1).
 - [x] Settings → Download client, Media servers, Notifications, Security
       (with the fixes above; nothing else of the old look found)
 - [x] System → Status, Tasks, Backups (with the Tasks fix above)

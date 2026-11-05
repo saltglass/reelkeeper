@@ -713,7 +713,7 @@ function StateBadge({ state }: { state: EpisodeState["state"] }) {
   if (state === "wanted") return <Badge variant="warning">Wanted</Badge>;
   if (state === "not-aired") return <Badge>Upcoming</Badge>;
   if (state === "unmonitored")
-    return <span className="text-xs text-muted-foreground/70">Not monitored</span>;
+    return <span className="text-xs text-muted-foreground">Not monitored</span>;
   return null;
 }
 
