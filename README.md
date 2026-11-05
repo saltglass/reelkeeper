@@ -173,7 +173,8 @@ does the same job, and uses the fact that everything lives together:
 | ![Editing a quality profile](docs/screenshots/profile.png) | ![The Movies page in the light theme](docs/screenshots/movies-light.png) |
 | **Quality profiles** as plain choices | **Light theme** |
 
-The titles and posters in these screenshots are made up for the demo.
+The library in these screenshots is a demo: real titles, posters and details
+from TMDB, placeholder files, and downloads from a made-up Usenet server.
 
 ## Getting started
 

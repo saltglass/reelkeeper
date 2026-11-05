@@ -106,12 +106,7 @@ work stopped.
 
 ## Follow-ups
 
-- The README's screenshots (docs/screenshots/*.png) still show the old look.
-  Retake them from a real library (real posters) once this is merged.
-- Not seen in a screenshot, only covered by tests: a series' page and the
-  settings/system pages the mock data couldn't fill (Download client, Media
-  servers, Notifications, Security, Status, Tasks, Backups). Worth a look in
-  `just dev` with real data.
+- All checked now; see "Beta check" below.
 
 ## Beta check (2026-11-04, `just dev` on the dev stack)
 
@@ -150,7 +145,11 @@ below that on purpose.
 - [x] Settings → Download client, Media servers, Notifications, Security
       (with the fixes above; nothing else of the old look found)
 - [x] System → Status, Tasks, Backups (with the Tasks fix above)
-- [ ] README screenshots retaken from a library with real posters
+- [x] README screenshots retaken (same names and views, 1440×757, device
+      scale 1) from a library with real TMDB posters: placeholder files
+      found by a real scan, 20 movies added by hand, and grabs and imports
+      through the dev stack's made-up Usenet (fakenews and SABnzbd), with
+      Reelkeeper run as a container on the dev stack's network.
 
 ## Checking it visually
 
