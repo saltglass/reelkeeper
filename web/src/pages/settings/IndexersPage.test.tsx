@@ -144,6 +144,58 @@ describe("indexers page", () => {
     expect(screen.getByRole("switch", { name: "Enable SecretSite" })).toBeChecked();
   });
 
+  // 2026-11-05: Dan turned every tracker off but althub (Usenet) and got
+  // "0 releases" with no hint that Usenet indexers wait for a Usenet client.
+  it("says a Usenet indexer isn't searched until a Usenet client is set up", async () => {
+    const althub = {
+      ...tracker,
+      id: 7,
+      name: "althub",
+      kind: "newznab",
+      definition: "",
+      definitionName: "",
+      baseUrl: "https://api.althub.example",
+      settings: {},
+      secretsSet: ["apiKey"],
+    };
+    const noClient = {
+      type: "sabnzbd",
+      url: "",
+      username: "",
+      apiKeySet: false,
+      passwordSet: false,
+    };
+    open({
+      "GET /indexers": json([tracker, althub]),
+      "GET /settings/usenet-client": json(noClient),
+    });
+    expect(await screen.findByRole("heading", { name: "althub" })).toBeInTheDocument();
+    const warning = await screen.findByText(/Not searched: this is a Usenet indexer/);
+    expect(warning).toBeInTheDocument();
+    expect(
+      within(warning).getByRole("link", { name: "Settings → Download client" }),
+    ).toHaveAttribute("href", "/settings/download-client");
+    // Only on the Usenet indexer, not the torrent tracker.
+    expect(screen.getAllByText(/Not searched: this is a Usenet indexer/)).toHaveLength(1);
+  });
+
+  it("doesn't warn once a Usenet client is set up", async () => {
+    const althub = { ...tracker, id: 7, name: "althub", kind: "newznab", definition: "" };
+    open({
+      "GET /indexers": json([althub]),
+      "GET /settings/usenet-client": json({
+        type: "sabnzbd",
+        url: "http://sabnzbd:8080",
+        username: "",
+        apiKeySet: true,
+        passwordSet: false,
+      }),
+    });
+    expect(await screen.findByRole("heading", { name: "althub" })).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByText(/Not searched: this is a Usenet indexer/)).not.toBeInTheDocument();
+  });
+
   it("explains the empty state", async () => {
     open({ "GET /indexers": json([]) });
     expect(await screen.findByText(/No indexers yet/)).toBeInTheDocument();

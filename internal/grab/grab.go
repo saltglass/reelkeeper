@@ -297,6 +297,7 @@ func (s *Service) search(ctx context.Context, w wanted, trigger string) (string,
 	if err != nil {
 		return "", err
 	}
+	failures, noClient := splitNoClient(failures)
 	// Nothing found because indexers failed or were resting doesn't count
 	// as a search: the scheduled pass tries again within the hour instead
 	// of in three days.
@@ -339,6 +340,7 @@ func (s *Service) search(ctx context.Context, w wanted, trigger string) (string,
 	case len(errs) > 0:
 		msg += fmt.Sprintf(" %s failed or weren't asked.", countText(len(errs), "indexer"))
 	}
+	msg += noClient
 	data := EventData{Trigger: trigger, IndexerErrors: errs}
 	data.Releases, data.More = verdicts(ds)
 	if err := s.history.Add(ctx, s.event(w, EventSearched, msg), data); err != nil {

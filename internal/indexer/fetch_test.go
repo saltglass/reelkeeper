@@ -129,16 +129,30 @@ func TestSearchSkipsUsenetWithoutAClient(t *testing.T) {
 
 		on := false
 		f.svc.SetSearchable(func(p string) bool { return p == ProtocolTorrent || on })
-		res, _, err := f.svc.Search(ctx, q, SearchOptions{})
+		res, skipped, err := f.svc.Search(ctx, q, SearchOptions{})
 		if err != nil || len(res) != 1 || res[0].Indexer != "Tracker" || res[0].Usenet() || asked.Load() != 0 {
 			t.Fatalf("without a Usenet client: %+v, %v (feed asked %d times)", res, err, asked.Load())
+		}
+		// The Usenet indexer is reported as not asked, and why, so a search
+		// that finds nothing can say so (2026-11-05: "0 releases" with only
+		// a Usenet indexer on and no Usenet client, and nothing said why).
+		if len(skipped) != 1 || skipped[0].Indexer != "Usenet" || !skipped[0].NoClient || !skipped[0].Skipped ||
+			!strings.Contains(skipped[0].Message, "no Usenet client is set up") {
+			t.Errorf("skipped = %+v", skipped)
+		}
+		// RSS reads run every few minutes; they don't report it.
+		if _, skipped, _ := f.svc.Search(ctx, q, SearchOptions{Feed: true}); len(skipped) != 0 {
+			t.Errorf("feed skipped = %+v", skipped)
 		}
 		if f.svc.Searchable(ProtocolUsenet) || !f.svc.Searchable(ProtocolTorrent) {
 			t.Error("Searchable")
 		}
 
 		on = true
-		res, _, err = f.svc.Search(ctx, q, SearchOptions{})
+		res, skipped, err = f.svc.Search(ctx, q, SearchOptions{})
+		if len(skipped) != 0 {
+			t.Errorf("with a Usenet client, skipped = %+v", skipped)
+		}
 		if err != nil || len(res) != 2 {
 			t.Fatalf("with a Usenet client: %+v, %v", res, err)
 		}

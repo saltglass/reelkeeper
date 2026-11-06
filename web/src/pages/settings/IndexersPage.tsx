@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Download, Pencil, Plus, Trash2 } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { api, RequestError, unwrap } from "@/api/client";
@@ -16,6 +17,7 @@ import {
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { usenetClientQuery } from "@/hooks/downloads";
 import {
   definitionsQuery,
   type Indexer,
@@ -45,7 +47,7 @@ export function IndexersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Indexers"
-        description="Indexers are the places Reelkeeper searches for releases: torrent sites (trackers), feeds from tools like Jackett, and public search engines. Reelkeeper searches them by itself when something is requested, so there is no search page here."
+        description="Indexers are the places Reelkeeper searches for releases: torrent sites (trackers), Usenet indexers (searched once a Usenet client is set up), feeds from tools like Jackett, and public search engines. Reelkeeper searches them by itself when something is requested, so there is no search page here."
       />
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => setEditing("new")}>
@@ -174,6 +176,11 @@ function IndexerCard({
   const s = ix.stats;
   const lat = latency(s.avgMs);
   const solverMissing = ix.useSolver && solver.data !== undefined && !solver.data.url;
+  // Usenet (Newznab) indexers are only searched once a Usenet client is set
+  // up: nothing could download what they find (download/usenet.go).
+  const usenet = useQuery(usenetClientQuery);
+  const noUsenetClient =
+    ix.kind === "newznab" && usenet.data !== undefined && usenet.data.url === "";
   return (
     <Card
       className="animate-rise transition-[border-color,box-shadow] hover:border-primary/40"
@@ -230,6 +237,19 @@ function IndexerCard({
         )}
         {ix.health.status !== "failing" && ix.health.message && (
           <p className="text-sm text-muted-foreground">{ix.health.message}</p>
+        )}
+        {noUsenetClient && (
+          <Alert variant="warning">
+            Not searched: this is a Usenet indexer, and no Usenet client is set up. Add SABnzbd or
+            NZBGet under{" "}
+            <Link
+              to="/settings/download-client"
+              className="font-medium underline underline-offset-4"
+            >
+              Settings → Download client
+            </Link>
+            .
+          </Alert>
         )}
         {solverMissing && (
           <Alert variant="warning">

@@ -822,6 +822,56 @@ func TestSearchWithNoIndexerAnswering(t *testing.T) {
 	})
 }
 
+// A Usenet indexer skipped for want of a Usenet client is named in the
+// message, and doesn't make the search count as undone (it would otherwise
+// be retried every hour, which can't help). 2026-11-05: Dan's search with
+// only althub on said "0 releases, 0 acceptable" and nothing more.
+func TestSearchNamesIndexersWithoutAClient(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newFixture(t, db)
+		ronin := f.lib.versions[1].Version.ID
+		f.idx.failures = []indexer.IndexerError{{Indexer: "althub", Skipped: true, NoClient: true,
+			Message: indexer.NoClientMessage(indexer.ProtocolUsenet)}}
+		msg, err := f.svc.SearchVersion(ctx, ronin, TriggerScheduled)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := "althub wasn't searched: no Usenet client is set up (Settings → Download client)."
+		if strings.Contains(msg, "Couldn't search") || !strings.Contains(msg, want) || strings.Contains(msg, "failed or weren't asked") {
+			t.Errorf("message = %q", msg)
+		}
+		if _, ok := f.lib.searched[ronin]; !ok {
+			t.Error("the search didn't count as done")
+		}
+
+		// A real failure alongside it still makes the search undone.
+		f.idx.failures = append(f.idx.failures, indexer.IndexerError{Indexer: "1337x", Message: "timed out"})
+		msg, _ = f.svc.SearchVersion(ctx, ronin, TriggerScheduled)
+		if !strings.Contains(msg, "Couldn't search for Ronin") || !strings.Contains(msg, "(1337x: timed out)") || !strings.Contains(msg, want) {
+			t.Errorf("with a failure too: %q", msg)
+		}
+	})
+}
+
+func TestSplitNoClient(t *testing.T) {
+	usenet := indexer.NoClientMessage(indexer.ProtocolUsenet)
+	failed, note := splitNoClient([]indexer.IndexerError{
+		{Indexer: "althub", NoClient: true, Message: usenet},
+		{Indexer: "1337x", Message: "timed out"},
+		{Indexer: "NZBplanet", NoClient: true, Message: usenet},
+	})
+	if len(failed) != 1 || failed[0].Indexer != "1337x" {
+		t.Errorf("failed = %+v", failed)
+	}
+	if want := " althub and NZBplanet weren't searched: no Usenet client is set up (Settings → Download client)."; note != want {
+		t.Errorf("note = %q, want %q", note, want)
+	}
+	if _, note := splitNoClient(nil); note != "" {
+		t.Errorf("no skips: %q", note)
+	}
+}
+
 func TestGrabsToday(t *testing.T) {
 	storetest.Each(t, func(t *testing.T, db *store.Store) {
 		ctx := context.Background()

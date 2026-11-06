@@ -778,8 +778,14 @@ type IndexerError struct {
 	IndexerID int64
 	Indexer   string
 	Message   string
-	// Skipped means it wasn't asked: it's resting after a failure.
+	// Skipped means it wasn't asked: it's resting after a failure, or (with
+	// NoClient) nothing could download what it finds.
 	Skipped bool
+	// NoClient means it wasn't asked because no client of its kind is set
+	// up: a Usenet indexer without a Usenet client, or a torrent indexer
+	// without a torrent client. Unlike a failure, asking again soon won't
+	// help, so searches report it without treating the search as undone.
+	NoClient bool
 }
 
 // SearchOptions narrow a search.
@@ -828,6 +834,12 @@ func (s *Service) Search(ctx context.Context, q core.Query, opt SearchOptions) (
 			continue
 		}
 		if !s.Searchable(ix.Protocol()) {
+			// Reported, so a search that found nothing says why (but not on
+			// every RSS read, which would repeat it every few minutes).
+			if !opt.Feed {
+				skipped = append(skipped, IndexerError{IndexerID: ix.ID, Indexer: ix.Name, Skipped: true,
+					NoClient: true, Message: NoClientMessage(ix.Protocol())})
+			}
 			continue
 		}
 		if s.overLimit(ctx, &ix) {
@@ -878,6 +890,15 @@ func (s *Service) Search(ctx context.Context, q core.Query, opt SearchOptions) (
 	}
 	wg.Wait()
 	return releases, append(failures, skipped...), nil
+}
+
+// NoClientMessage says why an indexer of this protocol isn't searched while
+// no client of its kind is set up.
+func NoClientMessage(protocol string) string {
+	if protocol == ProtocolUsenet {
+		return "not searched: no Usenet client is set up (Settings → Download client)"
+	}
+	return "not searched: no torrent client is set up (Settings → Download client)"
 }
 
 // feedDue says whether a solver-backed indexer's feed may be read now, and

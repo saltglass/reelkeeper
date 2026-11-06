@@ -521,6 +521,7 @@ func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string, run 
 	if err != nil {
 		return unitSearch{}, err
 	}
+	failures, noClient := splitNoClient(failures)
 	unsearched := len(rels) == 0 && len(failures) > 0
 	rels = dedupe(rels)
 	cs, err := s.decideTV(ctx, u.w, u.target(), rels)
@@ -554,6 +555,7 @@ func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string, run 
 	case len(errs) > 0:
 		msg += fmt.Sprintf(" %s failed or weren't asked.", countText(len(errs), "indexer"))
 	}
+	msg += noClient
 	data := EventData{Trigger: trigger, IndexerErrors: errs, EpisodeIDs: u.episodeIDs()}
 	data.Releases, data.More = verdicts(plain(cs))
 	if err := s.history.Add(ctx, s.tvEvent(u.w, EventSearched, msg), data); err != nil {
