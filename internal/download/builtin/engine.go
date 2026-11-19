@@ -259,6 +259,9 @@ func (e *Engine) clientConfig() *torrent.ClientConfig {
 	cfg.NoDefaultPortForwarding = true
 	cfg.DisableWebtorrent = true
 	cfg.DisableWebseeds = true
+	// Local service discovery (BEP 14) multicasts on the LAN from a socket of
+	// its own, outside the Network. Off (nil) is anacrolix's default; pinned.
+	cfg.LocalServiceDiscovery = nil
 	cfg.DisablePEX = !c.PEX
 	// anacrolix starts a DHT announce for every torrent by itself, private
 	// ones too. The engine does the announcing (dht.go), for public ones.
@@ -269,6 +272,7 @@ func (e *Engine) clientConfig() *torrent.ClientConfig {
 	cfg.DefaultStorage = noDefaultStorage{}
 
 	cfg.UploadRateLimiter, cfg.DownloadRateLimiter = e.up, e.down
+	cfg.EstablishedConnsPerTorrent = connsPerTorrent
 
 	cfg.HTTPProxy = nil // never a proxy picked up from the environment
 	cfg.HTTPDialContext = e.dialHost
@@ -284,6 +288,10 @@ func (e *Engine) clientConfig() *torrent.ClientConfig {
 	cfg.Callbacks.PeerConnAdded = append(cfg.Callbacks.PeerConnAdded, e.privatePeerAdded)
 	return cfg
 }
+
+// connsPerTorrent is how many peers a running torrent may be connected to
+// (anacrolix's default), named so that nudge can give the same limit back.
+const connsPerTorrent = 50
 
 // startClient creates the anacrolix client and gives it its sockets.
 func (e *Engine) startClient() error {
@@ -428,7 +436,7 @@ func (e *Engine) Config() Config {
 
 func (e *Engine) settings() Config { return e.Config() }
 
-// Version says which engine this is, such as "Built-in (anacrolix/torrent v1.61.0)".
+// Version says which engine this is, such as "Built-in (anacrolix/torrent v1.63.0)".
 func Version() string {
 	v := "unknown version"
 	if bi, ok := debug.ReadBuildInfo(); ok {

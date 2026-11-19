@@ -33,7 +33,8 @@ func trackerContent(t *testing.T, tr *stubTracker, name string, big int) *conten
 	return makeContent(t, name, contentOpts{announce: tr.url(), big: big})
 }
 
-// The upstream bug, pinned: with anacrolix/torrent 1.61, a torrent dropped from
+// The upstream bug, pinned: with anacrolix/torrent 1.61 to 1.63 (upstream issue
+// #1048, closed but never fixed), a torrent dropped from
 // a client and added to it again is never given the peers its tracker returns
 // (the tracker's answers go to the dropped torrent). The engine works around it
 // (stopRunning, parkRunning, reconcile). If this test starts to fail, upstream
@@ -194,8 +195,10 @@ func TestSeedingRotationKeepsTorrentsReachable(t *testing.T) {
 	case <-time.After(40 * time.Second):
 		t.Fatal("the rotated-in seed never uploaded to a leecher")
 	}
+	// anacrolix (1.63) announces no more often than once a minute, whatever
+	// interval the tracker asks for.
 	before := tr.called(c.hash)
-	eventuallyWithin(t, 10*time.Second, "the tracker to hear from the seed again", func() bool { return tr.called(c.hash) > before })
+	eventuallyWithin(t, 75*time.Second, "the tracker to hear from the seed again", func() bool { return tr.called(c.hash) > before })
 }
 
 // Checking a torrent again takes it out of the client for good (its files are

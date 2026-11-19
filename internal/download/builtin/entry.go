@@ -33,8 +33,11 @@ type entry struct {
 	// is the connection limit to give it back when it runs again. baseDown and
 	// baseUp are what the client's counters already held when it last started
 	// running (a parked torrent's counters carry on from the run before).
-	parked           *torrent.Torrent
-	parkedMax        int
+	parked    *torrent.Torrent
+	parkedMax int
+	// parkedPeers are the peers it was connected to when it was parked, given
+	// back when it runs again (see parkRunning).
+	parkedPeers      []torrent.PeerInfo
 	baseDown, baseUp int64
 
 	// have is the bytes verified so far.

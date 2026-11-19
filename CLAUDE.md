@@ -561,7 +561,7 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
   and **closes its anacrolix client and all sockets**, making new ones when
   allowed; paused flags are never touched. The client is rebuilt on purpose
   for the kill switch (and see below).
-- **Pause in place, never drop-and-re-add.** anacrolix 1.61 keeps its tracker
+- **Pause in place, never drop-and-re-add.** anacrolix 1.61–1.63 keeps its tracker
   bookkeeping per (tracker, info hash) for the life of a client and hands every
   later announce result to the *first* torrent added, which is gone once it is
   dropped: a torrent dropped and added again to the same client never gets
@@ -571,6 +571,14 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
   its trackers keep being announced to), and anything that has to `stopRunning`
   (drop) a torrent (recheck, move, removal, storage trouble) marks its hash
   stale, so the client is made anew before that torrent runs again.
+- **anacrolix forgets a peer once its connection closes, and asks a tracker
+  again only after the tracker's interval** (never sooner than a minute
+  from 1.63, whatever the tracker says). So a parked torrent keeps the peers
+  it was connected to and gets them back when it runs again
+  (`dialablePeers`), and each beat `nudge`s a running torrent that knows
+  peers but has none connected: anacrolix skips dialling while the download
+  speed limiter is in debt, and nothing makes it try again. Tests that wait
+  for a tracker's next announce must allow over a minute.
 - **The VPN config is a secret** (it holds the private key): stored sealed
   (`downloadClient.vpnConfig`), never in an API answer, a log line or an error
   message (the parser's tests check this); the API shows `VpnSummary`, which

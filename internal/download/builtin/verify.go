@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	g "github.com/anacrolix/generics"
 	"github.com/anacrolix/torrent/metainfo"
 )
 
@@ -53,7 +54,7 @@ func (e *Engine) forgetPieces(en *entry) {
 	}
 	ih := metainfo.NewHashFromHex(en.rec.Hash)
 	for i := range en.info.NumPieces() {
-		_ = e.pc.Set(metainfo.PieceKey{InfoHash: ih, Index: i}, false)
+		_ = e.pc.Set(metainfo.PieceKey{InfoHash: ih, Index: i}, g.Some(false))
 	}
 	en.have = 0
 }
@@ -138,7 +139,7 @@ func (e *Engine) hashPieces(info *metainfo.Info, folder, hash string, cancel <-c
 			want := p.V1Hash().Value
 			ok = string(h.Sum(nil)) == string(want[:])
 		}
-		if err := e.pc.Set(metainfo.PieceKey{InfoHash: ih, Index: i}, ok); err != nil {
+		if err := e.pc.Set(metainfo.PieceKey{InfoHash: ih, Index: i}, g.Some(ok)); err != nil {
 			return good, err
 		}
 		if ok {
