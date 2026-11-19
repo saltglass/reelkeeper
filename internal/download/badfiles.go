@@ -15,6 +15,11 @@ package download
 //     details from its peers (seconds, usually). "Check downloads" reads the
 //     list once it's there, and a bad one is removed at once with the little
 //     it has downloaded, blocklisted for good, and searched for again.
+//   - An .nzb (Usenet, 2.0) names each file in its posts' subjects, and
+//     Grab reads those too. Only the program rule applies there: a Usenet
+//     release is normally a set of archives, often with scrambled names, so
+//     "no video" can't be told from the .nzb. A program the poster named
+//     ("Setup.exe", "Movie.mkv.exe") is refused like a torrent's.
 //
 // Always on, no setting: nothing in the library is touched, and what's
 // removed is a download that can never be imported. The rules themselves
@@ -23,6 +28,7 @@ package download
 import (
 	"bytes"
 	"context"
+	"encoding/xml"
 	"fmt"
 	"strings"
 
@@ -59,6 +65,51 @@ func TorrentFiles(b []byte) ([]File, error) {
 	return out, nil
 }
 
+// NZBFiles lists the files an .nzb names, with each file's size from its
+// segments. A file's name is the quoted part of its subject, as posting
+// tools write it (`Movie [01/30] - "Movie.part01.rar" yEnc (1/50)`); a
+// subject with no quoted name (an obfuscated post) is left out, so the list
+// can be shorter than the release, or empty.
+func NZBFiles(b []byte) ([]File, error) {
+	var doc struct {
+		Files []struct {
+			Subject  string `xml:"subject,attr"`
+			Segments []struct {
+				Bytes int64 `xml:"bytes,attr"`
+			} `xml:"segments>segment"`
+		} `xml:"file"`
+	}
+	if err := xml.Unmarshal(b, &doc); err != nil {
+		return nil, fmt.Errorf("not a readable .nzb file: %w", err)
+	}
+	var out []File
+	for _, f := range doc.Files {
+		name := quotedName(f.Subject)
+		if name == "" {
+			continue
+		}
+		var size int64
+		for _, seg := range f.Segments {
+			size += seg.Bytes
+		}
+		out = append(out, File{Name: name, Size: size})
+	}
+	return out, nil
+}
+
+// quotedName is the first "quoted" part of a post's subject, or "".
+func quotedName(subject string) string {
+	_, rest, ok := strings.Cut(subject, `"`)
+	if !ok {
+		return ""
+	}
+	name, _, ok := strings.Cut(rest, `"`)
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(name)
+}
+
 // unfit is library.UnfitRelease for a client's file list.
 func unfit(files []File) string {
 	rf := make([]library.ReleaseFile, len(files))
@@ -91,6 +142,33 @@ func (s *Service) refuseTorrent(ctx context.Context, g grab.Grabbed, titleID int
 	}
 	s.logger.Info("refused a release for its files before downloading it", "release", g.Release.Title, "reason", reason)
 	return true, fmt.Errorf("%w: %s", grab.ErrBadFiles, reason)
+}
+
+// refuseNZB checks the files a fetched .nzb names before it's sent, for
+// programs only (see the top of this file). When there is one, the release
+// is blocklisted for the title (by name: a Usenet release has no info hash)
+// and the answer is grab.ErrBadFiles with the reason. An .nzb that can't be
+// read is left to the Usenet client, which reads it itself.
+func (s *Service) refuseNZB(ctx context.Context, g grab.Grabbed, titleID int64, b []byte) error {
+	files, err := NZBFiles(b)
+	if err != nil {
+		s.logger.Warn("couldn't read the files in an .nzb before sending it", "release", g.Release.Title, "error", err)
+		return nil
+	}
+	rf := make([]library.ReleaseFile, len(files))
+	for i, f := range files {
+		rf[i] = library.ReleaseFile{Name: f.Name, Size: f.Size}
+	}
+	reason := library.ProgramsIn(rf)
+	if reason == "" {
+		return nil
+	}
+	if err := s.AddToBlocklist(ctx, BlockedRelease{TitleID: titleID, ReleaseTitle: g.Release.Title,
+		Indexer: g.Release.Indexer, Quality: g.Quality, Reason: badFilesReason(reason), Rule: BlockBadFiles}); err != nil {
+		return err
+	}
+	s.logger.Info("refused a Usenet release for its files before downloading it", "release", g.Release.Title, "reason", reason)
+	return fmt.Errorf("%w: %s", grab.ErrBadFiles, reason)
 }
 
 // badFilesReason is the blocklist's reason for a release with bad files.

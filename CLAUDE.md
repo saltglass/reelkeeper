@@ -358,7 +358,10 @@ Transmission and Deluge).
   (`grab.ErrBadFiles`; the search then tries the next acceptable release, up
   to 3 refusals, and TV re-picks the refused release's episodes); a magnet is
   checked by "Check downloads" once the client lists its files, then removed
-  and searched for again, without cleanup's strikes or dry run.
+  and searched for again, without cleanup's strikes or dry run. An .nzb
+  (2.0) is read in `Grab` for programs only (`library.ProgramsIn`, names
+  from the quoted part of each post's subject): Usenet releases are
+  archives with often scrambled names, so "no video" can't be judged there.
 
 ### Library and imports
 - **Scanning and identification** (no help from Radarr/Sonarr):

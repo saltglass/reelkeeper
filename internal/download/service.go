@@ -376,13 +376,17 @@ func (s *Service) Grab(ctx context.Context, g grab.Grabbed) error {
 	if err != nil {
 		return err
 	}
-	// A .torrent says what's in it: a fake is refused here, before the
-	// download client ever sees it (badfiles.go).
+	// A .torrent says what's in it, and an .nzb names its files: a fake is
+	// refused here, before the download client ever sees it (badfiles.go).
 	checked := false
-	if len(f.Torrent) > 0 {
-		if checked, err = s.refuseTorrent(ctx, g, tid, f.Torrent); err != nil {
-			return err
-		}
+	switch {
+	case len(f.Torrent) > 0:
+		checked, err = s.refuseTorrent(ctx, g, tid, f.Torrent)
+	case len(f.NZB) > 0:
+		err = s.refuseNZB(ctx, g, tid, f.NZB)
+	}
+	if err != nil {
+		return err
 	}
 	if err := c.EnsureCategory(ctx, category, ""); err != nil {
 		return err

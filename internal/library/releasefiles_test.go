@@ -68,3 +68,19 @@ func TestUnfitRelease(t *testing.T) {
 		})
 	}
 }
+
+// Usenet releases are judged by programs alone: a set of archives with
+// scrambled names is normal there, and only a named program is refused.
+func TestProgramsIn(t *testing.T) {
+	archives := []ReleaseFile{{"a8f3c1d07e.part01.rar", 1 << 30}, {"a8f3c1d07e.part02.rar", 1 << 30}, {"a8f3c1d07e.par2", 1 << 10}}
+	if got := ProgramsIn(archives); got != "" {
+		t.Errorf("archives = %q, want fine", got)
+	}
+	if got := ProgramsIn(nil); got != "" {
+		t.Errorf("no names = %q, want fine", got)
+	}
+	withSetup := append(archives, ReleaseFile{"Setup.exe", 3 << 20})
+	if got := ProgramsIn(withSetup); !strings.Contains(got, "Setup.exe, a Windows program") {
+		t.Errorf("with Setup.exe = %q", got)
+	}
+}

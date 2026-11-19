@@ -47,16 +47,35 @@ var programExtensions = map[string]string{
 //
 // It judges by names alone, as the import would see them once downloaded
 // (hidden files and extras folders don't count as the video, nor do small
-// samples), but a program counts wherever it is, hidden or not. An empty list (a magnet link whose details haven't arrived)
-// is "".
+// samples), but a program counts wherever it is, hidden or not. An empty
+// list (a magnet link whose details haven't arrived) is "".
 func UnfitRelease(files []ReleaseFile) string {
 	if len(files) == 0 {
 		return ""
 	}
+	if why := ProgramsIn(files); why != "" {
+		return why
+	}
+	var others []string
+	for _, f := range files {
+		if isPadding(f.Name) {
+			continue
+		}
+		if mainVideoName(f) {
+			return ""
+		}
+		others = append(others, path.Base(f.Name))
+	}
+	return "it has no movie or episode file in it, only " + listSome(others, 3)
+}
+
+// ProgramsIn is the first half of UnfitRelease alone: why the files include
+// a program or script, or "" when none does. Usenet releases are judged by
+// this only, since their files are usually archives with scrambled names
+// that say nothing about whether a video is inside.
+func ProgramsIn(files []ReleaseFile) string {
 	var programs []string
 	kind := ""
-	video := false
-	var others []string
 	for _, f := range files {
 		name := path.Base(f.Name)
 		if isPadding(f.Name) {
@@ -67,23 +86,15 @@ func UnfitRelease(files []ReleaseFile) string {
 				kind = k
 			}
 			programs = append(programs, name)
-			continue
-		}
-		if mainVideoName(f) {
-			video = true
-		} else {
-			others = append(others, name)
 		}
 	}
-	switch {
-	case len(programs) == 1:
+	switch len(programs) {
+	case 0:
+		return ""
+	case 1:
 		return fmt.Sprintf("it contains %s, %s, not a video", programs[0], kind)
-	case len(programs) > 1:
-		return fmt.Sprintf("it contains %d programs or scripts (%s first, %s), not just a video", len(programs), programs[0], kind)
-	case !video:
-		return "it has no movie or episode file in it, only " + listSome(others, 3)
 	}
-	return ""
+	return fmt.Sprintf("it contains %d programs or scripts (%s first, %s), not just a video", len(programs), programs[0], kind)
 }
 
 // isPadding reports whether a file is BitTorrent padding (BEP 47): hybrid

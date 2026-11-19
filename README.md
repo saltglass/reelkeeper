@@ -136,7 +136,8 @@ does the same job, and uses the fact that everything lives together:
 - Fakes are refused before they download: a torrent whose files include a
   program or script (`Movie.mkv.exe`, `Setup.exe`), or that has no video at
   all, is blocklisted and the next-best release is grabbed instead. Magnet
-  links are checked the moment the client knows their files.
+  links are checked the moment the client knows their files. A Usenet
+  release whose .nzb names a program is refused the same way.
 - Safe imports: copy (or hardlink), verify, then rename into place. Files an
   upgrade replaces are set aside, not deleted.
 
