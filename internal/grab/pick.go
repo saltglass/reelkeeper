@@ -297,6 +297,9 @@ func grabRefusal(err error) error {
 		return Refusal("Torrents are moving to another download client; try again when that's done (System → Tasks).")
 	case errors.Is(err, ErrNotEnoughSpace):
 		return Refusal(strings.TrimPrefix(err.Error(), ErrNotEnoughSpace.Error()+": ") + ".")
+	case errors.Is(err, ErrBadFiles):
+		// Not one to override: it's on the blocklist now.
+		return Refusal("Not downloaded: " + badFilesText(err))
 	}
 	return Refusal("The download client refused it: " + err.Error())
 }

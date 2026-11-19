@@ -170,6 +170,24 @@ func (s *Service) moving() bool {
 // fit on the download disk with the space kept free.
 var ErrNotEnoughSpace = errors.New("not enough free space")
 
+// ErrBadFiles is what the grabber returns when a release's files are a
+// program or script, or hold no video the import would take: it read the
+// .torrent before sending it, refused it and blocklisted it for good. The
+// error's text after "ErrBadFiles: " is the reason. A search then tries the
+// next acceptable release (maxBadFileTries).
+var ErrBadFiles = errors.New("bad files")
+
+// maxBadFileTries bounds how many releases one search refuses for their
+// files before giving up until the next search: each fetch of a .torrent
+// is one of the indexer's grabs for the day.
+const maxBadFileTries = 3
+
+// badFilesText is the History text for a release refused for its files.
+func badFilesText(err error) string {
+	return "Reelkeeper read its file list first and " + strings.TrimPrefix(err.Error(), ErrBadFiles.Error()+": ") +
+		". It's on the blocklist now (System → Blocklist)."
+}
+
 // spaceWarnEvery limits the email about a full download disk.
 const spaceWarnEvery = 12 * time.Hour
 
@@ -348,7 +366,7 @@ func (s *Service) search(ctx context.Context, w wanted, trigger string) (string,
 	}
 	noRoom := false
 	if accepted > 0 {
-		grabMsg, outcome, err := s.act(ctx, w, ds[0], trigger, true)
+		grabMsg, outcome, err := s.actBest(ctx, w, ds, trigger, true)
 		if err != nil {
 			return "", err
 		}
@@ -409,6 +427,33 @@ func (s *Service) decide(ctx context.Context, w wanted, rels []indexer.Release) 
 	}
 	slices.SortStableFunc(out, func(a, b candidate) int { return w.profile.Compare(a.d, b.d) })
 	return out, nil
+}
+
+// actBest acts on the best acceptable release (ds is best first). When the
+// download client's side refuses it for its files, the next acceptable one
+// is tried, up to maxBadFileTries refusals; every attempt is in History.
+func (s *Service) actBest(ctx context.Context, w wanted, ds []candidate, trigger string, recordDuplicates bool) (string, grabOutcome, error) {
+	var msgs []string
+	refused := 0
+	for _, c := range ds {
+		if !c.d.Accepted {
+			break
+		}
+		msg, outcome, err := s.act(ctx, w, c, trigger, recordDuplicates)
+		if err != nil {
+			return "", outcomeNone, err
+		}
+		if msg != "" {
+			msgs = append(msgs, msg)
+		}
+		if outcome != outcomeBadFiles {
+			return strings.Join(msgs, " "), outcome, nil
+		}
+		if refused++; refused == maxBadFileTries {
+			break
+		}
+	}
+	return strings.Join(msgs, " "), outcomeBadFiles, nil
 }
 
 // act handles the chosen release according to the Grabbing setting.
@@ -478,6 +523,9 @@ func (s *Service) act(ctx context.Context, w wanted, c candidate, trigger string
 		if errors.Is(err, ErrNotEnoughSpace) {
 			s.warnSpace(ctx, err)
 			return skipAs(outcomeNoSpace, strings.TrimPrefix(err.Error(), ErrNotEnoughSpace.Error()+": ")+".")
+		}
+		if errors.Is(err, ErrBadFiles) {
+			return skipAs(outcomeBadFiles, badFilesText(err))
 		}
 		if s.notify != nil {
 			s.notify(ctx, notify.Event{Kind: notify.KindGrabFailed, Title: w.v.Title.Title, TitleID: w.v.Title.ID,
@@ -749,7 +797,7 @@ func (s *Service) RSSSync(ctx context.Context) (msg string, quiet bool, err erro
 			return "", false, err
 		}
 		if accepted > 0 {
-			if _, _, err := s.act(ctx, w, ds[0], TriggerRSS, false); err != nil {
+			if _, _, err := s.actBest(ctx, w, ds, TriggerRSS, false); err != nil {
 				return "", false, err
 			}
 		}

@@ -37,6 +37,12 @@ type memClient struct {
 	// state: "lift <hash>" (which also starts it, as qBittorrent does),
 	// "stop <hash>", "start <hash>" and "top <hash>".
 	calls []string
+	// files are what Layout lists for each hash (none until set, like a
+	// magnet link whose details haven't arrived); layouts counts the calls.
+	files   map[string][]File
+	layouts int
+	// added is the last Add's .torrent file, if it had one.
+	added []byte
 }
 
 // setState changes a torrent's state, if it exists.
@@ -106,7 +112,10 @@ func (m *memClient) MoveCategory(_ context.Context, from, to string, hashes []st
 func (m *memClient) Source(_ context.Context, _, hash string) (Source, error) {
 	return Source{Magnet: "magnet:?xt=urn:btih:" + hash}, nil
 }
-func (m *memClient) Layout(context.Context, string, string) (Layout, error)  { return Layout{}, nil }
+func (m *memClient) Layout(_ context.Context, _, hash string) (Layout, error) {
+	m.layouts++
+	return Layout{Files: m.files[hash]}, nil
+}
 func (m *memClient) Recheck(context.Context, string, string) error           { return nil }
 func (m *memClient) SetFolder(context.Context, string, string, string) error { return nil }
 
@@ -123,9 +132,13 @@ func (m *memClient) Add(_ context.Context, a Add) (string, error) {
 		return "", m.addErr
 	}
 	h, err := MagnetHash(a.Magnet)
+	if len(a.Torrent) > 0 {
+		h, err = InfoHash(a.Torrent)
+	}
 	if err != nil {
 		return "", err
 	}
+	m.added = a.Torrent
 	m.savePath = a.SavePath
 	m.tags = a.Tags
 	m.torrents[h] = &Torrent{Hash: h, Category: a.Category, Progress: 0.2, ContentPath: "/downloads/" + h}

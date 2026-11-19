@@ -133,6 +133,10 @@ does the same job, and uses the fact that everything lives together:
 - A queue limit and a "keep this much disk free" setting, so downloads never
   pile up or fill the disk.
 - Seerr requests jump the queue.
+- Fakes are refused before they download: a torrent whose files include a
+  program or script (`Movie.mkv.exe`, `Setup.exe`), or that has no video at
+  all, is blocklisted and the next-best release is grabbed instead. Magnet
+  links are checked the moment the client knows their files.
 - Safe imports: copy (or hardlink), verify, then rename into place. Files an
   upgrade replaces are set aside, not deleted.
 

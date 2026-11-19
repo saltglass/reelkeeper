@@ -4150,7 +4150,7 @@ components:
         indexer: { type: string }
         quality: { type: string }
         reason: { type: string, description: "Why it was blocked, in words." }
-        rule: { type: string, description: "What blocked it: stalled, slow, metadata, missing, import-failed, unregistered (cleanup rules), removed (you removed it from the Queue), radarr or sonarr (brought over by an import), or cleanup (cleanup, rule not known)." }
+        rule: { type: string, description: "What blocked it: stalled, slow, metadata, missing, import-failed, unregistered (cleanup rules), removed (you removed it from the Queue), bad-files (its files were a program or script, or held no video, so it was refused before downloading), radarr or sonarr (brought over by an import), or cleanup (cleanup, rule not known)." }
         expiresAt: { type: string, format: date-time, nullable: true, description: When it stops blocking; null for a permanent entry. }
         permanent: { type: boolean }
         dormant: { type: boolean, description: The title has nothing wanted right now. }
