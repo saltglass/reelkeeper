@@ -199,6 +199,12 @@ type Service struct {
 	// the move waits for the clients (tests shorten it).
 	rename     func(oldPath, newPath string) error
 	moveTiming moveTiming
+
+	// filesChecked are the downloads whose file list has been checked for
+	// bad files (badfiles.go), by hash. Kept in memory only: after a
+	// restart each download in progress is checked once more.
+	checkedMu    sync.Mutex
+	filesChecked map[string]bool
 }
 
 // SetNotifier connects notifications.
@@ -219,7 +225,7 @@ func NewService(db *store.Store, cfg func() settings.DownloadClient, idx Fetcher
 	s := &Service{
 		db: db, settings: cfg, idx: idx, lib: lib, history: history, logger: logger, now: time.Now,
 		vis: visibility{missingSince: map[int64]time.Time{}}, exists: onDisk, freeSpace: library.FreeSpace,
-		rename: os.Rename, moveTiming: defaultMoveTiming,
+		rename: os.Rename, moveTiming: defaultMoveTiming, filesChecked: map[string]bool{},
 	}
 	s.NewClient = func(c settings.DownloadClient) Client {
 		if c.ClientType() == settings.ClientBuiltin {
@@ -347,6 +353,14 @@ func (s *Service) Grab(ctx context.Context, g grab.Grabbed) error {
 	if err != nil {
 		return err
 	}
+	// A .torrent says what's in it: a fake is refused here, before the
+	// download client ever sees it (badfiles.go).
+	checked := false
+	if len(f.Torrent) > 0 {
+		if checked, err = s.refuseTorrent(ctx, g, tid, f.Torrent); err != nil {
+			return err
+		}
+	}
 	if err := c.EnsureCategory(ctx, category, ""); err != nil {
 		return err
 	}
@@ -361,6 +375,7 @@ func (s *Service) Grab(ctx context.Context, g grab.Grabbed) error {
 	if err != nil {
 		return err
 	}
+	s.markChecked(hash, checked)
 	// Something somebody asked for (Seerr) goes to the front of the
 	// client's queue. Not worth failing the grab over.
 	if g.Requested {
@@ -740,7 +755,7 @@ func (s *Service) Check(ctx context.Context) (msg string, quiet bool, err error)
 	}
 	folderUnseen, dir := s.folderUnseen(ts)
 	s.reportFolder(ctx, folderUnseen, dir)
-	var imported, failed, gone, waiting, unseen int
+	var imported, failed, gone, waiting, unseen, bad int
 	for i := range ds {
 		d := &ds[i]
 		t, ok := live[d.Hash]
@@ -748,6 +763,8 @@ func (s *Service) Check(ctx context.Context) (msg string, quiet bool, err error)
 		case !ok:
 			gone++
 			s.finish(ctx, d, StatusRemoved, "It was removed from "+c.Name()+" outside Reelkeeper.", grab.EventRemoved)
+		case s.checkFiles(ctx, c, d, t): // a program, or no video (badfiles.go)
+			bad++
 		case !t.Done():
 			waiting++
 		case s.waitForFiles(ctx, d, t, folderUnseen):
@@ -773,8 +790,12 @@ func (s *Service) Check(ctx context.Context) (msg string, quiet bool, err error)
 	if gone > 0 {
 		parts = append(parts, fmt.Sprintf("%d removed outside Reelkeeper", gone))
 	}
+	if bad > 0 {
+		parts = append(parts, fmt.Sprintf("%d removed for bad files (a program, or no video)", bad))
+	}
+	s.forgetChecked(ds)
 	// Quiet means nothing happened: downloads are still going, and that's all.
-	return strings.Join(parts, ", ") + ".", imported+failed+gone+unseen == 0, nil
+	return strings.Join(parts, ", ") + ".", imported+failed+gone+unseen+bad == 0, nil
 }
 
 // importOne imports a finished download and records the outcome.

@@ -340,6 +340,15 @@ Transmission and Deluge).
   cleanup remove imported torrents early (tracker minimum met, longest
   finished first, rule "space"). Reelkeeper never changes the client's
   own queue settings.
+- **Bad files are refused before downloading** (Dan, 2026-11-19; always on,
+  no setting; `download/badfiles.go`, rules in `library.UnfitRelease` so they
+  match the import's idea of a video). A release holding a program or
+  script, or no movie/episode file, is blocklisted for good (rule
+  `bad-files`): a .torrent is read in `Grab` before the client sees it
+  (`grab.ErrBadFiles`; the search then tries the next acceptable release, up
+  to 3 refusals, and TV re-picks the refused release's episodes); a magnet is
+  checked by "Check downloads" once the client lists its files, then removed
+  and searched for again, without cleanup's strikes or dry run.
 
 ### Library and imports
 - **Scanning and identification** (no help from Radarr/Sonarr):

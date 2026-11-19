@@ -1415,7 +1415,7 @@ type BlocklistItem struct {
 	Reason       string `json:"reason"`
 	ReleaseTitle string `json:"releaseTitle"`
 
-	// Rule What blocked it: stalled, slow, metadata, missing, import-failed, unregistered (cleanup rules), removed (you removed it from the Queue), radarr or sonarr (brought over by an import), or cleanup (cleanup, rule not known).
+	// Rule What blocked it: stalled, slow, metadata, missing, import-failed, unregistered (cleanup rules), removed (you removed it from the Queue), bad-files (its files were a program or script, or held no video, so it was refused before downloading), radarr or sonarr (brought over by an import), or cleanup (cleanup, rule not known).
 	Rule string `json:"rule"`
 }
 

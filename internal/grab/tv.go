@@ -396,6 +396,16 @@ func pickTV(cs []tvCandidate, episodes []library.Episode) []tvPick {
 	return out
 }
 
+// refuse turns down a release that was refused for its files, so picking
+// again passes over it (it's on the blocklist now, too).
+func refuse(cs []tvCandidate, rel indexer.Release) {
+	for i := range cs {
+		if cs[i].rel.IndexerID == rel.IndexerID && cs[i].rel.Title == rel.Title && cs[i].rel.GUID == rel.GUID {
+			cs[i].d.Accepted = false
+		}
+	}
+}
+
 // covers reports whether a release holds an episode.
 func covers(cov decision.Covers, e library.Episode) bool {
 	switch {
@@ -564,44 +574,79 @@ func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string, run 
 	// stay first in line for when the queue or the disk has room, or the
 	// limit is raised.
 	held := res.heldIDs
-	for _, p := range picks {
-		limited := false
-		if trigger != TriggerRequest { // a request isn't held back by either limit
-			var err error
-			if limited, err = s.grabLimited(ctx, s.settings().TVMode, u.w.sv.Version.ID); err != nil {
+	// settled counts picks that came to anything but a refusal for their
+	// files; refused counts those refusals.
+	settled, refused := 0, 0
+	for len(picks) > 0 {
+		// Episodes whose release was refused for its files are picked again
+		// from the releases left, up to maxBadFileTries refusals in all.
+		var again []library.Episode
+		for _, p := range picks {
+			limited := false
+			if trigger != TriggerRequest { // a request isn't held back by either limit
+				var err error
+				if limited, err = s.grabLimited(ctx, s.settings().TVMode, u.w.sv.Version.ID); err != nil {
+					return unitSearch{}, err
+				}
+			}
+			if limited {
+				for _, id := range p.ids {
+					held[id] = true
+				}
+			}
+			gm, outcome, err := s.actTV(ctx, u.w, p, trigger, true)
+			if err != nil {
 				return unitSearch{}, err
 			}
-		}
-		if limited {
-			for _, id := range p.ids {
-				held[id] = true
+			switch outcome {
+			case outcomeGrabbed:
+				res.grabbed++
+			case outcomeHeld:
+				res.held++
+			case outcomeNoSpace:
+				res.held++
+				for _, id := range p.ids {
+					held[id] = true
+				}
+			}
+			switch outcome {
+			case outcomeBadFiles:
+				refused++
+				refuse(cs, p.c.rel)
+				for _, id := range p.ids {
+					again = append(again, u.w.byID[id])
+				}
+			case outcomeHeld, outcomeNoSpace:
+				settled++
+			default:
+				settled++
+				for _, id := range p.ids {
+					run.claimed[id] = true
+				}
+			}
+			if gm != "" {
+				msg += " " + gm
 			}
 		}
-		gm, outcome, err := s.actTV(ctx, u.w, p, trigger, true)
-		if err != nil {
-			return unitSearch{}, err
-		}
-		switch outcome {
-		case outcomeGrabbed:
-			res.grabbed++
-		case outcomeHeld:
+		picks = pickTV(cs, again)
+		if len(picks) > 0 && refused >= maxBadFileTries {
+			// More could be tried, but not in this search: those episodes
+			// stay first in line for the next one.
 			res.held++
-		case outcomeNoSpace:
-			res.held++
-			for _, id := range p.ids {
-				held[id] = true
+			for _, p := range picks {
+				for _, id := range p.ids {
+					held[id] = true
+				}
 			}
+			msg += fmt.Sprintf(" Stopped after %s with bad files; the next search tries the others.", countText(refused, "release"))
+			settled++
+			picks = nil
 		}
-		if outcome != outcomeHeld && outcome != outcomeNoSpace {
-			for _, id := range p.ids {
-				run.claimed[id] = true
-			}
-		}
-		if gm != "" {
-			msg += " " + gm
-		}
+		res.acceptable += len(picks)
 	}
-	if pu, ok := s.packFallback(u, run); ok && !unsearched && len(picks) == 0 && !run.packTried[[2]int64{u.w.sv.Version.ID, int64(u.season)}] {
+	// Nothing acceptable for the episode on its own (or all of it refused
+	// for its files): try the season as a pack.
+	if pu, ok := s.packFallback(u, run); ok && !unsearched && settled == 0 && !run.packTried[[2]int64{u.w.sv.Version.ID, int64(u.season)}] {
 		run.packTried[[2]int64{u.w.sv.Version.ID, int64(u.season)}] = true
 		pr, err := s.searchUnit(ctx, pu, trigger, run)
 		if err != nil {
@@ -716,6 +761,9 @@ func (s *Service) actTV(ctx context.Context, w *tvWanted, p tvPick, trigger stri
 			s.warnSpace(ctx, err)
 			return skipAs(outcomeNoSpace, strings.TrimPrefix(err.Error(), ErrNotEnoughSpace.Error()+": ")+".")
 		}
+		if errors.Is(err, ErrBadFiles) {
+			return skipAs(outcomeBadFiles, badFilesText(err))
+		}
 		if s.notify != nil {
 			s.notify(ctx, notify.Event{Kind: notify.KindGrabFailed, Title: w.sv.Title.Title, TitleID: w.sv.Title.ID,
 				Message: fmt.Sprintf("Reelkeeper chose %s for %s %s, but couldn't send it to the download client: %s", c.rel.Title, w.label(), label, err)})
@@ -742,6 +790,9 @@ const (
 	// doesn't count as a search, so the next scheduled pass with room
 	// tries again instead of waiting three days.
 	outcomeNoSpace
+	// outcomeBadFiles: refused for its files (a program, or no video) and
+	// blocklisted; the search tries the next acceptable release.
+	outcomeBadFiles
 )
 
 // tvPass is the scheduled pass's TV half: a few units that haven't been
@@ -913,9 +964,27 @@ func (s *Service) rssWanted(ctx context.Context, w *tvWanted, kSeason int, eps [
 	if err := s.history.Add(ctx, s.tvEvent(w, EventRSS, msg), data); err != nil {
 		return err
 	}
-	for _, p := range pickTV(cs, eps) {
-		if _, _, err := s.actTV(ctx, w, p, TriggerRSS, false); err != nil {
-			return err
+	// As in searchUnit: episodes whose release was refused for its files
+	// are picked again from the rest, up to maxBadFileTries refusals.
+	refused := 0
+	for picks := pickTV(cs, eps); len(picks) > 0; {
+		var again []library.Episode
+		for _, p := range picks {
+			_, outcome, err := s.actTV(ctx, w, p, TriggerRSS, false)
+			if err != nil {
+				return err
+			}
+			if outcome == outcomeBadFiles {
+				refused++
+				refuse(cs, p.c.rel)
+				for _, id := range p.ids {
+					again = append(again, w.byID[id])
+				}
+			}
+		}
+		picks = nil
+		if refused < maxBadFileTries {
+			picks = pickTV(cs, again)
 		}
 	}
 	return nil

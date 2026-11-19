@@ -32,6 +32,7 @@ const reasons = {
   },
   removed: { label: "Removed by you", rules: ["removed"] },
   deleted: { label: "Tracker deleted it", rules: ["unregistered"] },
+  badFiles: { label: "Bad files (a program, or no video)", rules: ["bad-files"] },
   imported: { label: "Imported from Radarr or Sonarr", rules: ["radarr", "sonarr"] },
 } as const;
 type Reason = keyof typeof reasons;

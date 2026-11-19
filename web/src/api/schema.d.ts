@@ -3283,7 +3283,7 @@ export interface components {
             quality: string;
             /** @description Why it was blocked, in words. */
             reason: string;
-            /** @description What blocked it: stalled, slow, metadata, missing, import-failed, unregistered (cleanup rules), removed (you removed it from the Queue), radarr or sonarr (brought over by an import), or cleanup (cleanup, rule not known). */
+            /** @description What blocked it: stalled, slow, metadata, missing, import-failed, unregistered (cleanup rules), removed (you removed it from the Queue), bad-files (its files were a program or script, or held no video, so it was refused before downloading), radarr or sonarr (brought over by an import), or cleanup (cleanup, rule not known). */
             rule: string;
             /**
              * Format: date-time
