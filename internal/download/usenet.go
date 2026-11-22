@@ -251,6 +251,8 @@ func (s *Service) checkUsenet(ctx context.Context, ds []Download) (parts []strin
 			waiting++
 		case s.waitForFiles(ctx, d, t, folderUnseen):
 			unseen++
+		case s.waitForMove(d):
+			waiting++
 		default:
 			if s.importOne(ctx, d, t) {
 				imported++

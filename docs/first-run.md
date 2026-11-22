@@ -519,6 +519,21 @@ profile's copies to change. Titles that become
 wanted are searched straight away, up to 10 of them; the rest wait for the
 hourly search, so a big change doesn't flood your indexers.
 
+**Moving a movie to another media folder.** If a movie landed in the wrong
+folder (say, the kids' folder, and it isn't for kids), open it and press
+**Move…** next to its folder. Pick the folder it belongs in, and Reelkeeper
+shows what will move before anything happens: everything in the movie's
+folder (subtitles, artwork and extras too), or only its own files when it
+shares the folder with another version. The folder keeps its name, and so do
+the quality profile, monitoring and history. On the same disk the files are
+simply renamed. Across disks they are copied, each copy checked, and only
+then is the old copy deleted. Nothing is ever overwritten: a file with the
+same name already there stops the move before anything changes. Both folders
+need "Reelkeeper manages files here" on. The move runs in the background
+(System → Tasks), and your media server is told the movie left one folder and
+arrived in the other. A download for the movie that finishes during the move
+is imported into the new folder once the move is done.
+
 The **Wanted** page lists everything Reelkeeper is still looking for, and why
 it hasn't been found yet. Tick rows to **Search** for them now (the first 10
 of a bigger selection; the rest wait for the hourly search) or to **Stop

@@ -109,6 +109,34 @@ func TestPlexScansTheFolderInItsLibrary(t *testing.T) {
 	}
 }
 
+// A move scans the old folder (so its library drops the movie) and the new
+// one. An old folder no Plex library holds needs nothing, and isn't an error.
+func TestPlexScansBothFoldersOfAMove(t *testing.T) {
+	var p fakePlex
+	srv := p.server(t)
+	var logs bytes.Buffer
+	svc := notify.New(func() settings.Notifications { return settings.Notifications{Plex: plexCfg(srv.URL)} },
+		slog.New(slog.NewTextHandler(&logs, nil)))
+	for _, ev := range []notify.Event{
+		{Kind: notify.KindMoved, OldPath: "/media/movies/remux/Heat (1995)", Path: "/media/movies/Heat (1995)"},
+		{Kind: notify.KindMoved, OldPath: "/media/other/Film (2000)", Path: "/media/movies/Film (2000)"},
+	} {
+		svc.Notify(context.Background(), ev)
+		svc.Wait()
+	}
+	want := []string{
+		"3 /data/movies/remux/Heat (1995)",
+		"1 /data/movies/Heat (1995)",
+		"1 /data/movies/Film (2000)",
+	}
+	if strings.Join(p.scans, "|") != strings.Join(want, "|") {
+		t.Errorf("scans:\n got %q\nwant %q", p.scans, want)
+	}
+	if strings.Contains(logs.String(), "failed") {
+		t.Errorf("an old folder outside Plex was treated as a failure: %s", logs.String())
+	}
+}
+
 func TestPlexTest(t *testing.T) {
 	var p fakePlex
 	srv := p.server(t)

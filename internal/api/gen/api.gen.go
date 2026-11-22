@@ -2415,6 +2415,44 @@ type MetadataSettingsUpdate struct {
 	TmdbApiKey *string `json:"tmdbApiKey,omitempty"`
 }
 
+// MoveFile defines model for MoveFile.
+type MoveFile struct {
+	// Path Relative to the media folder.
+	Path string `json:"path"`
+	Size int64  `json:"size"`
+}
+
+// MovePlan What moving a movie version to another media folder would do.
+type MovePlan struct {
+	// Bytes The size of everything that moves.
+	Bytes int64 `json:"bytes"`
+
+	// Copy True when the media folders are on different disks: the files are copied, checked, and the old copy deleted. False: they're renamed into place, which is instant.
+	Copy bool `json:"copy"`
+
+	// Files What moves, relative to the media folder. Empty when nothing is on disk yet.
+	Files []MoveFile `json:"files"`
+
+	// Folder The movie's folder, the same name in both media folders. Empty for a file loose in the media folder.
+	Folder string `json:"folder"`
+
+	// FreeSpace Bytes free at the destination when copying; -1 when not copying or it can't be told.
+	FreeSpace int64 `json:"freeSpace"`
+
+	// FromPath The media folder it's in now.
+	FromPath string `json:"fromPath"`
+
+	// Problems Why the move can't be done, in plain words. Empty when it can.
+	Problems []string `json:"problems"`
+
+	// ToPath The media folder it would move to.
+	ToPath    string `json:"toPath"`
+	VersionId int64  `json:"versionId"`
+
+	// WholeFolder True when the version has the folder to itself, so everything in it moves (subtitles, artwork, extras). False when it shares the folder with another version: only its videos and the files named after them move.
+	WholeFolder bool `json:"wholeFolder"`
+}
+
 // MovieChoice defines model for MovieChoice.
 type MovieChoice struct {
 	// Accepted The profile would grab it.
@@ -4215,6 +4253,18 @@ type UpdateVersionJSONBody struct {
 	Upgrades *bool `json:"upgrades,omitempty"`
 }
 
+// GetMovePlanParams defines parameters for GetMovePlan.
+type GetMovePlanParams struct {
+	// RootFolderId The media folder to move it to.
+	RootFolderId int64 `form:"rootFolderId" json:"rootFolderId"`
+}
+
+// MoveVersionJSONBody defines parameters for MoveVersion.
+type MoveVersionJSONBody struct {
+	// RootFolderId The media folder to move it to.
+	RootFolderId int64 `json:"rootFolderId"`
+}
+
 // RemoveFromQueueJSONBody defines parameters for RemoveFromQueue.
 type RemoveFromQueueJSONBody struct {
 	// Blocklist Never grab this release again.
@@ -4374,6 +4424,9 @@ type EditMoviesJSONRequestBody = MoviesBulkEdit
 
 // UpdateVersionJSONRequestBody defines body for UpdateVersion for application/json ContentType.
 type UpdateVersionJSONRequestBody UpdateVersionJSONBody
+
+// MoveVersionJSONRequestBody defines body for MoveVersion for application/json ContentType.
+type MoveVersionJSONRequestBody MoveVersionJSONBody
 
 // GrabMovieChoiceJSONRequestBody defines body for GrabMovieChoice for application/json ContentType.
 type GrabMovieChoiceJSONRequestBody = PickToken
@@ -4692,6 +4745,12 @@ type ServerInterface interface {
 
 	// (PATCH /movies/{id}/versions/{versionId})
 	UpdateVersion(w http.ResponseWriter, r *http.Request, id int64, versionId int64)
+	// GetMovePlan What moving this version to another media folder would do (changes nothing)
+	// (GET /movies/{id}/versions/{versionId}/move)
+	GetMovePlan(w http.ResponseWriter, r *http.Request, id int64, versionId int64, params GetMovePlanParams)
+	// MoveVersion Move this version's files to another media folder
+	// (POST /movies/{id}/versions/{versionId}/move)
+	MoveVersion(w http.ResponseWriter, r *http.Request, id int64, versionId int64)
 	// GetMovieChoices Search now and list every release, for choosing one by hand
 	// (GET /movies/{id}/versions/{versionId}/releases)
 	GetMovieChoices(w http.ResponseWriter, r *http.Request, id int64, versionId int64)
@@ -5347,6 +5406,18 @@ func (_ Unimplemented) RemoveVersion(w http.ResponseWriter, r *http.Request, id 
 
 // (PATCH /movies/{id}/versions/{versionId})
 func (_ Unimplemented) UpdateVersion(w http.ResponseWriter, r *http.Request, id int64, versionId int64) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetMovePlan What moving this version to another media folder would do (changes nothing)
+// (GET /movies/{id}/versions/{versionId}/move)
+func (_ Unimplemented) GetMovePlan(w http.ResponseWriter, r *http.Request, id int64, versionId int64, params GetMovePlanParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// MoveVersion Move this version's files to another media folder
+// (POST /movies/{id}/versions/{versionId}/move)
+func (_ Unimplemented) MoveVersion(w http.ResponseWriter, r *http.Request, id int64, versionId int64) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -7483,6 +7554,92 @@ func (siw *ServerInterfaceWrapper) UpdateVersion(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// GetMovePlan operation middleware
+func (siw *ServerInterfaceWrapper) GetMovePlan(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "versionId" -------------
+	var versionId int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "versionId", chi.URLParam(r, "versionId"), &versionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "versionId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetMovePlanParams
+
+	// ------------- Required query parameter "rootFolderId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "rootFolderId", r.URL.Query(), &params.RootFolderId, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "rootFolderId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "rootFolderId", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMovePlan(w, r, id, versionId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MoveVersion operation middleware
+func (siw *ServerInterfaceWrapper) MoveVersion(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "versionId" -------------
+	var versionId int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "versionId", chi.URLParam(r, "versionId"), &versionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "versionId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MoveVersion(w, r, id, versionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetMovieChoices operation middleware
 func (siw *ServerInterfaceWrapper) GetMovieChoices(w http.ResponseWriter, r *http.Request) {
 
@@ -9379,6 +9536,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/movies/{id}/versions/{versionId}", wrapper.UpdateVersion)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/movies/{id}/versions/{versionId}/move", wrapper.GetMovePlan)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/movies/{id}/versions/{versionId}/move", wrapper.MoveVersion)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/movies/{id}/versions/{versionId}/search", wrapper.SearchVersion)

@@ -46,7 +46,7 @@ func statusError(code int) error {
 // updateType is the media server's word for what happened to a path.
 func updateType(kind string) string {
 	switch kind {
-	case KindImported:
+	case KindImported, KindMoved:
 		return "Created"
 	case KindDeleted:
 		return "Deleted"
@@ -112,10 +112,18 @@ var (
 // same single update as before, and Emby's handling is left as it was
 // (docs/first-run.md tells people to expect the delay).
 func sendMediaServer(ctx context.Context, m mediaServer, c settings.MediaServerNotify, ev Event) error {
-	body, err := json.Marshal(map[string]any{"Updates": []map[string]string{{
+	updates := []map[string]string{{
 		"Path":       translatePath(folderOf(ev.Path), c.PathFrom, c.PathTo),
 		"UpdateType": updateType(ev.Kind),
-	}}})
+	}}
+	if ev.Kind == KindMoved && ev.OldPath != "" {
+		// Gone from the old folder, new in the new one.
+		updates = append([]map[string]string{{
+			"Path":       translatePath(folderOf(ev.OldPath), c.PathFrom, c.PathTo),
+			"UpdateType": "Deleted",
+		}}, updates...)
+	}
+	body, err := json.Marshal(map[string]any{"Updates": updates})
 	if err != nil {
 		return err
 	}
@@ -162,6 +170,7 @@ type webhookPayload struct {
 	Message string    `json:"message"`
 	TitleID int64     `json:"titleId"`
 	Path    string    `json:"path"`
+	OldPath string    `json:"oldPath,omitempty"` // moves only
 	At      time.Time `json:"at"`
 }
 
@@ -169,7 +178,7 @@ func sendWebhook(ctx context.Context, c settings.WebhookNotify, ev Event) error 
 	if c.URL == "" {
 		return errors.New("enter the webhook address first")
 	}
-	body, err := json.Marshal(webhookPayload{ev.Kind, ev.Title, ev.Message, ev.TitleID, ev.Path, ev.At})
+	body, err := json.Marshal(webhookPayload{ev.Kind, ev.Title, ev.Message, ev.TitleID, ev.Path, ev.OldPath, ev.At})
 	if err != nil {
 		return err
 	}

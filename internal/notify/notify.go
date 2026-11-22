@@ -29,6 +29,9 @@ const (
 	KindDeleted = "deleted"
 	// KindRenamed: a movie's files were renamed.
 	KindRenamed = "renamed"
+	// KindMoved: a movie was moved to another media folder (OldPath is
+	// where it was).
+	KindMoved = "moved"
 	// KindClientRestored: the built-in client's VPN is back after a long
 	// outage (the "client-unreachable" notice said it was down). Not a
 	// problem, so it isn't emailed.
@@ -70,7 +73,9 @@ type Event struct {
 	// Path is a file or folder, as Reelkeeper sees it. Emby, Jellyfin and Plex
 	// are told about its folder, translated into the server's own path.
 	Path string
-	At   time.Time
+	// OldPath (moves only) is where the files were before.
+	OldPath string
+	At      time.Time
 }
 
 // Channel names, as used by Test.
@@ -141,7 +146,7 @@ func (s *Service) Notify(ctx context.Context, ev Event) {
 	// The caller's request may end before sending does.
 	bg := context.WithoutCancel(ctx)
 
-	if (ev.Kind == KindImported || ev.Kind == KindDeleted || ev.Kind == KindRenamed) && ev.Path != "" {
+	if (ev.Kind == KindImported || ev.Kind == KindDeleted || ev.Kind == KindRenamed || ev.Kind == KindMoved) && ev.Path != "" {
 		if cfg.Emby.Enabled {
 			s.send(bg, ChannelEmby, func(ctx context.Context) error { return sendMediaServer(ctx, emby, cfg.Emby, ev) })
 		}

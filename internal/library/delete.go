@@ -97,6 +97,11 @@ func (s *Service) planDelete(ctx context.Context, titleID, versionID int64, medi
 	if versionID != 0 && len(versions) == 0 {
 		return nil, ErrNotFound
 	}
+	for _, v := range versions {
+		if s.Moving(v.ID) {
+			return nil, ErrMoving
+		}
+	}
 	plan.versions, plan.whole = versions, len(others) == 0
 	if len(versions) > 0 {
 		ids := make([]int64, len(versions))

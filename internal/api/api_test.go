@@ -838,6 +838,65 @@ func TestNamingAndRenameAPI(t *testing.T) {
 	})
 }
 
+func TestMoveVersionAPI(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		a := newApp(t, db, "")
+		a.setup()
+		kids, movies := t.TempDir(), t.TempDir()
+		const video = "28 Days Later (2002)/28.Days.Later.2002.1080p.BluRay.x264-GRP.mkv"
+		if err := os.MkdirAll(filepath.Join(kids, "28 Days Later (2002)"), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(kids, video), []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		r := a.do("POST", "/api/v1/library/roots", `{"path":"`+kids+`","mediaType":"movie","defaultProfileId":1}`)
+		kidsID := strconv.FormatInt(int64(r.body["id"].(float64)), 10)
+		if _, err := a.library.Scan(ctx, int64(r.body["id"].(float64)), nil); err != nil {
+			t.Fatal(err)
+		}
+		r = a.do("POST", "/api/v1/library/roots", `{"path":"`+movies+`","mediaType":"movie","defaultProfileId":1}`)
+		moviesID := strconv.FormatInt(int64(r.body["id"].(float64)), 10)
+		var list []map[string]any
+		_ = json.Unmarshal([]byte(a.do("GET", "/api/v1/movies", "").raw), &list)
+		id := strconv.FormatInt(int64(list[0]["id"].(float64)), 10)
+		detail := a.do("GET", "/api/v1/movies/"+id, "")
+		vid := strconv.FormatInt(int64(detail.body["versions"].([]any)[0].(map[string]any)["id"].(float64)), 10)
+		base := "/api/v1/movies/" + id + "/versions/" + vid + "/move"
+
+		// Both folders read-only (new folders are): the plan says why, and
+		// the move is refused.
+		r = a.do("GET", base+"?rootFolderId="+moviesID, "")
+		if r.status != 200 || !strings.Contains(r.raw, `"fromPath":"`+kids+`"`) || !strings.Contains(r.raw, "only reads") ||
+			!strings.Contains(r.raw, `"path":"`+video+`"`) {
+			t.Fatalf("plan: %d %s", r.status, r.raw)
+		}
+		if r := a.do("POST", base, `{"rootFolderId":`+moviesID+`}`); r.status != 409 || !strings.Contains(r.raw, "only reads") {
+			t.Errorf("refused move: %d %s", r.status, r.raw)
+		}
+
+		for _, root := range []string{kidsID, moviesID} {
+			a.do("PUT", "/api/v1/library/roots/"+root, `{"defaultProfileId":1,"manageFiles":true}`)
+		}
+		r = a.do("GET", base+"?rootFolderId="+moviesID, "")
+		if r.status != 200 || !strings.Contains(r.raw, `"problems":[]`) || !strings.Contains(r.raw, `"wholeFolder":true`) {
+			t.Fatalf("plan: %d %s", r.status, r.raw)
+		}
+		r = a.do("POST", base, `{"rootFolderId":`+moviesID+`}`)
+		if r.status != 200 || r.body["kind"] != library.MoveKind {
+			t.Fatalf("move: %d %s", r.status, r.raw)
+		}
+
+		if r := a.do("GET", "/api/v1/movies/999999/versions/"+vid+"/move?rootFolderId="+moviesID, ""); r.status != 404 {
+			t.Errorf("unknown movie: %d", r.status)
+		}
+		if r := a.do("GET", base+"?rootFolderId=999999", ""); r.status != 422 {
+			t.Errorf("unknown media folder: %d %s", r.status, r.raw)
+		}
+	})
+}
+
 // get fetches a path and decodes the JSON into v.
 func (a *app) get(path string, v any) response {
 	a.t.Helper()

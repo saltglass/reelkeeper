@@ -920,6 +920,30 @@ export interface paths {
         patch: operations["updateVersion"];
         trace?: never;
     };
+    "/movies/{id}/versions/{versionId}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                versionId: number;
+            };
+            cookie?: never;
+        };
+        /** What moving this version to another media folder would do (changes nothing) */
+        get: operations["getMovePlan"];
+        put?: never;
+        /**
+         * Move this version's files to another media folder
+         * @description Checks the move again and queues it as a background task (System → Tasks), as copying across disks can take a while. The folder keeps its name. Nothing is ever overwritten; across disks the old copy is deleted only once the new one is in place and recorded.
+         */
+        post: operations["moveVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/movies/{id}/versions/{versionId}/search": {
         parameters: {
             query?: never;
@@ -4017,6 +4041,41 @@ export interface components {
             from: string;
             to: string;
         };
+        /** @description What moving a movie version to another media folder would do. */
+        MovePlan: {
+            /** Format: int64 */
+            versionId: number;
+            /** @description The media folder it's in now. */
+            fromPath: string;
+            /** @description The media folder it would move to. */
+            toPath: string;
+            /** @description The movie's folder, the same name in both media folders. Empty for a file loose in the media folder. */
+            folder: string;
+            /** @description True when the version has the folder to itself, so everything in it moves (subtitles, artwork, extras). False when it shares the folder with another version: only its videos and the files named after them move. */
+            wholeFolder: boolean;
+            /** @description What moves, relative to the media folder. Empty when nothing is on disk yet. */
+            files: components["schemas"]["MoveFile"][];
+            /**
+             * Format: int64
+             * @description The size of everything that moves.
+             */
+            bytes: number;
+            /** @description True when the media folders are on different disks: the files are copied, checked, and the old copy deleted. False: they're renamed into place, which is instant. */
+            copy: boolean;
+            /**
+             * Format: int64
+             * @description Bytes free at the destination when copying; -1 when not copying or it can't be told.
+             */
+            freeSpace: number;
+            /** @description Why the move can't be done, in plain words. Empty when it can. */
+            problems: string[];
+        };
+        MoveFile: {
+            /** @description Relative to the media folder. */
+            path: string;
+            /** Format: int64 */
+            size: number;
+        };
         VersionRename: {
             /** Format: int64 */
             versionId: number;
@@ -6293,6 +6352,80 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    getMovePlan: {
+        parameters: {
+            query: {
+                /** @description The media folder to move it to. */
+                rootFolderId: number;
+            };
+            header?: never;
+            path: {
+                id: number;
+                versionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The plan. A move with problems can't be started. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovePlan"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    moveVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                versionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: int64
+                     * @description The media folder to move it to.
+                     */
+                    rootFolderId: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The queued (or already running) move. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            /** @description The move can't be done; the message says why. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             422: components["responses"]["ValidationError"];
         };
     };

@@ -146,6 +146,9 @@ type Fetcher interface {
 type Importer interface {
 	ImportMovie(ctx context.Context, req library.ImportRequest) (library.ImportResult, error)
 	ImportEpisodes(ctx context.Context, req library.EpisodeImportRequest) (library.EpisodeImportResult, error)
+	// Moving reports whether a version is being moved to another media
+	// folder; its downloads wait until that's done.
+	Moving(versionID int64) bool
 }
 
 // Service tracks Reelkeeper's downloads: it sends grabs to the download client, watches
@@ -874,6 +877,8 @@ func (s *Service) checkTorrents(ctx context.Context, ds []Download) (parts []str
 			waiting++
 		case s.waitForFiles(ctx, d, t, folderUnseen):
 			unseen++
+		case s.waitForMove(d):
+			waiting++
 		default:
 			if s.importOne(ctx, d, t) {
 				imported++
@@ -901,6 +906,13 @@ func (s *Service) checkTorrents(ctx context.Context, ds []Download) (parts []str
 	s.forgetChecked(ds)
 	// Quiet means nothing happened: downloads are still going, and that's all.
 	return parts, imported+failed+gone+unseen+bad == 0, nil
+}
+
+// waitForMove reports whether a finished download's movie or series is
+// being moved to another media folder: it is imported, into the new
+// place, at a check after the move.
+func (s *Service) waitForMove(d *Download) bool {
+	return d.VersionID != nil && s.lib.Moving(*d.VersionID)
 }
 
 // importOne imports a finished download and records the outcome.
@@ -1137,6 +1149,9 @@ func (s *Service) RetryImport(ctx context.Context, id int64) error {
 	i := slices.IndexFunc(ts, func(t Torrent) bool { return t.Hash == d.Hash })
 	if i < 0 {
 		return errors.New(sentenceName(c.Name()) + " no longer has this download")
+	}
+	if s.waitForMove(d) {
+		return library.ErrMoving
 	}
 	if !s.importOne(ctx, d, ts[i]) {
 		return errors.New(d.Message)

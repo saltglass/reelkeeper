@@ -191,6 +191,12 @@ func serve(stderr io.Writer) int {
 	app.library.OnChange(func() {
 		broker.Publish(events.Event{Type: events.LibraryChanged, Data: map[string]any{}})
 	})
+	// A movie moved to another media folder: the media servers drop it
+	// from the old folder and find it in the new one.
+	app.library.OnMoved(func(ctx context.Context, res library.MoveResult) {
+		app.notify.Notify(ctx, notify.Event{Kind: notify.KindMoved, Title: res.Title, TitleID: res.TitleID,
+			Message: res.Message, Path: res.ToDir, OldPath: res.FromDir})
+	})
 
 	apiHandler := api.Router(api.Deps{
 		Store:     app.db,

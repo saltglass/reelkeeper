@@ -499,6 +499,10 @@ func (h *Handlers) writeLibraryError(w http.ResponseWriter, r *http.Request, err
 		writeError(w, http.StatusNotFound, "not_found", "That item doesn't exist (any more).", nil)
 		return
 	}
+	if errors.Is(err, library.ErrMoving) {
+		writeError(w, http.StatusConflict, "moving", "This movie is being moved to another media folder; try again once that's done.", nil)
+		return
+	}
 	if _, ok := validation.As(err); ok {
 		h.writeServiceError(w, r, err)
 		return
@@ -762,4 +766,49 @@ func (h *Handlers) UnskipFolder(w http.ResponseWriter, r *http.Request, id int64
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// GetMovePlan shows what moving a movie version to another media folder
+// would do.
+func (h *Handlers) GetMovePlan(w http.ResponseWriter, r *http.Request, id, versionID int64, params gen.GetMovePlanParams) {
+	p, err := h.Library.PlanMove(r.Context(), id, versionID, params.RootFolderId)
+	if err != nil {
+		h.writeLibraryError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toMovePlan(p))
+}
+
+// MoveVersion queues the move of a movie version to another media folder.
+func (h *Handlers) MoveVersion(w http.ResponseWriter, r *http.Request, id, versionID int64) {
+	var body gen.MoveVersionJSONRequestBody
+	if !decode(w, r, &body) {
+		return
+	}
+	job, err := h.Library.QueueMove(r.Context(), h.Jobs, id, versionID, body.RootFolderId)
+	var refused *library.MoveRefused
+	if errors.As(err, &refused) {
+		writeError(w, http.StatusConflict, "cant_move", refused.Error(), nil)
+		return
+	}
+	if err != nil {
+		h.writeLibraryError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, ToJob(h.Jobs, *job))
+}
+
+func toMovePlan(p *library.MovePlan) gen.MovePlan {
+	out := gen.MovePlan{
+		VersionId: p.VersionID, FromPath: p.From.Path, ToPath: p.To.Path, Folder: p.Folder, WholeFolder: p.WholeFolder,
+		Files: make([]gen.MoveFile, 0, len(p.Files)), Bytes: p.Bytes, Copy: p.Copy, FreeSpace: p.FreeSpace,
+		Problems: p.Problems,
+	}
+	if out.Problems == nil {
+		out.Problems = []string{}
+	}
+	for _, f := range p.Files {
+		out.Files = append(out.Files, gen.MoveFile{Path: f.Path, Size: f.Size})
+	}
+	return out
 }

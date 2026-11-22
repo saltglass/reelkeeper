@@ -67,6 +67,9 @@ var ErrNotManaged = errors.New("reelkeeper doesn't manage files in this media fo
 // names it with the naming templates, and records it.
 func (s *Service) ImportMovie(ctx context.Context, req ImportRequest) (ImportResult, error) {
 	var res ImportResult
+	if s.Moving(req.VersionID) {
+		return res, ErrMoving
+	}
 	v := new(Version)
 	if err := s.db.DB.NewSelect().Model(v).Where("id = ?", req.VersionID).Scan(ctx); err != nil {
 		return res, fmt.Errorf("the movie version is gone: %w", err)

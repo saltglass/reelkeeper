@@ -38,6 +38,7 @@ import { HistoryRow } from "@/pages/activity/HistoryRow";
 import { RenameDialog } from "@/pages/library/RenameDialog";
 import { ChooseRelease } from "./ChooseReleaseDialog";
 import { DeleteMovieDialog } from "./DeleteMovieDialog";
+import { MoveVersion } from "./MoveVersionDialog";
 
 export function MovieDetailPage() {
   const { id } = useParams({ from: "/app/movies/$id" });
@@ -304,9 +305,17 @@ function VersionCard({
         </label>
       </CardHeader>
       <CardContent>
-        <p className="font-mono text-xs break-all text-muted-foreground">
-          {v.rootPath}/{v.folder}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="min-w-0 flex-1 font-mono text-xs break-all text-muted-foreground">
+            {v.rootPath}/{v.folder}
+          </p>
+          <MoveVersion
+            movieId={movieId}
+            versionId={v.id}
+            rootFolderId={v.rootFolderId}
+            profileName={v.profileName}
+          />
+        </div>
         {!v.upgrades && <p className="text-sm text-muted-foreground">{UPGRADES_OFF_HELP}</p>}
         {error && <Alert variant="error">{error}</Alert>}
         {searched && (

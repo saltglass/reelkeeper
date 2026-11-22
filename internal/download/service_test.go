@@ -176,7 +176,10 @@ type fakeImporter struct {
 	reqs   []library.ImportRequest
 	tvReqs []library.EpisodeImportRequest
 	tvRes  library.EpisodeImportResult
+	moving map[int64]bool // versions being moved to another media folder
 }
+
+func (f *fakeImporter) Moving(versionID int64) bool { return f.moving[versionID] }
 
 func (f *fakeImporter) ImportEpisodes(_ context.Context, r library.EpisodeImportRequest) (library.EpisodeImportResult, error) {
 	f.tvReqs = append(f.tvReqs, r)
@@ -396,6 +399,31 @@ func TestCheckImports(t *testing.T) {
 		// The torrent keeps seeding: nothing was removed.
 		if len(f.mem.removed) != 0 {
 			t.Error("importing removed the torrent")
+		}
+	})
+}
+
+// A finished download for a movie that is being moved to another media
+// folder waits, not failing, and is imported (into the new place) at the
+// first check after the move.
+func TestCheckWaitsForAMove(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newDFix(t, db)
+		f.grab(t, hashA)
+		f.mem.torrents[hashA].Progress = 1
+		f.imp.moving = map[int64]bool{f.mv.Version.ID: true}
+		msg, _, err := f.svc.Check(ctx)
+		if err != nil || msg != "1 downloading." || len(f.imp.reqs) != 0 {
+			t.Fatalf("check during the move = %q, %v; imports tried: %d", msg, err, len(f.imp.reqs))
+		}
+		items, _, _ := f.svc.Queue(ctx)
+		if len(items) != 1 || items[0].Download.Status == StatusImportFailed {
+			t.Fatalf("queue = %+v", items)
+		}
+		f.imp.moving = nil
+		if msg, _, err := f.svc.Check(ctx); err != nil || !strings.Contains(msg, "1 imported") {
+			t.Fatalf("check after the move = %q, %v", msg, err)
 		}
 	})
 }

@@ -259,6 +259,25 @@ func (s *Service) Scan(ctx context.Context, rootID int64, progress Progress) (Sc
 		return res, err
 	}
 	units = slices.DeleteFunc(units, func(u unit) bool { return skip[u.Path] })
+	// Folders a move is taking into or out of this media folder are left
+	// alone until it's done: halfway, they would look new or gone.
+	busy := s.movingPaths(root.ID)
+	var held []string // the units left alone
+	units = slices.DeleteFunc(units, func(u unit) bool {
+		for _, p := range busy {
+			if u.Path == p || under(u.Path, p) || under(p, u.Path) {
+				held = append(held, u.Path)
+				return true
+			}
+		}
+		return false
+	})
+	// Held: in a moving folder (even one already gone from here), or in a
+	// unit left alone because a moving folder is inside it.
+	isHeld := func(p string) bool {
+		in := func(h string) bool { return p == h || under(p, h) }
+		return slices.ContainsFunc(busy, in) || slices.ContainsFunc(held, in)
+	}
 	res.Units = len(units)
 
 	// What the database already knows about this root.
@@ -314,6 +333,7 @@ func (s *Service) Scan(ctx context.Context, rootID int64, progress Progress) (Sc
 	now := s.now().UTC()
 	for _, f := range known {
 		switch {
+		case isHeld(f.Path):
 		case !seen[f.Path] && f.MissingSince == nil:
 			f.MissingSince = &now
 			if _, err := s.db.DB.NewUpdate().Model(&f).Column("missing_since").WherePK().Exec(ctx); err != nil {
@@ -326,6 +346,9 @@ func (s *Service) Scan(ctx context.Context, rootID int64, progress Progress) (Sc
 	}
 	// Review items whose folder is gone.
 	for _, it := range items {
+		if isHeld(it.Path) {
+			continue
+		}
 		gone := true
 		for _, f := range it.FileList() {
 			if seen[f] {

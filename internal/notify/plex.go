@@ -89,6 +89,16 @@ func sendPlex(ctx context.Context, c settings.MediaServerNotify, ev Event) error
 	if err != nil {
 		return fmt.Errorf("plex: %w", err)
 	}
+	if ev.Kind == KindMoved && ev.OldPath != "" {
+		// The old folder's library drops the movie when it scans the
+		// folder. A folder no Plex library holds needs nothing.
+		old := translatePath(folderOf(ev.OldPath), c.PathFrom, c.PathTo)
+		if sec, ok := plexSectionFor(sections, old); ok {
+			if _, err := plexGet(ctx, c, "/library/sections/"+url.PathEscape(sec.Key)+"/refresh", url.Values{"path": {old}}); err != nil {
+				return fmt.Errorf("plex: %w", err)
+			}
+		}
+	}
 	sec, ok := plexSectionFor(sections, dir)
 	if !ok {
 		return fmt.Errorf("plex: no Plex library holds %s, so Plex can't be told about it; check the paths in Settings → Notifications", dir)

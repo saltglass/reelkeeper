@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/saltglass/reelkeeper/internal/metadata"
@@ -47,11 +48,20 @@ type Service struct {
 	// beforeRename, when set, is called just before each rename on disk
 	// (tests use it to change the folder at that moment).
 	beforeRename func(from, to string)
+	// moving holds the versions whose move to another media folder is
+	// running (move.go), and onMoved is told when one finishes.
+	movingMu sync.Mutex
+	moving   map[int64]movingVersion
+	onMoved  func(context.Context, MoveResult)
+	// onSameDisk says whether two folders are on one disk (sameDisk;
+	// tests make it say no, to test copying).
+	onSameDisk func(a, b string) bool
 }
 
 // New returns a library Service.
 func New(db *store.Store, tmdb TMDB, logger *slog.Logger) *Service {
-	return &Service{db: db, tmdb: tmdb, logger: logger, now: time.Now, onChange: func() {}, naming: naming.Defaults}
+	return &Service{db: db, tmdb: tmdb, logger: logger, now: time.Now, onChange: func() {}, naming: naming.Defaults,
+		moving: map[int64]movingVersion{}, onSameDisk: sameDisk}
 }
 
 // OnChange registers fn to be called after the library changes (a scan

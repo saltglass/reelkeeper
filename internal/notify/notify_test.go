@@ -463,3 +463,33 @@ func TestLiveHookSeesEveryEventEvenWithNoChannels(t *testing.T) {
 		t.Errorf("live hook got %+v", got)
 	}
 }
+
+// A move tells Emby (and Jellyfin, which shares the sender) in one request
+// that the old folder's movie is gone and the new folder has one.
+func TestEmbyHearsAMoveAsGoneAndNew(t *testing.T) {
+	var c captured
+	srv := httptest.NewServer(c.handler(204, ""))
+	defer srv.Close()
+	svc := newSvc(settings.Notifications{Emby: settings.MediaServerNotify{
+		Enabled: true, URL: srv.URL, APIKey: "tok", PathFrom: "/media", PathTo: "/Volumes/Media",
+	}})
+	svc.Notify(context.Background(), notify.Event{Kind: notify.KindMoved, Title: "x",
+		OldPath: "/media/kids/Heat (1995)", Path: "/media/movies/Heat (1995)"})
+	svc.Wait()
+	if len(c.body) != 1 {
+		t.Fatalf("Emby got %d requests, want 1", len(c.body))
+	}
+	var b struct {
+		Updates []struct{ Path, UpdateType string }
+	}
+	if err := json.Unmarshal([]byte(c.body[0]), &b); err != nil {
+		t.Fatal(err)
+	}
+	want := []struct{ Path, UpdateType string }{
+		{"/Volumes/Media/kids/Heat (1995)", "Deleted"},
+		{"/Volumes/Media/movies/Heat (1995)", "Created"},
+	}
+	if len(b.Updates) != 2 || b.Updates[0] != want[0] || b.Updates[1] != want[1] {
+		t.Errorf("updates = %+v, want %+v", b.Updates, want)
+	}
+}

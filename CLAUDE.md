@@ -395,6 +395,16 @@ Transmission and Deluge).
   3. Rename it into place atomically.
   4. Never delete the source while the torrent is still seeding; cleanup
      handles that later.
+- **Moving a movie to another media folder** (Dan, 2026-11-22; "Move…" on
+  a version, `library/move.go`, task `library.move`): the folder keeps its
+  name; a version with its folder to itself takes everything in it, one
+  sharing a folder takes only its videos and their same-named files. Same
+  disk: renamed; otherwise copied into `<destination>/.reelkeeper-moving/`,
+  size-checked, renamed into place, recorded, and only then the old copy
+  deleted (Dan chose delete over `.reelkeeper-replaced`). Never overwrites;
+  a failure before recording puts everything back; a retry after a restart
+  finishes what's left. While it runs, `Moving(versionID)` keeps imports
+  waiting and renames, deletes and scans off the folder. Movies only.
 - **Naming:** templates with a live preview, in Radarr's syntax so TRaSH
   Guides schemes paste in unchanged. "Rename files" on a movie shows old and
   new names first, and only renames in media folders Reelkeeper manages: in

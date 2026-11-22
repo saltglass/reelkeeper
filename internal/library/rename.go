@@ -102,7 +102,13 @@ func (s *Service) RenamePlan(ctx context.Context, titleID int64) ([]VersionRenam
 		}
 		vr := VersionRename{VersionID: v.ID, ProfileName: v.ProfileName, RootPath: v.RootPath, Managed: v.Managed}
 		taken := map[string]bool{}
+		moving := s.Moving(v.ID)
 		for _, f := range files {
+			if moving {
+				vr.Files = append(vr.Files, FileRename{FileID: f.ID, From: f.Path, To: f.Path,
+					Problem: "This movie is being moved to another media folder; rename it once that's done."})
+				continue
+			}
 			base, problem := names(f, v.ProfileName)
 			if problem != "" {
 				vr.Files = append(vr.Files, FileRename{FileID: f.ID, From: f.Path, To: f.Path, Problem: problem})

@@ -28,6 +28,7 @@ func QueueScan(ctx context.Context, m *jobs.Manager, rootID int64, trigger jobs.
 
 // RegisterTasks adds the library's background tasks.
 func (s *Service) RegisterTasks(m *jobs.Manager) {
+	m.Register(s.moveTask())
 	m.Register(jobs.Task{
 		Kind:        ScanKind,
 		Name:        "Scan media folders",
