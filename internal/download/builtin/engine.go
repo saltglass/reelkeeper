@@ -39,7 +39,7 @@ import (
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
 	"github.com/anacrolix/utp"
-	"go.etcd.io/bbolt"
+	bberrors "go.etcd.io/bbolt/errors"
 	"golang.org/x/time/rate"
 )
 
@@ -231,7 +231,7 @@ func openPieceRecords(dir string, logger *slog.Logger) (storage.PieceCompletion,
 	if err == nil {
 		return pc, nil
 	}
-	if errors.Is(err, bbolt.ErrTimeout) {
+	if errors.Is(err, bberrors.ErrTimeout) {
 		return nil, errors.New("another Reelkeeper has it open")
 	}
 	damaged := filepath.Join(dir, fmt.Sprintf(".torrent.bolt.db.damaged-%d", time.Now().Unix()))

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go.etcd.io/bbolt"
+	bberrors "go.etcd.io/bbolt/errors"
 )
 
 // record is everything the engine remembers about one torrent between runs.
@@ -60,7 +61,7 @@ var torrentsBucket = []byte("torrents")
 func openStore(dir string) (*store, error) {
 	db, err := bbolt.Open(filepath.Join(dir, "state.db"), 0o600, &bbolt.Options{Timeout: 2 * time.Second})
 	if err != nil {
-		if errors.Is(err, bbolt.ErrTimeout) {
+		if errors.Is(err, bberrors.ErrTimeout) {
 			return nil, errors.New("the built-in client's records (builtin/state.db) are in use by another Reelkeeper")
 		}
 		return nil, fmt.Errorf("can't open the built-in client's records: %w", err)
