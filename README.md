@@ -1,3 +1,21 @@
+> [!NOTE]
+> **A note from the author**
+>
+> Reelkeeper was created so I could have one place to manage my movie and TV
+> show downloads. It wasn't necessarily created to have any kind of mass-market
+> appeal, more so to suit my needs. Therefore, I consider it feature complete.
+>
+> 2.0 is still considered in beta because there have been no real-world tests
+> of the Usenet portion. It passes all of Claude's tests in a simulated
+> environment, but that's it.
+>
+> I would be delighted if others adopted it, though that is not the goal. I
+> valued depth over breadth when directing Claude in its creation, so it will
+> never be a true all-in-one solution. I hope you try it out and like it.
+>
+> As for going forward, it will continue to receive security updates, and if
+> there's a new feature I would like, I'll add it.
+
 <p align="center">
   <img src="web/public/brand/reelkeeper.svg" alt="" width="72">
 </p>
