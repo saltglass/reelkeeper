@@ -451,9 +451,19 @@ func unstick(t *testing.T, get func() *torrent.Torrent, s *seeder) {
 			}
 			if still++; still >= 4 {
 				still = 0
+				// anacrolix (from 1.63) forgets a peer once its connection is
+				// closed and asks a tracker again only after a minute or more,
+				// so the peers it was connected to are handed back, as 1.61
+				// kept them itself. Without this a stall became a wait for the
+				// next announce, longer than most tests allow.
+				var again []torrent.PeerInfo
 				for _, pc := range tt.PeerConns() {
+					if pc.Discovery != torrent.PeerSourceIncoming {
+						again = append(again, torrent.PeerInfo{Id: pc.PeerID, Addr: pc.RemoteAddr, Source: pc.Discovery})
+					}
 					_ = pc.Close()
 				}
+				tt.AddPeers(again)
 				if s != nil {
 					tt.AddPeers([]torrent.PeerInfo{s.peerInfo()})
 				}

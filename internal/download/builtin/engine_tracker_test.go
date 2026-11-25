@@ -21,8 +21,9 @@ import (
 
 // unstickByClosing is the harness's answer to the loopback stall (see unstick)
 // without the part that hands the torrent its peer: a torrent that makes no
-// progress for a few seconds has its connections closed, and it must find its
-// way back through what its tracker (or its memory of earlier peers) tells it.
+// progress for a few seconds has its connections closed and gets back only the
+// peers it was connected to (which came from its tracker), never the seeder
+// handed to it directly.
 func unstickByClosing(t *testing.T, e *Engine, hash string) {
 	t.Helper()
 	unstick(t, engineTorrent(e, hash), nil)
