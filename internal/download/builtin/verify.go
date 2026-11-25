@@ -195,12 +195,13 @@ func (e *Engine) SetFolder(category, hash, folder string) error {
 // moveFiles moves the files a torrent lists from one folder to another, and
 // then the folders it leaves empty. A file that isn't there is skipped (the
 // torrent may not have it yet); one that is in the way aborts before anything
-// is overwritten.
+// is overwritten. When a move fails part way, the files already moved are put
+// back, so the torrent's files are never left split between the two folders.
 func moveFiles(info *metainfo.Info, from, to string) error {
 	if info == nil {
 		return os.MkdirAll(to, 0o755) //nolint:gosec // see Add
 	}
-	type step struct{ src, dst string }
+	type step = struct{ src, dst string }
 	var steps []step
 	for _, f := range fileList(info) {
 		src, ok1 := inside(from, f.Name)
@@ -216,22 +217,54 @@ func moveFiles(info *metainfo.Info, from, to string) error {
 		}
 		steps = append(steps, step{src, dst})
 	}
-	for _, s := range steps {
-		if err := os.MkdirAll(filepath.Dir(s.dst), 0o755); err != nil { //nolint:gosec // see Add
+	for i, s := range steps {
+		err := os.MkdirAll(filepath.Dir(s.dst), 0o755) //nolint:gosec // see Add
+		if err == nil {
+			err = renameOrCopy(s.src, s.dst)
+		}
+		if err != nil {
+			err = fmt.Errorf("couldn't move %s: %w", filepath.Base(s.src), err)
+			// Put back the files already moved, so the torrent's files stay
+			// together in the folder its record names and a retry isn't
+			// blocked by its own files in the way.
+			if uerr := undoMoves(steps[:i], to); uerr != nil {
+				err = fmt.Errorf("%w; and some files moved before it couldn't be put back (%w), so they are in %s", err, uerr, to)
+			}
 			return err
 		}
-		if err := renameOrCopy(s.src, s.dst); err != nil {
-			return fmt.Errorf("couldn't move %s: %w", filepath.Base(s.src), err)
-		}
 	}
 	for _, s := range steps {
-		for d := filepath.Dir(s.src); d != from && len(d) > len(from); d = filepath.Dir(d) {
-			if os.Remove(d) != nil {
-				break
-			}
-		}
+		removeEmptyDirs(filepath.Dir(s.src), from)
 	}
 	return nil
+}
+
+// undoMoves moves files back to where they came from, last first, and removes
+// the folders the moves made that are left empty. It goes on past a file it
+// can't put back and returns the first error.
+func undoMoves(done []struct{ src, dst string }, to string) error {
+	var first error
+	for i := len(done) - 1; i >= 0; i-- {
+		s := done[i]
+		if err := renameOrCopy(s.dst, s.src); err != nil {
+			if first == nil {
+				first = fmt.Errorf("%s: %w", filepath.Base(s.dst), err)
+			}
+			continue
+		}
+		removeEmptyDirs(filepath.Dir(s.dst), to)
+	}
+	return first
+}
+
+// removeEmptyDirs removes dir and its parents while they are empty, stopping
+// at (and never removing) top.
+func removeEmptyDirs(dir, top string) {
+	for d := dir; d != top && len(d) > len(top); d = filepath.Dir(d) {
+		if os.Remove(d) != nil {
+			return
+		}
+	}
 }
 
 // renameOrCopy renames a file, or, when the folders are on different
