@@ -179,15 +179,20 @@ func TestEngineConfigurationNeverOpensThingsItShouldNot(t *testing.T) {
 		"the DHT's entry points are looked up there": cfg.DhtStartingNodes != nil,
 		"there is no folder anything could go to":    cfg.DefaultStorage != nil,
 		"peer exchange follows the setting (off)":    cfg.DisablePEX,
+		"local service discovery is off":             cfg.LocalServiceDiscovery == nil,
 	} {
 		if !ok {
 			t.Errorf("not so: %s", name)
 		}
 	}
-	// There is no local service discovery in anacrolix to switch off, and no
-	// default tracker list: pin both, so an upgrade that adds either is noticed.
+	// Local service discovery is pinned off above (anacrolix 1.63 added it).
+	// There is no default tracker list, and no other local discovery: pin
+	// those, so an upgrade that adds one is noticed.
 	for _, f := range reflect.VisibleFields(reflect.TypeOf(*cfg)) {
 		n := strings.ToLower(f.Name)
+		if f.Name == "LocalServiceDiscovery" {
+			continue
+		}
 		if strings.Contains(n, "lsd") || strings.Contains(n, "localservice") || strings.Contains(n, "defaulttracker") || strings.Contains(n, "publictracker") {
 			t.Errorf("anacrolix's configuration gained %s: decide whether the engine must turn it off", f.Name)
 		}

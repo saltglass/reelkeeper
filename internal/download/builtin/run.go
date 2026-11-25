@@ -87,6 +87,9 @@ func (e *Engine) sample(now time.Time, dt time.Duration) {
 			en.lastSent = now
 		}
 		en.peers, en.seeds = st.ActivePeers, st.ConnectedSeeders
+		if st.PendingPeers > 0 && st.ActivePeers == 0 && st.HalfOpenPeers == 0 {
+			nudge(en.t)
+		}
 		if en.info != nil {
 			en.have = haveOf(en.t, en.info, st.PiecesComplete)
 		}
@@ -103,6 +106,19 @@ func (e *Engine) sample(now time.Time, dt time.Duration) {
 			e.logger.Info("a torrent is finished", "torrent", en.rec.Name)
 		}
 	}
+}
+
+// nudge makes a torrent that knows of peers but is connected to none try
+// them now. anacrolix only dials when something happens (a peer is added, a
+// connection closes), and it skips dialling while the download speed limit
+// has no allowance left: right after a torrent starts again, the shared
+// limiter can still be paying for the reads before it. The peers its tracker
+// just gave it then wait for the next event, which may be the tracker's next
+// answer, a minute away at the least (anacrolix 1.63) and often half an hour.
+// Setting the connection limit to what it already is dials again and drops
+// nothing.
+func nudge(t *torrent.Torrent) {
+	t.SetMaxEstablishedConns(connsPerTorrent)
 }
 
 // haveOf is the bytes of a running torrent whose pieces are verified.
@@ -288,7 +304,7 @@ func (e *Engine) startRunning(en *entry, now time.Time) {
 // record. Used when its files are about to be touched, it is removed, or the
 // client closes. Pausing and queueing use parkRunning instead.
 //
-// A torrent dropped this way is "stale": anacrolix/torrent 1.61 keeps its
+// A torrent dropped this way is "stale": anacrolix/torrent 1.61–1.63 keeps its
 // tracker bookkeeping per (tracker, info hash) for the life of the client and
 // never forgets it, and hands every later announce result to the torrent that
 // was first added, which is gone. A torrent added again to the same client
@@ -307,7 +323,7 @@ func (e *Engine) stopRunning(en *entry) {
 	}
 	if en.parked != nil {
 		en.parked.Drop()
-		en.parked = nil
+		en.parked, en.parkedPeers = nil, nil
 		e.stale[en.rec.Hash] = true
 	}
 }
@@ -342,17 +358,45 @@ func (e *Engine) parkRunning(en *entry) {
 	en.dirty = true
 	t.DisallowDataDownload()
 	t.DisallowDataUpload()
+	en.parkedPeers = e.dialablePeers(t)
 	en.parkedMax = t.SetMaxEstablishedConns(0) // closes what is connected
 	en.parked = t
+}
+
+// dialablePeers are the peers a torrent is connected to that it could dial
+// again: not ones that connected to us (their address is a port of their
+// own, not one that listens), and for a private torrent only those its
+// trackers or the user named. anacrolix forgets a peer once its connection
+// is closed, and asks a tracker again only after the tracker's interval (a
+// minute at the least, often half an hour), so without these a torrent that
+// is resumed would sit with no one to download from until then.
+func (e *Engine) dialablePeers(t *torrent.Torrent) []torrent.PeerInfo {
+	private := e.priv.has(t.InfoHash())
+	var out []torrent.PeerInfo
+	for _, pc := range t.PeerConns() {
+		switch pc.Discovery {
+		case torrent.PeerSourceIncoming:
+			continue
+		case torrent.PeerSourceDhtGetPeers, torrent.PeerSourceDhtAnnouncePeer, torrent.PeerSourcePex:
+			if private {
+				continue
+			}
+		}
+		out = append(out, torrent.PeerInfo{Id: pc.PeerID, Addr: pc.RemoteAddr, Source: pc.Discovery})
+	}
+	return out
 }
 
 // unparkRunning runs a parked torrent again.
 func (e *Engine) unparkRunning(en *entry, now time.Time) {
 	t := en.parked
 	en.parked = nil
-	// Giving the connection limit back also dials the peers it already knew, at
-	// once (its trackers may not be asked for new ones for a while).
+	// Giving the connection limit back dials the peers it still knows of, and
+	// the ones it was connected to are handed back first (dialablePeers): its
+	// trackers may not be asked for new ones for a while.
 	t.SetMaxEstablishedConns(en.parkedMax)
+	t.AddPeers(en.parkedPeers)
+	en.parkedPeers = nil
 	t.AllowDataDownload()
 	t.AllowDataUpload()
 	st := t.Stats()
