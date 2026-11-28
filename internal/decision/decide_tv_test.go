@@ -132,3 +132,107 @@ func TestEpisodeList(t *testing.T) {
 		}
 	}
 }
+
+// expanseSeasons is a search for several whole seasons of a six-season
+// show whose seasons have 10 episodes of 50 minutes.
+func expanseSeasons(ended bool, wanted ...int) EpisodeTarget {
+	seasons := map[int]SeasonInfo{}
+	for n := 1; n <= 6; n++ {
+		seasons[n] = SeasonInfo{Episodes: 10, Minutes: 500}
+	}
+	return EpisodeTarget{WantedSeasons: wanted, Seasons: seasons, Ended: ended}
+}
+
+// Packs of several seasons (2026-11-28: a show's only well-seeded copy
+// held all five seasons, and searching only knew one season at a time).
+func TestDecideMultiSeasonPacks(t *testing.T) {
+	p := mustProfile(t, preset(t, "hd"))
+	pack := func(name string) Candidate { return Candidate{Name: name, Size: 60 * gb, Seeders: 86} }
+	cases := []struct {
+		name   string
+		target EpisodeTarget
+		accept bool
+		wrong  bool
+		reason string
+		covers Covers
+	}{
+		{"The.Expanse.S01-S06.COMPLETE.SERIES.1080p.BluRay.x265-GRP", expanseSeasons(true, 1, 2, 3, 4, 5, 6), true, false, "",
+			Covers{Season: 1, LastSeason: 6, Pack: true}},
+		// Holding seasons the version already has is fine; importing skips them.
+		{"The.Expanse.S01-S06.1080p.BluRay.x265-GRP", expanseSeasons(true, 5, 6), true, false, "",
+			Covers{Season: 1, LastSeason: 6, Pack: true}},
+		{"The.Expanse.Complete.Series.1080p.BluRay.x265-GRP", expanseSeasons(true, 1, 2, 3), true, false, "",
+			Covers{AllSeasons: true, Pack: true}},
+		// A single season's pack in a search for several is fine too.
+		{"The.Expanse.S02.1080p.BluRay.x265-GRP", expanseSeasons(true, 1, 2, 3), true, false, "", Covers{Season: 2, Pack: true}},
+		{"The.Expanse.S04.1080p.BluRay.x265-GRP", expanseSeasons(true, 1, 2, 3), false, false, "season 4, which isn't wanted as a whole", Covers{}},
+		{"The.Expanse.S02E03.1080p.BluRay.x265-GRP", expanseSeasons(true, 1, 2, 3), false, false, "this search is for whole seasons", Covers{}},
+		{"The.Expanse.S01-S03.1080p.BluRay.x265-GRP", expanseSeasons(true, 3, 4), false, false, "holds only one of the seasons wanted", Covers{}},
+		{"The.Expanse.S01-S02.1080p.BluRay.x265-GRP", expanseSeasons(true, 4, 5), false, false, "holds none of the seasons wanted", Covers{}},
+		// A range naming a season the show doesn't have is another show
+		// (or a mislabelled one).
+		{"The.Expanse.S01-S08.1080p.BluRay.x265-GRP", expanseSeasons(true, 1, 2), false, true, "has no season 7", Covers{}},
+		// A running show's "complete series" is older than its last season.
+		{"The.Expanse.Complete.Series.1080p.BluRay.x265-GRP", expanseSeasons(false, 1, 2), false, false, "still running", Covers{}},
+		// A search for one season turns a pack of several down; it isn't the
+		// wrong content when it holds that season.
+		{"The.Expanse.S01-S06.1080p.BluRay.x265-GRP", expanseS4([]int{1, 2, 3}, true), false, false, "only season 4 is wanted as a whole", Covers{}},
+		{"The.Expanse.S01-S03.1080p.BluRay.x265-GRP", expanseS4([]int{1, 2, 3}, true), false, true, "this search is for season 4", Covers{}},
+	}
+	for _, c := range cases {
+		d, cov := DecideEpisode(p, expanse, c.target, pack(c.name))
+		if d.Accepted != c.accept || d.WrongContent != c.wrong {
+			t.Errorf("%s: accepted = %v, wrong = %v, reasons %v", c.name, d.Accepted, d.WrongContent, d.Rejections)
+			continue
+		}
+		if c.reason != "" && !strings.Contains(strings.Join(d.Rejections, " "), c.reason) {
+			t.Errorf("%s: reasons %v, want one mentioning %q", c.name, d.Rejections, c.reason)
+		}
+		if c.accept && (cov.Season != c.covers.Season || cov.LastSeason != c.covers.LastSeason || cov.AllSeasons != c.covers.AllSeasons || cov.Pack != c.covers.Pack) {
+			t.Errorf("%s: covers %+v, want %+v", c.name, cov, c.covers)
+		}
+	}
+}
+
+// A pack of several seasons is held to the size limit of everything in it.
+func TestMultiSeasonSizeLimit(t *testing.T) {
+	s := preset(t, "hd")
+	s.Sizes = map[string]SizeRange{"1080": {Max: 2.5}} // GB an hour: 6 x 500 minutes may be ~125 GB
+	p := mustProfile(t, s)
+	target := expanseSeasons(true, 1, 2, 3, 4, 5, 6)
+	d, _ := DecideEpisode(p, expanse, target, Candidate{Name: "The.Expanse.S01-S06.1080p.BluRay.x264-GRP", Size: 200 * gb, Seeders: 20})
+	if d.Accepted || !strings.Contains(strings.Join(d.Rejections, " "), "6 seasons, 60 episodes (3000 minutes)") {
+		t.Errorf("too big: %v", d.Rejections)
+	}
+	d, _ = DecideEpisode(p, expanse, target, Candidate{Name: "The.Expanse.S01-S06.1080p.BluRay.x264-GRP", Size: 100 * gb, Seeders: 20})
+	if !d.Accepted {
+		t.Errorf("within the limit: %v", d.Rejections)
+	}
+	// A season's pack in the same search is held to that season alone.
+	d, _ = DecideEpisode(p, expanse, target, Candidate{Name: "The.Expanse.S02.1080p.BluRay.x264-GRP", Size: 30 * gb, Seeders: 20})
+	if d.Accepted || !strings.Contains(strings.Join(d.Rejections, " "), "1 season, 10 episodes (500 minutes)") {
+		t.Errorf("one season: %v", d.Rejections)
+	}
+}
+
+func TestBreadth(t *testing.T) {
+	several := expanseSeasons(true, 2, 3, 4)
+	one := expanseS4(nil, true)
+	for _, c := range []struct {
+		cov          Covers
+		several, one int
+	}{
+		{Covers{Season: 4, Episodes: []int{1}}, 0, 0},
+		{Covers{Season: 4, Pack: true}, 1, 1},
+		{Covers{Season: 1, LastSeason: 3, Pack: true}, 2, 0},
+		{Covers{Season: 1, LastSeason: 6, Pack: true}, 3, 1},
+		{Covers{AllSeasons: true, Pack: true}, 3, 1},
+	} {
+		if got := several.Breadth(c.cov); got != c.several {
+			t.Errorf("%+v in a search for seasons 2-4: %d, want %d", c.cov, got, c.several)
+		}
+		if got := one.Breadth(c.cov); got != c.one {
+			t.Errorf("%+v in a search for season 4: %d, want %d", c.cov, got, c.one)
+		}
+	}
+}
