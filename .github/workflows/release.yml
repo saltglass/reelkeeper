@@ -3,8 +3,9 @@
 # ghcr.io/saltglass/reelkeeper, then create a GitHub release whose notes come
 # from the conventional-commit messages (git-cliff, see cliff.toml).
 #
-# The image is tagged with the version (without the leading "v"). "latest" is
-# only moved by a release that isn't a prerelease (no "-" in the tag).
+# The image is tagged with the version (without the leading "v"). On
+# release/1.x, "latest" is never moved: since 2.0 it belongs to main's
+# releases.
 
 name: Release
 
@@ -36,8 +37,8 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           tags="${IMAGE}:${version}"
-          # Only a final release (no "-rc.1" and the like) becomes "latest".
-          case "$version" in *-*) ;; *) tags="${tags}"$'\n'"${IMAGE}:latest" ;; esac
+          # 2.0 is out, so a 1.x release never becomes "latest" (that is
+          # main's newest release).
           {
             echo "version=${version}"
             echo "tags<<EOF"
@@ -91,7 +92,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          flags=()
+          # Never marked as GitHub's latest release either: 2.0 is.
+          flags=(--latest=false)
           case "${GITHUB_REF_NAME}" in *-*) flags+=(--prerelease) ;; esac
           gh release create "${GITHUB_REF_NAME}" \
             --title "${GITHUB_REF_NAME}" \
