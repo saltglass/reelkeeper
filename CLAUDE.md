@@ -45,7 +45,8 @@ all mediocre" app.
 - Release parsing; simple quality profiles, with custom formats under Advanced
   (TRaSH Guides compatible)
 - qBittorrent as the download client (Transmission and Deluge followed in 1.x,
-  and an experimental built-in client, with no separate app, in 1.2)
+  and a built-in client, with no separate app, in 1.2: experimental until
+  2.0)
 - Import pipeline, renaming, scanning of existing libraries
 - Download cleanup engine (**must-have**)
 - Radarr/Sonarr-compatible API, so Seerr and the Dashboard work unchanged
@@ -57,8 +58,9 @@ all mediocre" app.
   indexers are imported with the indexers milestone.
 
 **Later**: design for these now, but don't build them yet:
-- Usenet: SABnzbd (Part A) and NZBGet (Part B) are done on `main` (2.0,
-  2026-10-22).
+- Usenet: SABnzbd (Part A) and NZBGet (Part B) shipped in 2.0, marked
+  **experimental** (Dan, 2026-11-28: a badge and a sentence on its card, and
+  the docs say so) until it has been used with a real Usenet provider.
 - Anime (absolute numbering, XEM scene mapping)
 - Other torrent clients beyond Transmission and Deluge (both shipped,
   as 1.2/1.4, see Roadmap). Only clients users ask for, e.g.
@@ -507,8 +509,10 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
   `release/1.x` is merged into `main`. That merge is how every 1.x fix
   reaches 2.0. Never merge `main` into `release/1.x`: it would leak
   half-built 2.0 work into a patch.
-- **2.0 ships** as a v2.0.0 tag on `main`; `release/1.x` is then
-  maintained for a while or retired.
+- **2.0 shipped** as v2.0.0 on `main` (2026-11-28, Dan), with Usenet
+  marked experimental and the built-in client no longer. Whether
+  `release/1.x` keeps getting fixes or is retired is open (see Open
+  decisions).
 - Images are built only for a tag (`.github/workflows/release.yml`, to
   ghcr.io/saltglass/reelkeeper, with release notes from git-cliff), so
   nothing on any branch reaches an install until it is tagged.
@@ -653,9 +657,8 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
 
 Ask Dan, then update this file once each is settled.
 
-- **Usenet and anime:** not in 1.x; 2.0, each from a plan Dan approves.
-  Usenet's plan was approved 2026-10-22 (SABnzbd first, then NZBGet; quality
-  first, Usenet only breaks ties, no setting).
+- **`release/1.x` after 2.0:** keep fixing it for a while, or retire it.
+- **Anime:** not in 2.0; a later release, from a plan Dan approves.
 
 ## Roadmap
 
@@ -671,9 +674,10 @@ previous one is half-done.
   the public release; the private ones aren't used publicly.
 - **1.0.0** (2026-10-16): the first public release. 1.x continues on
   `main`.
-- **2.0:** cut `release/1.x` from the last 1.x tag first, then Usenet and
-  anime, and Jellyfin and Plex next to Emby (Dan, 2026-10-16), each from a
-  plan Dan approves. Other torrent clients only if users ask for them.
+- **2.0.0** (2026-11-28): Usenet (experimental), Jellyfin and Plex next to
+  Emby, the contact-sheet redesign and packs of several seasons. Anime
+  didn't make it and stays under Later. Other torrent clients only if users
+  ask for them. What went into it:
   - **Jellyfin: done** (2026-10-19, on `main`). Its own card next to
     Emby's in Settings → Media servers (both can be on), sharing Emby's
     sender: the same "media updated" call without the `/emby` prefix, and
