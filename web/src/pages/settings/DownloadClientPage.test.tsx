@@ -757,14 +757,10 @@ describe("the built-in client", () => {
     return choice().getByRole("button", { name: /^Built-in/ });
   };
 
-  it("is a fourth choice, marked Experimental", async () => {
+  it("is a fourth choice, no longer marked Experimental (2.0)", async () => {
     open("dryrun", {}, empty);
     const button = await builtinButton();
-    expect(within(button).getByText("Experimental")).toBeInTheDocument();
-    // The others have no badge.
-    expect(
-      within(choice().getByRole("button", { name: "Deluge" })).queryByText("Experimental"),
-    ).not.toBeInTheDocument();
+    expect(within(button).queryByText("Experimental")).not.toBeInTheDocument();
     expect(button).toHaveAttribute("aria-pressed", "false");
   });
 
@@ -776,7 +772,7 @@ describe("the built-in client", () => {
     expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        "Reelkeeper downloads torrents itself, with no separate app. Experimental: it works, but it's new. You can add a WireGuard VPN: everything the client does then goes through it, and a kill switch stops every download if it drops.",
+        "Reelkeeper downloads torrents itself, with no separate app. You can add a WireGuard VPN: everything the client does then goes through it, and a kill switch stops every download if it drops.",
       ),
     ).toBeInTheDocument();
     // The starting values.

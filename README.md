@@ -5,8 +5,8 @@
 > show downloads. It wasn't necessarily created to have any kind of mass-market
 > appeal, more so to suit my needs. Therefore, I consider it feature complete.
 >
-> 2.0 is still considered in beta because there have been no real-world tests
-> of the Usenet portion. It passes all of Claude's tests in a simulated
+> In 2.0, Usenet is marked experimental because there have been no
+> real-world tests of it. It passes all of Claude's tests in a simulated
 > environment, but that's it.
 >
 > I would be delighted if others adopted it, though that is not the goal. I
@@ -129,15 +129,16 @@ does the same job, and uses the fact that everything lives together:
 - **qBittorrent, Transmission 4.0+ or Deluge 2.1+.** Reelkeeper only ever
   touches torrents in its own categories (labels in Transmission and
   Deluge).
-- **Usenet through SABnzbd 4.0+ or NZBGet 21+ (from 2.0)**, next to a
-  torrent client or instead of one. Your quality profile decides; Usenet only
-  wins a tie with an equally good torrent. Failed downloads are replaced
-  automatically.
-- **Or its own built-in client (experimental)**: Reelkeeper downloads the
+- **Usenet through SABnzbd 4.0+ or NZBGet 21+ (from 2.0, experimental)**,
+  next to a torrent client or instead of one. Your quality profile decides;
+  Usenet only wins a tie with an equally good torrent. Failed downloads are
+  replaced automatically. Experimental because it has only been tested
+  against a made-up Usenet server, not a real provider.
+- **Or its own built-in client**: Reelkeeper downloads the
   torrents itself, with no other app to run. Limits on how many torrents
   download and seed at once, optional speed caps, and the same cleanup and
   Queue controls as the others. It never asks your router to open a port.
-- **A WireGuard VPN for the built-in client (experimental).** Drop in the
+- **A WireGuard VPN for the built-in client.** Drop in the
   config file your VPN provider gave you, and everything the client does goes
   through it, with no extra container privileges. Settings shows your real IP
   next to the VPN's, and a kill switch stops every download the moment the
@@ -228,7 +229,7 @@ encrypts the passwords Reelkeeper stores. Then `docker compose up -d` and
 open `http://<your-server>:7676`.
 
 You also need a torrent client (qBittorrent, Transmission or Deluge, or the
-experimental built-in one) and a
+built-in one) and a
 free [TMDB](https://www.themoviedb.org) API key. The
 [installation guide](docs/install.md) covers PostgreSQL, folders and paths,
 and every setting, including the built-in client's port and its VPN.
@@ -257,10 +258,8 @@ happy.
 
 Reelkeeper deliberately leaves out subtitles (use Bazarr), music and books,
 playing media, request management (that's Seerr's job), and solving
-Cloudflare challenges itself. Anime-specific numbering isn't supported yet;
-it's planned for 2.0, along with Usenet through SABnzbd and NZBGet and
-library updates for Jellyfin and Plex (all three already on the 2.0 branch;
-Emby is supported today).
+Cloudflare challenges itself. Anime-specific numbering (absolute episode
+numbers, scene mapping) isn't supported.
 
 ## Development
 

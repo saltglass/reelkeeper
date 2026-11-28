@@ -1617,7 +1617,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The Usenet download client connection (never the API key or password) */
+        /** The Usenet download client connection (never the API key or password). Usenet is experimental in 2.0. */
         get: operations["getUsenetClient"];
         /**
          * Save the Usenet download client connection
@@ -2850,7 +2850,7 @@ export interface components {
         };
         /**
          * @description Which download client it is. Settings saved before there was a choice read as `qbittorrent`. `builtin` is Reelkeeper's own
-         *     torrent client (experimental): it has no address or login, and counts as set up once it has a `folder`.
+         *     torrent client: it has no address or login, and counts as set up once it has a `folder`.
          * @enum {string}
          */
         DownloadClientType: "qbittorrent" | "transmission" | "deluge" | "builtin";

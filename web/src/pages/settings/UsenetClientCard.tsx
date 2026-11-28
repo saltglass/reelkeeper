@@ -3,6 +3,7 @@ import { Newspaper } from "lucide-react";
 import { type FormEvent, useMemo } from "react";
 import { RequestError } from "@/api/client";
 import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -124,12 +125,16 @@ export function UsenetClientCard() {
             <Newspaper />
           </IconTile>
           <div className="min-w-0 space-y-1">
-            <CardTitle>Usenet: {name}</CardTitle>
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              Usenet: {name}
+              <Badge variant="warning">Experimental</Badge>
+            </CardTitle>
             <CardDescription>
               Optional. With a Usenet client, Reelkeeper also searches your Usenet (Newznab)
               indexers and sends what it picks there. Your quality profile still decides; between
               two equally good releases, Usenet wins, since it's usually faster and leaves nothing
-              to seed.
+              to seed. Experimental: it passes every test against a made-up Usenet, but it hasn't
+              been used with a real provider yet.
             </CardDescription>
           </div>
         </CardHeader>

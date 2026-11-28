@@ -141,7 +141,7 @@ over.
 Choose your download client at the top of the card: **qBittorrent**,
 **Transmission** (see [Using Transmission](#using-transmission) below),
 **Deluge** (see [Using Deluge](#using-deluge)) or Reelkeeper's own
-**Built-in** client (experimental; see [Using the built-in
+**Built-in** client (see [Using the built-in
 client](#using-the-built-in-client)). Then,
 for qBittorrent, enter the Web UI address (with the port, such as
 `http://qbittorrent:8080`), the username and the password, and press Test.
@@ -261,11 +261,9 @@ Reelkeeper does works the same.
 
 ### Using the built-in client
 
-Choose **Built-in** (it carries an *Experimental* badge) to let Reelkeeper
-download torrents itself, with no other program. Everything else Reelkeeper
-does works the same. It is new: it works, but for torrents you care about, an
-external client is still the safer choice. Without a VPN, peers see your real
-IP address, and the card at the top says so in red.
+Choose **Built-in** to let Reelkeeper download torrents itself, with no
+other program. Everything else Reelkeeper does works the same. Without a
+VPN, peers see your real IP address, and the card at the top says so in red.
 
 - **No address and no login.** It is set up by its **Download folder**, a path
   inside the Reelkeeper container that exists and can be written to (Test and
@@ -354,6 +352,10 @@ already downloaded are checked, not downloaded again; nothing is deleted."
   new one.
 
 ### Usenet: SABnzbd or NZBGet (from 2.0)
+
+Usenet is **experimental** in 2.0 (its card carries an *Experimental*
+badge): it passes every test against a made-up Usenet server, with real
+SABnzbd and NZBGet, but it hasn't been used with a real Usenet provider yet.
 
 Usenet is optional. If you have a Usenet provider and a Usenet (Newznab)
 indexer, set up **SABnzbd or NZBGet** (choose one at the top of its card,

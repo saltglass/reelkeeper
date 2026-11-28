@@ -1784,7 +1784,7 @@ type DownloadClient struct {
 	PasswordSet    bool `json:"passwordSet"`
 
 	// Type Which download client it is. Settings saved before there was a choice read as `qbittorrent`. `builtin` is Reelkeeper's own
-	// torrent client (experimental): it has no address or login, and counts as set up once it has a `folder`.
+	// torrent client: it has no address or login, and counts as set up once it has a `folder`.
 	Type DownloadClientType `json:"type"`
 
 	// UploadLimitKBs Built-in client only: upload speed limit in KB/s; 0 is no limit.
@@ -1807,7 +1807,7 @@ type DownloadClient struct {
 }
 
 // DownloadClientType Which download client it is. Settings saved before there was a choice read as `qbittorrent`. `builtin` is Reelkeeper's own
-// torrent client (experimental): it has no address or login, and counts as set up once it has a `folder`.
+// torrent client: it has no address or login, and counts as set up once it has a `folder`.
 type DownloadClientType string
 
 // DownloadClientUpdate defines model for DownloadClientUpdate.
@@ -1843,7 +1843,7 @@ type DownloadClientUpdate struct {
 	Password *string `json:"password,omitempty"`
 
 	// Type Which download client it is. Settings saved before there was a choice read as `qbittorrent`. `builtin` is Reelkeeper's own
-	// torrent client (experimental): it has no address or login, and counts as set up once it has a `folder`.
+	// torrent client: it has no address or login, and counts as set up once it has a `folder`.
 	Type *DownloadClientType `json:"type,omitempty"`
 
 	// UploadLimitKBs Built-in client only: KB/s, 0 for no limit. Leaving it out keeps the current value.
@@ -4952,7 +4952,7 @@ type ServerInterface interface {
 	// CheckSolver Check the solver answers (the given address, or the saved one)
 	// (POST /settings/solver/check)
 	CheckSolver(w http.ResponseWriter, r *http.Request)
-	// GetUsenetClient The Usenet download client connection (never the API key or password)
+	// GetUsenetClient The Usenet download client connection (never the API key or password). Usenet is experimental in 2.0.
 	// (GET /settings/usenet-client)
 	GetUsenetClient(w http.ResponseWriter, r *http.Request)
 	// PutUsenetClient Save the Usenet download client connection
@@ -5809,7 +5809,7 @@ func (_ Unimplemented) CheckSolver(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// GetUsenetClient The Usenet download client connection (never the API key or password)
+// GetUsenetClient The Usenet download client connection (never the API key or password). Usenet is experimental in 2.0.
 // (GET /settings/usenet-client)
 func (_ Unimplemented) GetUsenetClient(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)

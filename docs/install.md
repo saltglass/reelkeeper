@@ -18,7 +18,7 @@ Before you start you need:
   4.0 or newer, or Deluge 2.1 or newer (with its web UI running and the Label
   plugin turned on), running somewhere Reelkeeper can reach.
   qBittorrent Enhanced Edition works too (tested with 5.2.4.10). Or none of
-  those: Reelkeeper has an experimental [built-in client](#the-built-in-download-client)
+  those: Reelkeeper has a [built-in client](#the-built-in-download-client)
   that downloads torrents itself.
 - A free [TMDB](https://www.themoviedb.org) account and API key. Reelkeeper
   uses it to identify movies and shows.
@@ -207,8 +207,7 @@ downloaded files Reelkeeper keeps outside the database (see
 ## The built-in download client
 
 Instead of running qBittorrent, Transmission or Deluge, you can let Reelkeeper
-download torrents itself. It is **experimental**: it works, but it is new, so
-for anything you care about, an external client is still the safer choice. In
+download torrents itself. In
 Settings → Download Client, choose **Built-in** and give it a download folder.
 You can switch between it and the other clients at any time; Reelkeeper moves
 the torrents it is working on and nothing is downloaded again.

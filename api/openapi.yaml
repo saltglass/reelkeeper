@@ -2143,7 +2143,7 @@ paths:
     get:
       tags: [settings]
       operationId: getUsenetClient
-      summary: The Usenet download client connection (never the API key or password)
+      summary: The Usenet download client connection (never the API key or password). Usenet is experimental in 2.0.
       responses:
         "200":
           description: OK
@@ -3706,7 +3706,7 @@ components:
       enum: [qbittorrent, transmission, deluge, builtin]
       description: |
         Which download client it is. Settings saved before there was a choice read as `qbittorrent`. `builtin` is Reelkeeper's own
-        torrent client (experimental): it has no address or login, and counts as set up once it has a `folder`.
+        torrent client: it has no address or login, and counts as set up once it has a `folder`.
 
     DownloadClient:
       type: object

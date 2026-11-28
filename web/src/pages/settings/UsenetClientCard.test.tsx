@@ -64,6 +64,14 @@ const card = async () =>
   within((await screen.findByText("Usenet: SABnzbd")).closest("form") as HTMLElement);
 
 describe("Usenet client settings", () => {
+  it("is marked Experimental (2.0)", async () => {
+    open();
+    expect(
+      await screen.findByText(/hasn't been used with a real provider yet/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Experimental")).toBeInTheDocument();
+  });
+
   it("saves SABnzbd's address and key, and never shows the key", async () => {
     const { puts } = open();
     const c = await card();

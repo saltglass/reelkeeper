@@ -3,7 +3,6 @@ import { ChevronDown, ChevronRight, Download } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
 import { RequestError } from "@/api/client";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -106,7 +105,6 @@ function toNumber(s: string) {
 const typeOptions = (Object.keys(clientNames) as DownloadClientType[]).map((value) => ({
   value,
   label: clientNames[value],
-  ...(value === "builtin" ? { badge: "Experimental" } : {}),
 }));
 
 /** What each kind of client calls its address, with an example. */
@@ -224,13 +222,10 @@ export function DownloadClientCard() {
             <Download />
           </IconTile>
           <div className="min-w-0 space-y-1">
-            <CardTitle className="flex flex-wrap items-center gap-2">
-              {name}
-              {own && <Badge variant="warning">Experimental</Badge>}
-            </CardTitle>
+            <CardTitle>{name}</CardTitle>
             <CardDescription>
               {own
-                ? "Reelkeeper downloads torrents itself, with no separate app. Experimental: it works, but it's new. You can add a WireGuard VPN: everything the client does then goes through it, and a kill switch stops every download if it drops."
+                ? "Reelkeeper downloads torrents itself, with no separate app. You can add a WireGuard VPN: everything the client does then goes through it, and a kill switch stops every download if it drops."
                 : transmission
                   ? "Where Reelkeeper sends the releases it picks. Enter Transmission's RPC address (Transmission 4.0 or newer) and, if you've set one, its login."
                   : deluge
