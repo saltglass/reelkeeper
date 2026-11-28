@@ -371,7 +371,9 @@ func Parse(name string) Release {
 		r.apply(tokens, i)
 	}
 	if ep != nil {
-		if epEnd < markerStart {
+		// A pack of several seasons has no episode title ("S01-S05 COMPLETE
+		// SERIES" says nothing about one episode).
+		if epEnd < markerStart && !ep.MultiSeason() {
 			t := cleanTitle(s, tokens[epEnd].start, tokens[markerStart-1].end)
 			if !yearRe.MatchString(t) {
 				ep.Title = t

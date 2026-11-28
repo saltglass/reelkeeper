@@ -64,6 +64,25 @@ func TestParseEpisodes(t *testing.T) {
 			want{"Some Talk Show", 0, &Episode{Season: -1, AirDate: "2024-03-15", Title: "Guest Name"}, ""}},
 		// Season packs.
 		{"Some.Show.S02.1080p.BluRay.x264-GRP", want{"Some Show", 0, &Episode{Season: 2}, "GRP"}},
+		// Several seasons in one release (2026-11-28: a show's only
+		// well-seeded copy was all five seasons, and every name below
+		// used to read as part of the title).
+		{"Some.Show.S01-S05.COMPLETE.SERIES.1080p.Bluray.x265-GRP", want{"Some Show", 0, &Episode{Season: 1, LastSeason: 5}, "GRP"}},
+		{"Some Show (2010) Season 1-5 S01-S05 (1080p BluRay x265 HEVC 10bit AAC 5.1 grp)",
+			want{"Some Show", 2010, &Episode{Season: 1, LastSeason: 5}, "grp"}},
+		{"Some Show S01-S05 720p BluRay HEVC x265 GRP", want{"Some Show", 0, &Episode{Season: 1, LastSeason: 5}, ""}},
+		{"Some.Show.S01-05.1080p.BluRay.x264-GRP", want{"Some Show", 0, &Episode{Season: 1, LastSeason: 5}, "GRP"}},
+		{"Some.Show.S02-S04.720p.WEB-DL-GRP", want{"Some Show", 0, &Episode{Season: 2, LastSeason: 4}, "GRP"}},
+		{"Some Show S01 - S03 1080p WEB-DL", want{"Some Show", 0, &Episode{Season: 1, LastSeason: 3}, ""}},
+		{"Some Show S01 S02 S03 1080p", want{"Some Show", 0, &Episode{Season: 1, LastSeason: 3}, ""}},
+		{"Some.Show.Seasons.1-5.1080p.BluRay", want{"Some Show", 0, &Episode{Season: 1, LastSeason: 5}, ""}},
+		{"Some Show Seasons 1 to 3 720p WEBRip", want{"Some Show", 0, &Episode{Season: 1, LastSeason: 3}, ""}},
+		{"Some.Show.Complete.Series.1080p.BluRay.x264-GRP", want{"Some Show", 0, &Episode{Season: -1, Complete: true}, "GRP"}},
+		{"Some Show - The Complete Series (2010-2014) 1080p BluRay", want{"Some Show", 0, &Episode{Season: -1, Complete: true}, ""}},
+		// A backwards range is only its first season.
+		{"Some.Show.S05-S01.1080p.WEB-DL-GRP", want{"Some Show", 0, &Episode{Season: 5}, "GRP"}},
+		// "Complete Series" opening a name is a title, not a pack.
+		{"Complete Series S01E01 720p.mkv", want{"Complete Series", 0, &Episode{Season: 1, Episodes: []int{1}}, ""}},
 		// Not episodes: movies keep their titles.
 		{"Season of the Witch (2011).mkv", want{"Season of the Witch", 2011, nil, ""}},
 		{"Some Movie 2024 03 Remastered.mkv", want{"Some Movie", 2024, nil, ""}},
