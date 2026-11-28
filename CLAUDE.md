@@ -497,32 +497,30 @@ These mirror Radarr's options, but cleaner:
 
 ## Branches and versions (from 1.0.0)
 
-Planned with Dan on 2026-10-13; settled 2026-10-15 ("branch as you see
-fit"; 1.x may include small features; Usenet and anime are probably 2.0).
+Planned with Dan on 2026-10-13 and 2026-10-15; `release/1.x` retired on
+2026-11-28.
 
-- **2.0 work has started** (2026-10-19, with Jellyfin). `release/1.x` was
-  cut on 2026-10-18 at the 1.2.0 commit; 1.2.1 is tagged there. `main` is
-  now 2.0, and 1.x fixes and small features (no schema changes, nothing
-  breaking) go on `release/1.x`; production installs run its tags.
-  (Before this, everything stayed on `main`, and 1.0–1.2 were tagged there.)
-- **A fix lands on `release/1.x` first**, is tagged there, and then
-  `release/1.x` is merged into `main`. That merge is how every 1.x fix
-  reaches 2.0. Never merge `main` into `release/1.x`: it would leak
-  half-built 2.0 work into a patch.
-- **2.0 shipped** as v2.0.0 on `main` (2026-11-28, Dan), with Usenet
-  marked experimental and the built-in client no longer. Whether
-  `release/1.x` keeps getting fixes or is retired is open (see Open
-  decisions).
+- **Everything is on `main` again** (Dan, 2026-11-28). 2.0.0 shipped as an
+  annotated tag on `main`, and `release/1.x` was retired after its last
+  release, 1.5.2 (a lightweight tag on the branch's final commit, which is
+  merged into `main`; the branch itself is deleted). Fixes and features go
+  on `main` and are released from there as 2.x tags.
+- History: `release/1.x` was cut on 2026-10-18 at 1.2.0 for 1.x fixes and
+  small features while 2.0 was built on `main`; 1.2.1–1.5.2 are tagged
+  there. Should a maintenance branch ever be needed again, cut it from the
+  last tag of that line, land fixes there first and merge it into `main`,
+  never the other way, and make its releases leave `latest` alone (as
+  1.5.2's workflow did).
 - Images are built only for a tag (`.github/workflows/release.yml`, to
   ghcr.io/saltglass/reelkeeper, with release notes from git-cliff), so
-  nothing on any branch reaches an install until it is tagged.
-- **Schema changes:** once `release/1.x` exists, 1.x releases don't
-  change the schema. If one truly
-  must, it takes the next migration number on `release/1.x`, and 2.0's
-  unreleased migrations are renumbered after it before the merge (safe
-  only while 2.0 is unreleased). A 1.x backup restores into 2.0; a 2.0
-  backup does not restore into 1.x.
-- **Trying 2.0 next to a live install:** never share production's database,
+  nothing on a branch reaches an install until it is tagged. A tag with no
+  "-" also moves `latest`. For a major release, git-cliff's notes only go
+  back to the previous tag (often a beta), so write them by hand from the
+  last release of the previous line.
+- **Schema changes** need a migration for both engines (see Working rules).
+  A backup restores into a newer release, never an older one: a 1.x backup
+  restores into 2.0, a 2.0 backup does not restore into 1.x.
+- **Trying a new version next to a live install:** never share production's database,
   qBittorrent categories or media folders with a second instance (they
   would fight over the same downloads and files). Use the local dev
   stack, or a preview instance with its own database, its own categories,
@@ -657,7 +655,6 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
 
 Ask Dan, then update this file once each is settled.
 
-- **`release/1.x` after 2.0:** keep fixing it for a while, or retire it.
 - **Anime:** not in 2.0; a later release, from a plan Dan approves.
 
 ## Roadmap
