@@ -104,8 +104,9 @@ does the same job, and uses the fact that everything lives together:
   respects.
 - Cloudflare-protected sites through an external FlareSolverr-compatible
   solver.
-- Automatic search for new and missing titles, RSS sync, TV season packs,
-  and repacks or propers for recent episodes.
+- Automatic search for new and missing titles, RSS sync, TV season packs
+  (and packs of several seasons, such as a whole series), and repacks or
+  propers for recent episodes.
 
 ### Quality profiles
 

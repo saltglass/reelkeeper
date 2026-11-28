@@ -106,9 +106,10 @@ func (s *Service) ImportEpisodes(ctx context.Context, req EpisodeImportRequest) 
 	if err != nil {
 		return res, err
 	}
-	// A season pack's files often leave the season to the pack's name.
+	// A season pack's files often leave the season to the pack's name. A
+	// pack of several seasons names none of them.
 	packSeason := -1
-	if e := parser.Parse(req.ReleaseName).Episode; e != nil {
+	if e := parser.Parse(req.ReleaseName).Episode; e != nil && !e.MultiSeason() {
 		packSeason = e.Season
 	}
 
@@ -210,8 +211,9 @@ func episodeVideos(source, clientName string) (files []unitFile, base string, er
 
 // episodesOfFile works out which episodes a file holds: by air date for a
 // daily show's file, otherwise by number, with the season from its name,
-// then its season folder, then the pack's. why explains a file it can't
-// place.
+// then its folders ("Season 2", or a season's release name inside a pack
+// of several: "Show.S02.1080p.BluRay-GRP"), then the pack's. why explains
+// a file it can't place.
 func episodesOfFile(rel string, packSeason int, byNumber map[[2]int]Episode, byDate map[string][]Episode) (eps []Episode, why string) {
 	claim := parser.Parse(filepath.Base(rel)).Episode
 	if claim != nil && claim.AirDate != "" {
@@ -229,11 +231,10 @@ func episodesOfFile(rel string, packSeason int, byNumber map[[2]int]Episode, byD
 	}
 	season := claim.Season
 	if season < 0 {
-		if n, ok := parser.SeasonFolder(filepath.Base(filepath.Dir(rel))); ok {
-			season = n
-		} else {
-			season = packSeason
-		}
+		season = folderSeason(rel)
+	}
+	if season < 0 {
+		season = packSeason
 	}
 	if season < 0 {
 		return nil, "its name doesn't say which season it is"
@@ -246,6 +247,22 @@ func episodesOfFile(rel string, packSeason int, byNumber map[[2]int]Episode, byD
 		eps = append(eps, e)
 	}
 	return eps, ""
+}
+
+// folderSeason is the season the nearest folder around a downloaded file
+// names, or -1: a season folder ("Season 2"), or a single season's release
+// name, as packs of several seasons nest them.
+func folderSeason(rel string) int {
+	for dir := filepath.Dir(rel); dir != "." && dir != "/" && dir != ""; dir = filepath.Dir(dir) {
+		name := filepath.Base(dir)
+		if n, ok := parser.SeasonFolder(name); ok {
+			return n
+		}
+		if e := parser.Parse(name).Episode; e != nil && !e.MultiSeason() && e.AirDate == "" && len(e.Episodes) == 0 && e.Season >= 0 {
+			return e.Season
+		}
+	}
+	return -1
 }
 
 // importEpisodeFile copies one file into place and records it with its

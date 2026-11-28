@@ -164,6 +164,51 @@ func TestImportSeasonPack(t *testing.T) {
 	})
 }
 
+// A pack of several seasons, laid out the ways real ones are: files that
+// name their season, files that leave it to a "Season N" folder or to a
+// season's release-name folder. Its own name gives no season, so a file
+// that can't be placed isn't put in season 1.
+func TestImportMultiSeasonPack(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		tf := newImportFixture(t, db, "standard", map[string]string{
+			"S01E01": "2020-01-01", "S01E02": "2020-01-08", "S02E01": "2021-01-01", "S02E02": "2021-01-08",
+			"S03E01": "2022-01-01", "S03E02": "2022-01-08",
+		})
+		dl := t.TempDir()
+		const pack = "The.Show.S01-S03.COMPLETE.SERIES.1080p.BluRay.x265-GRP"
+		body := bytes.Repeat([]byte("e"), 1<<20)
+		touch(t, dl, pack+"/Season 1/The Show S01E01 Pilot.mkv", body)
+		touch(t, dl, pack+"/Season 1/The Show S01E02 Second.mkv", body)
+		touch(t, dl, pack+"/Season 2/The Show E01.mkv", body) // the season only in its folder
+		touch(t, dl, pack+"/Season 2/The Show E02.mkv", body)
+		touch(t, dl, pack+"/The.Show.S03.1080p.BluRay.x265-GRP/The Show E01.mkv", body) // the season in the folder's release name
+		touch(t, dl, pack+"/The.Show.S03.1080p.BluRay.x265-GRP/The Show E02.mkv", body)
+		touch(t, dl, pack+"/The Show E09.mkv", body) // no season anywhere
+
+		res, err := tf.svc.ImportEpisodes(ctx, EpisodeImportRequest{
+			VersionID: tf.v.ID, Source: filepath.Join(dl, pack), ReleaseName: pack,
+			EpisodeIDs: tf.ids("S01E01", "S01E02", "S02E01", "S02E02", "S03E02"),
+		})
+		if err != nil {
+			t.Fatalf("%v (imported %v, skipped %v)", err, res.Imported, res.Skipped)
+		}
+		if len(res.Imported) != 5 {
+			t.Fatalf("imported %v, skipped %v", res.Imported, res.Skipped)
+		}
+		for _, l := range []string{"S01E01", "S01E02", "S02E01", "S02E02", "S03E02"} {
+			if p := tf.filesOfEpisode(t, l); len(p) != 1 || !strings.Contains(p[0], "Season "+l[2:3]+"/") {
+				t.Errorf("%s files %v", l, p)
+			}
+		}
+		skipped := strings.Join(res.Skipped, "|")
+		if !strings.Contains(skipped, "The Show E09.mkv: its name doesn't say which season it is") ||
+			!strings.Contains(skipped, "The Show E01.mkv: not an episode this download was grabbed for") {
+			t.Errorf("skipped %v", res.Skipped)
+		}
+	})
+}
+
 // A single-episode download is a lone file; its quality comes from the
 // release name when the file's own name says less.
 func TestImportSingleEpisodeFile(t *testing.T) {

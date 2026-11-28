@@ -843,3 +843,46 @@ func TestBackfillGrabOptionDryRun(t *testing.T) {
 		}
 	})
 }
+
+// A show missing several whole seasons is also searched for as a whole,
+// and a pack of several seasons the profile turned down is offered once,
+// for all of them, not under each season.
+func TestBackfillOptionsOfferPacksOfSeveralSeasons(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f := newFixture(t, db)
+		g, _ := bfOn(f)
+		sv := addSeries(t, db, f, "Old Show", "standard", map[string]string{
+			"S01E01": "2010-01-01", "S01E02": "2010-01-08", "S02E01": "2011-01-01", "S02E02": "2011-01-08",
+			"S03E01": "2012-01-01", "S03E02": "2012-01-08",
+		})
+		sv.Title.Status = "Ended"
+		row, _ := f.svc.BackfillAdd(ctx, sv.Version.ID)
+		f.idx.releases = nil
+		runBackfill(t, f)
+
+		f.idx.releases = []indexer.Release{tvRel("Old.Show.S01-S03.720p.HDTV.x264-ALL", 6<<30, 86)}
+		f.idx.queries = nil
+		opts, err := f.svc.BackfillOptions(ctx, row.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := queriesOf(f); !slices.Equal(got, []string{"S00E", "S01E", "S02E", "S03E"}) {
+			t.Errorf("queries = %v; the whole show, then each season", got)
+		}
+		if len(opts.Units) != 4 || opts.Units[0].Label != "seasons 1 to 3" || len(opts.Units[0].Options) != 1 {
+			t.Fatalf("units = %+v", opts.Units)
+		}
+		for _, u := range opts.Units[1:] {
+			if len(u.Options) != 0 {
+				t.Errorf("%s was offered %+v; the pack is offered once, for every season", u.Label, u.Options)
+			}
+		}
+		if _, err := f.svc.BackfillGrabOption(ctx, row.ID, opts.Units[0].Options[0].Token); err != nil {
+			t.Fatal(err)
+		}
+		if len(g.grabs) != 1 || len(g.grabs[0].TV.EpisodeIDs) != 6 || g.grabs[0].TV.Label != "seasons 1 to 3 (6 wanted episodes)" {
+			t.Errorf("grabs = %+v", g.grabs)
+		}
+	})
+}

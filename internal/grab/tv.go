@@ -12,6 +12,12 @@ package grab
 //   - otherwise each wanted episode on its own (a daily show's by air
 //     date).
 //
+// When two or more seasons are searched as packs, the show is first asked
+// for once as a whole (seriesUnit, 2026-11-28): a release holding several
+// seasons ("S01-S05", "Complete Series") is often the only well-seeded
+// copy of an older show, and indexers asked for one season rarely
+// return it. What it grabs, the season searches skip.
+//
 // An episode is searched for from the day after it airs (TMDB gives dates,
 // not times); RSS sync catches same-day releases. Each episode remembers
 // when it was last searched for, so the scheduled pass spreads TV searches
@@ -21,6 +27,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -139,12 +146,19 @@ type tvUnit struct {
 	episodes []library.Episode
 	pack     bool
 	// fallback marks a season search made because a single episode's search
-	// found nothing acceptable (see packFallback). It leaves the search times
-	// to the episode searches, so it never delays one.
+	// found nothing acceptable (see packFallback), or a whole-show search
+	// made before the season searches (see seriesUnit). It leaves the search
+	// times to the searches it stands in for, so it never delays one.
 	fallback bool
+	// seasons, for a whole-show search, are the seasons it's for (season
+	// is then 0).
+	seasons []int
 }
 
 func (u tvUnit) label() string {
+	if len(u.seasons) > 0 {
+		return seasonsLabel(u.seasons)
+	}
 	if u.pack {
 		return fmt.Sprintf("season %d", u.season)
 	}
@@ -210,6 +224,39 @@ func (s *Service) units(w *tvWanted) []tvUnit {
 	return out
 }
 
+// seriesUnit is the whole-show search for the seasons among us that are
+// searched as packs, when there are two or more (ok false otherwise).
+func seriesUnit(us []tvUnit) (tvUnit, bool) {
+	var su tvUnit
+	for _, u := range us {
+		if !u.pack || u.fallback || len(u.seasons) > 0 {
+			continue
+		}
+		su.w = u.w
+		su.seasons = append(su.seasons, u.season)
+		su.episodes = append(su.episodes, u.episodes...)
+	}
+	if len(su.seasons) < 2 {
+		return tvUnit{}, false
+	}
+	su.pack, su.fallback = true, true
+	return su, true
+}
+
+// seasonsLabel names seasons: "seasons 1 to 5" when they run on, else
+// "seasons 1, 3 and 4".
+func seasonsLabel(seasons []int) string {
+	ns := slices.Sorted(slices.Values(seasons))
+	if ns[len(ns)-1]-ns[0] == len(ns)-1 {
+		return fmt.Sprintf("seasons %d to %d", ns[0], ns[len(ns)-1])
+	}
+	parts := make([]string, len(ns))
+	for i, n := range ns {
+		parts[i] = strconv.Itoa(n)
+	}
+	return "seasons " + strings.Join(parts[:len(parts)-1], ", ") + " and " + parts[len(parts)-1]
+}
+
 // packWorthIt reports whether a season pack is the better search: the
 // season has finished airing and more than half of it is wanted.
 func packWorthIt(all []library.Episode, season, wanted int, today string) bool {
@@ -261,15 +308,17 @@ func seasonFinished(all []library.Episode, season int, today string) bool {
 
 // searchRun is what the searches of one run share: the seasons already
 // searched as a fallback pack (by version and season), so each is searched
-// once, and the episodes chosen releases are on their way for, so their own
-// searches are skipped.
+// once, the versions whose show was searched for as a whole, and the
+// episodes chosen releases are on their way for, so their own searches are
+// skipped.
 type searchRun struct {
-	packTried map[[2]int64]bool
-	claimed   map[int64]bool
+	packTried   map[[2]int64]bool
+	seriesTried map[int64]bool
+	claimed     map[int64]bool
 }
 
 func newSearchRun() *searchRun {
-	return &searchRun{packTried: map[[2]int64]bool{}, claimed: map[int64]bool{}}
+	return &searchRun{packTried: map[[2]int64]bool{}, seriesTried: map[int64]bool{}, claimed: map[int64]bool{}}
 }
 
 // skip reports whether every episode of a unit is already on its way.
@@ -279,11 +328,25 @@ func (r *searchRun) skip(u tvUnit) bool {
 
 // target is what the decision engine checks releases against.
 func (u tvUnit) target() decision.EpisodeTarget {
-	t := decision.EpisodeTarget{Season: u.season, Runtime: map[int]int{}, AllowPack: u.pack}
+	t := decision.EpisodeTarget{Season: u.season, Runtime: map[int]int{}, AllowPack: u.pack,
+		Seasons: map[int]decision.SeasonInfo{}, WantedSeasons: u.seasons, Ended: ended(u.w.sv.Title)}
+	unknown := map[int]bool{} // seasons with an episode of unknown length
 	for _, e := range u.w.sv.Episodes {
+		info := t.Seasons[*e.Season]
+		info.Episodes++
+		info.Minutes += e.Runtime
+		unknown[*e.Season] = unknown[*e.Season] || e.Runtime <= 0
+		t.Seasons[*e.Season] = info
 		if *e.Season == u.season {
 			t.SeasonEpisodes++
 			t.Runtime[*e.Number] = e.Runtime
+		}
+	}
+	for n := range unknown {
+		if unknown[n] {
+			info := t.Seasons[n]
+			info.Minutes = 0
+			t.Seasons[n] = info
 		}
 	}
 	for _, e := range u.episodes {
@@ -295,7 +358,12 @@ func (u tvUnit) target() decision.EpisodeTarget {
 	return t
 }
 
-// query is the indexer search for a unit.
+// ended reports whether a series has finished (TMDB's status), so a
+// "Complete Series" release can hold all of it.
+func ended(t library.Title) bool { return t.Status == "Ended" || t.Status == "Canceled" }
+
+// query is the indexer search for a unit: the whole show for a search of
+// several seasons (season 0 asks for none).
 func (u tvUnit) query() core.Query {
 	t := u.w.sv.Title
 	q := core.Query{
@@ -323,8 +391,10 @@ type tvCandidate struct {
 	cov decision.Covers
 }
 
-// decideTV judges releases for a unit, best first. A pack search prefers
-// an acceptable pack to single episodes: one grab instead of many.
+// decideTV judges releases for a unit, best first. Of the acceptable
+// releases, the one holding the most wanted seasons whole comes first: a
+// pack before single episodes, a pack of several seasons before one of a
+// single season. One grab instead of many.
 func (s *Service) decideTV(ctx context.Context, w *tvWanted, t decision.EpisodeTarget, rels []indexer.Release) ([]tvCandidate, error) {
 	minSeeders := s.settings().MinSeeders
 	blocked := func(string, string) bool { return false }
@@ -343,11 +413,10 @@ func (s *Service) decideTV(ctx context.Context, w *tvWanted, t decision.EpisodeT
 		out[i] = tvCandidate{candidate: candidate{rel: r, d: d}, cov: cov}
 	}
 	slices.SortStableFunc(out, func(a, b tvCandidate) int {
-		if a.d.Accepted && b.d.Accepted && a.cov.Pack != b.cov.Pack {
-			if a.cov.Pack {
-				return -1
+		if a.d.Accepted && b.d.Accepted {
+			if n := t.Breadth(b.cov) - t.Breadth(a.cov); n != 0 {
+				return n
 			}
-			return 1
 		}
 		return w.profile.Compare(a.d, b.d)
 	})
@@ -411,17 +480,30 @@ func covers(cov decision.Covers, e library.Episode) bool {
 	switch {
 	case cov.AirDate != "":
 		return e.AirDate == cov.AirDate
-	case e.Season == nil || e.Number == nil || *e.Season != cov.Season:
+	case e.Season == nil || e.Number == nil:
 		return false
 	case cov.Pack:
-		return true
+		return cov.HoldsSeason(*e.Season)
 	}
-	return slices.Contains(cov.Episodes, *e.Number)
+	return *e.Season == cov.Season && slices.Contains(cov.Episodes, *e.Number)
 }
 
 // pickLabel names what a pick is for: "season 2" when it's a pack of the
 // whole wanted season, else the episodes.
 func pickLabel(w *tvWanted, p tvPick) string {
+	if p.c.cov.MultiSeason() {
+		// The seasons it's grabbed for, which may be fewer than it holds.
+		var seasons []int
+		for _, id := range p.ids {
+			if n := *w.byID[id].Season; !slices.Contains(seasons, n) {
+				seasons = append(seasons, n)
+			}
+		}
+		if len(seasons) == 1 {
+			return fmt.Sprintf("season %d (%s)", seasons[0], countText(len(p.ids), "wanted episode"))
+		}
+		return fmt.Sprintf("%s (%s)", seasonsLabel(seasons), countText(len(p.ids), "wanted episode"))
+	}
 	if p.c.cov.Pack {
 		return fmt.Sprintf("season %d (%s)", p.c.cov.Season, countText(len(p.ids), "wanted episode"))
 	}
@@ -523,10 +605,63 @@ type unitSearch struct {
 	heldIDs map[int64]bool
 }
 
-// searchUnit searches for a unit and acts on what it finds. When a single
-// episode's search finds nothing acceptable, the season is searched as a
-// pack too (packFallback), once per run.
+// searchUnit searches for a unit and acts on what it finds. Before the
+// first season pack of a show with several wanted, the show is searched
+// for as a whole (seriesFirst), once per run; when that grabs this season,
+// its own search is skipped. When a single episode's search finds nothing
+// acceptable, the season is searched as a pack too (packFallback), once
+// per run.
 func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string, run *searchRun) (unitSearch, error) {
+	su, ok := s.seriesFirst(u, run)
+	if !ok {
+		return s.searchOne(ctx, u, trigger, run, map[int64]bool{})
+	}
+	run.seriesTried[u.w.sv.Version.ID] = true
+	first, err := s.searchOne(ctx, su, trigger, run, map[int64]bool{})
+	if err != nil {
+		return unitSearch{}, err
+	}
+	if run.skip(u) {
+		return first, nil // what it chose holds this season
+	}
+	// Episodes whose whole-show release was held back (the queue limit, the
+	// disk) stay first in line, even if the season search finds nothing.
+	res, err := s.searchOne(ctx, u, trigger, run, maps.Clone(first.heldIDs))
+	if err != nil {
+		return unitSearch{}, err
+	}
+	res.message = first.message + " " + res.message
+	res.acceptable += first.acceptable
+	res.grabbed += first.grabbed
+	res.held += first.held
+	return res, nil
+}
+
+// seriesFirst is the whole-show search to make before a season pack's own
+// search: for the wanted seasons searched as packs, less episodes already
+// chosen in this run, when two or more seasons are left and this is one of
+// them, and the show hasn't been searched for as a whole in this run.
+func (s *Service) seriesFirst(u tvUnit, run *searchRun) (tvUnit, bool) {
+	if !u.pack || u.fallback || len(u.seasons) > 0 || run.seriesTried[u.w.sv.Version.ID] {
+		return tvUnit{}, false
+	}
+	var us []tvUnit
+	for _, o := range s.units(u.w) {
+		o.episodes = slices.DeleteFunc(o.episodes, func(e library.Episode) bool { return run.claimed[e.ID] })
+		if len(o.episodes) > 0 {
+			us = append(us, o)
+		}
+	}
+	su, ok := seriesUnit(us)
+	if !ok || !slices.Contains(su.seasons, u.season) {
+		return tvUnit{}, false
+	}
+	return su, true
+}
+
+// searchOne is one search: a unit's query, the verdicts in History, and
+// the grabs. held starts with episodes already held back in this run.
+func (s *Service) searchOne(ctx context.Context, u tvUnit, trigger string, run *searchRun, held map[int64]bool) (unitSearch, error) {
 	rels, failures, err := s.idx.Search(ctx, u.query(), indexer.SearchOptions{})
 	if err != nil {
 		return unitSearch{}, err
@@ -547,7 +682,11 @@ func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string, run 
 	picks := pickTV(cs, u.episodes)
 	what := u.w.label() + " " + u.label()
 	msg := fmt.Sprintf("Searched for %s: %s, %d acceptable.", what, countText(len(rels), "release"), accepted)
-	if u.fallback {
+	switch {
+	case len(u.seasons) > 0:
+		msg = fmt.Sprintf("Searched for %s in one release, asking for the whole show: %s, %d acceptable.",
+			what, countText(len(rels), "release"), accepted)
+	case u.fallback:
 		msg = fmt.Sprintf("Nothing for the episode on its own, so searched for %s as a whole: %s, %d acceptable.",
 			what, countText(len(rels), "release"), accepted)
 	}
@@ -571,12 +710,11 @@ func (s *Service) searchUnit(ctx context.Context, u tvUnit, trigger string, run 
 	if err := s.history.Add(ctx, s.tvEvent(u.w, EventSearched, msg), data); err != nil {
 		return unitSearch{}, err
 	}
-	res := unitSearch{acceptable: len(picks), unanswered: unsearched, heldIDs: map[int64]bool{}}
+	res := unitSearch{acceptable: len(picks), unanswered: unsearched, heldIDs: held}
 	// Episodes whose grab the queue limit (or backfill's quota) holds back,
 	// or the download disk has no room for, don't count as searched: they
 	// stay first in line for when the queue or the disk has room, or the
 	// limit is raised.
-	held := res.heldIDs
 	// settled counts picks that came to anything but a refusal for their
 	// files; refused counts those refusals.
 	settled, refused := 0, 0
@@ -867,7 +1005,9 @@ func (s *Service) rssTV(ctx context.Context, ws []*tvWanted, rels []indexer.Rele
 	var order []key
 	for _, r := range rels {
 		p := parser.Parse(r.Title)
-		if p.Episode == nil {
+		if p.Episode == nil || p.Episode.MultiSeason() {
+			// Packs of several seasons are left to searches, which ask for
+			// the whole show when several seasons are wanted.
 			continue
 		}
 		cands := byKey[decision.TitleKey(p.Title)]

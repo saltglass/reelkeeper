@@ -585,3 +585,132 @@ func TestTVSpaceSkipOnTheSeasonFallback(t *testing.T) {
 		}
 	})
 }
+
+// threeSeasons is an ended show with three finished seasons of two
+// episodes, all wanted, with TV grabbing on.
+func threeSeasons(t *testing.T, db *store.Store) (*fixture, *fakeGrabber, *library.SeriesVersion) {
+	t.Helper()
+	f := newFixture(t, db)
+	g := &fakeGrabber{}
+	f.setDownloads(g, &fakeQueue{})
+	f.mode = settings.Grabbing{Mode: settings.GrabOn, TVMode: settings.GrabOn, MinSeeders: 1}
+	sv := addSeries(t, db, f, "Old Show", "standard", map[string]string{
+		"S01E01": "2010-01-01", "S01E02": "2010-01-08", "S02E01": "2011-01-01", "S02E02": "2011-01-08",
+		"S03E01": "2012-01-01", "S03E02": "2012-01-08",
+	}, "S01E01", "S01E02", "S02E01", "S02E02", "S03E01", "S03E02")
+	sv.Title.Status = "Ended"
+	return f, g, sv
+}
+
+// With several seasons wanted as packs, the show is asked for as a whole
+// first, and a pack of all of them is one grab (2026-11-28: a show's only
+// well-seeded copy held all five seasons).
+func TestTVWholeShowSearchGrabsAPackOfSeveralSeasons(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f, g, sv := threeSeasons(t, db)
+		f.idx.releases = []indexer.Release{
+			tvRel("Old.Show.S01.1080p.BluRay.x264-GRP", 4<<30, 30),
+			tvRel("Old.Show.S01-S03.COMPLETE.SERIES.1080p.BluRay.x265-GRP", 12<<30, 86),
+			tvRel("Old.Show.S02.1080p.BluRay.x264-GRP", 4<<30, 30),
+		}
+		msg, err := f.svc.SearchVersion(ctx, sv.Version.ID, TriggerManual)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(f.idx.queries) != 1 || f.idx.queries[0].Season != 0 || f.idx.queries[0].Episode != "" {
+			t.Errorf("queries = %+v (one for the whole show, and the seasons skipped)", f.idx.queries)
+		}
+		if len(g.grabs) != 1 || g.got[0] != "Old.Show.S01-S03.COMPLETE.SERIES.1080p.BluRay.x265-GRP" {
+			t.Fatalf("grabbed %v (%s)", g.got, msg)
+		}
+		if tg := g.grabs[0].TV; len(tg.EpisodeIDs) != 6 || tg.Label != "seasons 1 to 3 (6 wanted episodes)" {
+			t.Errorf("grab = %+v", tg)
+		}
+		if !strings.Contains(msg, "Searched for Old Show (2015), HD seasons 1 to 3 in one release, asking for the whole show: 3 releases, 3 acceptable.") {
+			t.Errorf("message = %q", msg)
+		}
+	})
+}
+
+// The whole-show search takes the broadest packs first and single-season
+// packs for the rest; seasons it covers aren't searched again.
+func TestTVWholeShowSearchMixesPacks(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f, g, sv := threeSeasons(t, db)
+		f.idx.releases = []indexer.Release{
+			tvRel("Old.Show.S03.1080p.BluRay.x264-GRP", 4<<30, 30),
+			tvRel("Old.Show.S01-S02.1080p.BluRay.x264-GRP", 8<<30, 20),
+			tvRel("Old.Show.S02E01.1080p.BluRay.x264-GRP", 2<<30, 90),
+		}
+		msg, err := f.svc.SearchVersion(ctx, sv.Version.ID, TriggerManual)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(f.idx.queries) != 1 {
+			t.Errorf("queries = %+v", f.idx.queries)
+		}
+		if !slices.Equal(g.got, []string{"Old.Show.S01-S02.1080p.BluRay.x264-GRP", "Old.Show.S03.1080p.BluRay.x264-GRP"}) {
+			t.Fatalf("grabbed %v (%s)", g.got, msg)
+		}
+		if g.grabs[0].TV.Label != "seasons 1 to 2 (4 wanted episodes)" || g.grabs[1].TV.Label != "season 3 (2 wanted episodes)" {
+			t.Errorf("labels %q, %q", g.grabs[0].TV.Label, g.grabs[1].TV.Label)
+		}
+	})
+}
+
+// When the whole show turns up nothing acceptable, each season is searched
+// as before, and it's the season searches that count as searched.
+func TestTVWholeShowSearchFallsBackToSeasons(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f, g, sv := threeSeasons(t, db)
+		f.idx.releases = []indexer.Release{
+			tvRel("Old.Show.S01E01.1080p.BluRay.x264-GRP", 2<<30, 30),
+			tvRel("Old.Show.Complete.Series.720p.HDTV.x264-GRP", 6<<30, 30), // outside the profile
+		}
+		msg, err := f.svc.SearchVersion(ctx, sv.Version.ID, TriggerManual)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var seasons []int
+		for _, q := range f.idx.queries {
+			seasons = append(seasons, q.Season)
+		}
+		if !slices.Equal(seasons, []int{0, 1, 2, 3}) {
+			t.Errorf("query seasons = %v", seasons)
+		}
+		if !slices.Equal(g.got, []string{"Old.Show.S01E01.1080p.BluRay.x264-GRP"}) {
+			t.Errorf("grabbed %v (%s)", g.got, msg)
+		}
+		if len(f.lib.epSearched[sv.Version.ID]) != 6 {
+			t.Errorf("search times = %v", f.lib.epSearched)
+		}
+		// The verdict on the complete series is in History, with why.
+		if !strings.Contains(msg, "seasons 1 to 3 in one release, asking for the whole show: 2 releases, 0 acceptable.") {
+			t.Errorf("message = %q", msg)
+		}
+	})
+}
+
+// A single wanted season is never asked for as the whole show, and a pack
+// of several seasons isn't grabbed for it.
+func TestTVOneSeasonTurnsDownPacksOfSeveral(t *testing.T) {
+	storetest.Each(t, func(t *testing.T, db *store.Store) {
+		ctx := context.Background()
+		f, g, sv := threeSeasons(t, db)
+		sv.Wanted = sv.Wanted[4:] // season 3 only
+		f.idx.releases = []indexer.Release{tvRel("Old.Show.S01-S03.1080p.BluRay.x265-GRP", 12<<30, 86)}
+		msg, err := f.svc.SearchVersion(ctx, sv.Version.ID, TriggerManual)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(f.idx.queries) != 1 || f.idx.queries[0].Season != 3 || len(g.got) != 0 {
+			t.Errorf("queries %+v, grabbed %v", f.idx.queries, g.got)
+		}
+		if !strings.Contains(msg, "only season 3 is wanted as a whole") {
+			t.Errorf("message = %q", msg)
+		}
+	})
+}

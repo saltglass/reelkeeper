@@ -688,8 +688,11 @@ type pickedOption struct {
 // offers, for each, the releases with the most seeders that the profile
 // turned down, Usenet ones first (they have no seeders, and download as well
 // as any). Never offered: blocklisted releases, torrents nobody seeds, and
-// releases for the wrong show, season or episode. Nothing is stored
-// except the short-lived tokens that let the user take one.
+// releases for the wrong show, season or episode. A show missing several
+// whole seasons is also searched for as a whole, and its packs of several
+// seasons are offered once, for all of them, rather than under each
+// season. Nothing is stored except the short-lived tokens that let the
+// user take one.
 func (s *Service) BackfillOptions(ctx context.Context, id int64) (*BackfillOptionList, error) {
 	row, err := s.backfillRow(ctx, id)
 	if err != nil {
@@ -704,6 +707,7 @@ func (s *Service) BackfillOptions(ctx context.Context, id int64) (*BackfillOptio
 	}
 	w := ws[0]
 	us := s.units(w)
+	whole, several := seriesUnit(us)
 	out := &BackfillOptionList{Units: []BackfillUnit{}}
 	if len(us) > maxUnitsPerSearch {
 		out.Omitted = len(us) - maxUnitsPerSearch
@@ -718,6 +722,34 @@ func (s *Service) BackfillOptions(ctx context.Context, id int64) (*BackfillOptio
 	s.optMu.Lock()
 	s.forgetOldOptionsLocked()
 	s.optMu.Unlock()
+	if several {
+		rels, _, err := s.idx.Search(ctx, whole.query(), indexer.SearchOptions{})
+		if err != nil {
+			return nil, err
+		}
+		cs, err := s.decideTV(ctx, w, whole.target(), dedupe(rels))
+		if err != nil {
+			return nil, err
+		}
+		cs = slices.DeleteFunc(cs, func(c tvCandidate) bool { return !c.cov.MultiSeason() })
+		unit := BackfillUnit{Label: whole.label(), EpisodeIDs: whole.episodeIDs(), Options: []BackfillOption{}}
+		for _, c := range offerable(cs, blocked) {
+			var ids []int64
+			for _, e := range whole.episodes {
+				if covers(c.cov, e) {
+					ids = append(ids, e.ID)
+				}
+			}
+			o, err := s.offer(pickedOption{rowID: id, versionID: row.VersionID, episodeIDs: ids, label: whole.label(), rel: c.rel, d: c.d, cov: c.cov})
+			if err != nil {
+				return nil, err
+			}
+			unit.Options = append(unit.Options, o)
+		}
+		if len(unit.Options) > 0 {
+			out.Units = append(out.Units, unit)
+		}
+	}
 	// A finished season's packs are offered for its single episodes too
 	// (see packFallback), from one season search each.
 	packs := map[int][]indexer.Release{}
@@ -760,43 +792,61 @@ func (s *Service) BackfillOptions(ctx context.Context, id int64) (*BackfillOptio
 				}
 			}
 		}
-		var offered []*tvCandidate
-		for i := range cs {
-			c := &cs[i]
-			if c.d.Accepted || c.d.WrongContent || (c.rel.Seeders <= 0 && !c.rel.Usenet()) || blocked(c.rel.Title, c.rel.InfoHash) {
-				continue
-			}
-			offered = append(offered, c)
-		}
-		slices.SortStableFunc(offered, func(a, b *tvCandidate) int {
-			if a.rel.Usenet() != b.rel.Usenet() {
-				if a.rel.Usenet() {
-					return -1
-				}
-				return 1
-			}
-			return b.rel.Seeders - a.rel.Seeders
-		})
 		unit := BackfillUnit{Label: u.label(), EpisodeIDs: u.episodeIDs(), Options: []BackfillOption{}}
-		for _, c := range offered[:min(len(offered), optionsPerUnit)] {
+		for _, c := range offerable(cs, blocked) {
+			if several && c.cov.MultiSeason() {
+				continue // offered once for every season it holds, above
+			}
 			ids, ok := forIDs[c]
 			if !ok {
 				ids = u.episodeIDs()
 			}
-			token, err := s.rememberOption(pickedOption{
-				rowID: id, versionID: row.VersionID, episodeIDs: ids, label: u.label(), rel: c.rel, d: c.d, cov: c.cov,
-			})
+			o, err := s.offer(pickedOption{rowID: id, versionID: row.VersionID, episodeIDs: ids, label: u.label(), rel: c.rel, d: c.d, cov: c.cov})
 			if err != nil {
 				return nil, err
 			}
-			unit.Options = append(unit.Options, BackfillOption{
-				Token: token, Title: c.rel.Title, Size: c.rel.Size, Quality: c.d.Quality.Name, Indexer: c.rel.Indexer,
-				Seeders: c.rel.Seeders, Usenet: c.rel.Usenet(), Reasons: c.d.Rejections,
-			})
+			unit.Options = append(unit.Options, o)
 		}
 		out.Units = append(out.Units, unit)
 	}
 	return out, nil
+}
+
+// offerable is what "Show options" may offer of a search's releases, most
+// seeders first (Usenet first of all), at most optionsPerUnit: those the
+// profile turned down that are the right content, seeded or on Usenet,
+// and not blocklisted.
+func offerable(cs []tvCandidate, blocked func(string, string) bool) []*tvCandidate {
+	var offered []*tvCandidate
+	for i := range cs {
+		c := &cs[i]
+		if c.d.Accepted || c.d.WrongContent || (c.rel.Seeders <= 0 && !c.rel.Usenet()) || blocked(c.rel.Title, c.rel.InfoHash) {
+			continue
+		}
+		offered = append(offered, c)
+	}
+	slices.SortStableFunc(offered, func(a, b *tvCandidate) int {
+		if a.rel.Usenet() != b.rel.Usenet() {
+			if a.rel.Usenet() {
+				return -1
+			}
+			return 1
+		}
+		return b.rel.Seeders - a.rel.Seeders
+	})
+	return offered[:min(len(offered), optionsPerUnit)]
+}
+
+// offer remembers an option and describes it for "Show options".
+func (s *Service) offer(o pickedOption) (BackfillOption, error) {
+	token, err := s.rememberOption(o)
+	if err != nil {
+		return BackfillOption{}, err
+	}
+	return BackfillOption{
+		Token: token, Title: o.rel.Title, Size: o.rel.Size, Quality: o.d.Quality.Name, Indexer: o.rel.Indexer,
+		Seeders: o.rel.Seeders, Usenet: o.rel.Usenet(), Reasons: o.d.Rejections,
+	}, nil
 }
 
 // rememberOption keeps a release the user may take and returns its token:

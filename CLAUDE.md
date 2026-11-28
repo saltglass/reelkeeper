@@ -532,6 +532,16 @@ fit"; 1.x may include small features; Usenet and anime are probably 2.0).
   (hidden from media servers), never deleted.
 - **qBittorrent 5.2's login** answers 204/401 instead of 200 "Ok."/"Fails.";
   the client handles both.
+- **Packs of several seasons** (`S01-S05`, `Season 1-5`, `Complete
+  Series`; Dan, 2026-11-28, after a show's only well-seeded copy
+  was all five seasons): the parser gives `Episode.LastSeason` or
+  `Complete`, and a search for one season turns them down. With two or more
+  seasons wanted as packs, the show is searched for once as a whole
+  (`seriesFirst` in `grab/tv.go`, query with no season) before the first
+  season pack; what it grabs, the season searches skip. A running show's
+  "complete series" is never taken for every season. RSS sync ignores
+  them; importing takes the season from each file's name or folders, never
+  from the pack's name.
 - **NFS ownership can be fixed by the server** (all-squash), so chown and
   chmod may fail or be ignored. Treat that as non-fatal and don't retry.
 - **Bypass list behind a reverse proxy.** Every request through the proxy
